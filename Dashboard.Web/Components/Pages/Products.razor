@@ -1,0 +1,51 @@
+﻿@* Dashboard.Web/Components/Pages/Products.razor *@
+@page "/products"
+@inject IProductService ProductService
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+
+<PageTitle>محصولات</PageTitle>
+
+<h3>محصولات</h3>
+
+<a href="/products/add" class="btn btn-primary mb-3">+ افزودن محصول</a>
+
+@if (products is null)
+{
+    <p>در حال بارگذاری...</p>
+}
+else if (!products.Any())
+{
+    <p>محصولی یافت نشد.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>شناسه</th>
+                <th>نام</th>
+                <th>قیمت</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in products)
+            {
+                <tr>
+                    <td>@product.Id</td>
+                    <td>@product.Name</td>
+                    <td>@product.Price.ToString("C")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IEnumerable<ProductDto>? products;
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await ProductService.GetAllProductsAsync();
+    }
+}
