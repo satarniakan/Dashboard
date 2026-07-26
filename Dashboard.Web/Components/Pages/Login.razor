@@ -1,0 +1,31 @@
+﻿@page "/login"
+
+<PageTitle>ورود</PageTitle>
+
+<h3>ورود</h3>
+
+@if (Error is not null)
+{
+    <div class="alert alert-danger">ایمیل یا رمز عبور اشتباه است.</div>
+}
+
+<form method="post" action="/Account/Login">
+    <AntiforgeryToken />
+
+    <div class="mb-3">
+        <label class="form-label">ایمیل</label>
+        <input type="email" name="email" class="form-control" required />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">رمز عبور</label>
+        <input type="password" name="password" class="form-control" required />
+    </div>
+
+    <button type="submit" class="btn btn-primary">ورود</button>
+</form>
+
+@code {
+    [SupplyParameterFromQuery(Name = "error")]
+    private string? Error { get; set; }
+}

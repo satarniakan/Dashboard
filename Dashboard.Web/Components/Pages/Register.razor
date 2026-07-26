@@ -1,0 +1,31 @@
+﻿@page "/register"
+
+<PageTitle>ثبت‌نام</PageTitle>
+
+<h3>ثبت‌نام</h3>
+
+@if (Error is not null)
+{
+    <div class="alert alert-danger">ثبت‌نام ناموفق بود. لطفاً اطلاعات را بررسی کنید.</div>
+}
+
+<form method="post" action="/Account/Register">
+    <AntiforgeryToken />
+
+    <div class="mb-3">
+        <label class="form-label">ایمیل</label>
+        <input type="email" name="email" class="form-control" required />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">رمز عبور</label>
+        <input type="password" name="password" class="form-control" required />
+    </div>
+
+    <button type="submit" class="btn btn-primary">ثبت‌نام</button>
+</form>
+
+@code {
+    [SupplyParameterFromQuery(Name = "error")]
+    private string? Error { get; set; }
+}

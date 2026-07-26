@@ -3,7 +3,10 @@
 @inject IProductService ProductService
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
 
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
 <PageTitle>محصولات</PageTitle>
 
 <h3>محصولات</h3>
@@ -34,7 +37,7 @@ else
                 <tr>
                     <td>@product.Id</td>
                     <td>@product.Name</td>
-                    <td>@product.Price.ToString("C")</td>
+                    <td>@CurrencyFormatter.ToToman(product.Price)</td>
                 </tr>
             }
         </tbody>
