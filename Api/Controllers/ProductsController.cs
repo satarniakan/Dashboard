@@ -26,7 +26,7 @@ public class ProductsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ProductDto>> Create(CreateProductDto dto)
     {
-        var created = await _productService.CreateProductAsync(dto);
+        var created = await _productService.CreateProductAsync(dto, null);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
     // Dashboard.Api/Controllers/ProductsController.cs — add this method

@@ -1,48 +1,50 @@
-﻿@* Dashboard.Web/Components/Pages/Products.razor *@
-@page "/products"
+﻿@page "/products"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
 @inject IProductService ProductService
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
 @using Dashboard.Application.Helpers
 
-@attribute [Authorize]
-@using Microsoft.AspNetCore.Authorization
 <PageTitle>محصولات</PageTitle>
 
-<h3>محصولات</h3>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">محصولات</h3>
+    <a href="/products/add" class="btn btn-primary">+ افزودن محصول</a>
+</div>
 
-<a href="/products/add" class="btn btn-primary mb-3">+ افزودن محصول</a>
-
-@if (products is null)
-{
-    <p>در حال بارگذاری...</p>
-}
-else if (!products.Any())
-{
-    <p>محصولی یافت نشد.</p>
-}
-else
-{
-    <table class="table">
-        <thead>
-            <tr>
-                <th>شناسه</th>
-                <th>نام</th>
-                <th>قیمت</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var product in products)
-            {
+<div class="card-panel">
+    @if (products is null)
+    {
+        <p class="text-muted">در حال بارگذاری...</p>
+    }
+    else if (!products.Any())
+    {
+        <p class="text-muted text-center py-4">هنوز محصولی ثبت نشده است.</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead>
                 <tr>
-                    <td>@product.Id</td>
-                    <td>@product.Name</td>
-                    <td>@CurrencyFormatter.ToToman(product.Price)</td>
+                    <th>شناسه</th>
+                    <th>نام</th>
+                    <th>قیمت</th>
                 </tr>
-            }
-        </tbody>
-    </table>
-}
+            </thead>
+            <tbody>
+                @foreach (var product in products)
+                {
+                    <tr>
+                        <td class="text-muted">@product.Id</td>
+                        <td class="fw-medium">@product.Name</td>
+                        <td>@CurrencyFormatter.ToToman(product.Price)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
 
 @code {
     private IEnumerable<ProductDto>? products;

@@ -10,7 +10,7 @@ public interface IProductService
 {
     Task<ProductDto?> GetProductAsync(int id);
     Task<IEnumerable<ProductDto>> GetAllProductsAsync();
-    Task<ProductDto> CreateProductAsync(CreateProductDto dto);
+    Task<ProductDto> CreateProductAsync(CreateProductDto dto, string? userEmail);
 }
 
 public class ProductService : IProductService
@@ -41,17 +41,17 @@ public class ProductService : IProductService
         return products.Select(p => new ProductDto(p.Id, p.Name, p.Price));
     }
 
-    public async Task<ProductDto> CreateProductAsync(CreateProductDto dto)
+    public async Task<ProductDto> CreateProductAsync(CreateProductDto dto, string? userEmail)
     {
         var product = new Product(dto.Name, dto.Price);
         await _repository.AddAsync(product);
 
         await _auditService.LogEventAsync(
             "ProductCreated",
-            null,
+            userEmail,
             $"Product '{product.Name}' (Id: {product.Id}) created with price {product.Price}");
 
-        _logger.LogInformation("Product {ProductId} created", product.Id);
+        _logger.LogInformation("Product {ProductId} created by {UserEmail}", product.Id, userEmail ?? "unknown");
 
         return new ProductDto(product.Id, product.Name, product.Price);
     }

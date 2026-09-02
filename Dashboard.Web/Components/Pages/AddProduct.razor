@@ -1,0 +1,79 @@
+﻿@page "/products/add"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using System.Security.Claims
+@inject IProductService ProductService
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>افزودن محصول</PageTitle>
+
+<h3>افزودن محصول</h3>
+
+<div class="card-panel" style="max-width: 480px;">
+    <EditForm Model="@(newProduct!)" OnValidSubmit="HandleValidSubmit" FormName="AddProductForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="mb-3" />
+
+        <div class="mb-3">
+            <label class="form-label">نام محصول</label>
+            <InputText class="form-control" @bind-Value="newProduct!.Name" placeholder="مثلاً: گل رز" />
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">قیمت (تومان)</label>
+            <InputNumber class="form-control" @bind-Value="newProduct!.Price" placeholder="0" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                @(isSaving ? "در حال ذخیره..." : "ذخیره محصول")
+            </button>
+            <a href="/products" class="btn btn-outline-secondary">انصراف</a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private CreateProductDto? newProduct { get; set; }
+
+    private bool isSaving;
+    private string? errorMessage;
+
+    protected override void OnInitialized()
+    {
+        newProduct ??= new();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userEmail = authState.User.FindFirstValue(ClaimTypes.Email)
+                             ?? authState.User.Identity?.Name;
+
+            await ProductService.CreateProductAsync(newProduct!, userEmail);
+            NavigationManager.NavigateTo("/products");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"ذخیره محصول ناموفق بود: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

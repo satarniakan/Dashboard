@@ -2,28 +2,36 @@
 
 <PageTitle>ثبت‌نام</PageTitle>
 
-<h3>ثبت‌نام</h3>
+<div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="card-panel" style="width: 100%; max-width: 400px;">
+        <h3 class="text-center mb-4">ساخت حساب جدید</h3>
 
-@if (Error is not null)
-{
-    <div class="alert alert-danger">ثبت‌نام ناموفق بود. لطفاً اطلاعات را بررسی کنید.</div>
-}
+        @if (Error is not null)
+        {
+            <div class="alert alert-danger">ثبت‌نام ناموفق بود. لطفاً اطلاعات را بررسی کنید.</div>
+        }
 
-<form method="post" action="/Account/Register">
-    <AntiforgeryToken />
+        <form method="post" action="/Account/Register">
+            <AntiforgeryToken />
 
-    <div class="mb-3">
-        <label class="form-label">ایمیل</label>
-        <input type="email" name="email" class="form-control" required />
+            <div class="mb-3">
+                <label class="form-label">ایمیل</label>
+                <input type="email" name="email" class="form-control" required />
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">رمز عبور</label>
+                <input type="password" name="password" class="form-control" required />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">ثبت‌نام</button>
+        </form>
+
+        <p class="text-center text-muted mt-3 mb-0" style="font-size: 0.9rem;">
+            قبلاً ثبت‌نام کرده‌اید؟ <a href="/login">وارد شوید</a>
+        </p>
     </div>
-
-    <div class="mb-3">
-        <label class="form-label">رمز عبور</label>
-        <input type="password" name="password" class="form-control" required />
-    </div>
-
-    <button type="submit" class="btn btn-primary">ثبت‌نام</button>
-</form>
+</div>
 
 @code {
     [SupplyParameterFromQuery(Name = "error")]
