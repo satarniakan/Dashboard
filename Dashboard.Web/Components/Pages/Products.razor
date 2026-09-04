@@ -5,6 +5,9 @@
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
 @using Dashboard.Application.Helpers
+@using System.Security.Claims
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>محصولات</PageTitle>
 
@@ -30,6 +33,7 @@
                     <th>شناسه</th>
                     <th>نام</th>
                     <th>قیمت</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -39,6 +43,10 @@
                         <td class="text-muted">@product.Id</td>
                         <td class="fw-medium">@product.Name</td>
                         <td>@CurrencyFormatter.ToToman(product.Price)</td>
+                        <td class="text-end">
+                            <a href="/products/edit/@product.Id" class="btn btn-sm btn-outline-primary">ویرایش</a>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(product.Id, product.Name)">حذف</button>
+                        </td>
                     </tr>
                 }
             </tbody>
@@ -46,11 +54,57 @@
     }
 </div>
 
+@if (productToDelete is not null)
+{
+    <div class="modal show d-block" style="background-color: rgba(0,0,0,0.4);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body p-4">
+                    <p class="mb-4">آیا از حذف محصول «<strong>@productToDelete.Value.Name</strong>» مطمئن هستید؟</p>
+                    <div class="d-flex gap-2 justify-content-end">
+                        <button class="btn btn-outline-secondary" @onclick="CancelDelete">انصراف</button>
+                        <button class="btn btn-danger" @onclick="DeleteConfirmed">حذف</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private IEnumerable<ProductDto>? products;
+    private (int Id, string Name)? productToDelete;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
         products = await ProductService.GetAllProductsAsync();
+    }
+
+    private void ConfirmDelete(int id, string name)
+    {
+        productToDelete = (id, name);
+    }
+
+    private void CancelDelete()
+    {
+        productToDelete = null;
+    }
+
+    private async Task DeleteConfirmed()
+    {
+        if (productToDelete is null) return;
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userEmail = authState.User.FindFirstValue(ClaimTypes.Email)
+                         ?? authState.User.Identity?.Name;
+
+        await ProductService.DeleteProductAsync(productToDelete.Value.Id, userEmail);
+        productToDelete = null;
+        await LoadProducts();
     }
 }
