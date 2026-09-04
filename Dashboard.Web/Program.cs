@@ -40,9 +40,11 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
 // Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
-    options.Password.RequiredLength = 6;
+    options.Password.RequiredLength = 3;
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequireUppercase = false;
+    options.Password.RequireLowercase = false;
+    options.Password.RequireDigit = false;
 })
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
@@ -107,15 +109,16 @@ app.MapPost("/Account/Register", async (
     [FromForm] string password) =>
 {
     var user = new ApplicationUser { UserName = email, Email = email };
-    var result = await userManager.CreateAsync(user, password);
+   var result = await userManager.CreateAsync(user, password);
 
-    if (result.Succeeded)
-    {
-        await signInManager.SignInAsync(user, isPersistent: true);
-        return Results.Redirect("/products");
-    }
+if (result.Succeeded)
+{
+    await signInManager.SignInAsync(user, isPersistent: true);
+    return Results.Redirect("/products");
+}
 
-    return Results.Redirect("/register?error=1");
+Log.Warning("Register failed: {Errors}", string.Join(" | ", result.Errors.Select(e => $"{e.Code}: {e.Description}")));
+return Results.Redirect("/register?error=1");
 });
 
 app.MapPost("/logout", async (SignInManager<ApplicationUser> signInManager) =>
