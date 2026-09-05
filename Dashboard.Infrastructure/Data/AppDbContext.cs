@@ -13,9 +13,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Product> Products => Set<Product>();
     // Dashboard.Infrastructure/Data/AppDbContext.cs — add this line inside the class
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder); // required — sets up Identity's tables
 
     }
+
 }

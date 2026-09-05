@@ -1,15 +1,17 @@
 // Dashboard.Web/Program.cs
-using System.Globalization;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Serilog;
 using Dashboard.Application.Services;
 using Dashboard.Domain.Identity;
 using Dashboard.Domain.Interfaces;
 using Dashboard.Infrastructure.Data;
 using Dashboard.Infrastructure.Repositories;
+using Dashboard.Infrastructure.Services;
+using Dashboard.Infrastructure.Services;
 using Dashboard.Web.Components;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Serilog;
+using System.Globalization;
 
 // Configure Serilog before the host is built
 Log.Logger = new LoggerConfiguration()
@@ -55,7 +57,9 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 builder.Services.AddScoped<IAuditService, AuditService>();
-
+builder.Services.AddScoped<IOtpRepository, OtpCodeRepository>();
+builder.Services.AddScoped<ISmsSender, FakeSmsSender>();
+builder.Services.AddScoped<IOtpService, OtpService>();
 var app = builder.Build();
 
 app.UseSerilogRequestLogging();

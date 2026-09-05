@@ -1,0 +1,35 @@
+﻿@* Dashboard.Web/Components/Pages/PhoneLogin.razor *@
+@page "/phone-login"
+
+<PageTitle>ورود با موبایل</PageTitle>
+
+<div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="card-panel" style="width: 100%; max-width: 420px;">
+        <h3 class="text-center mb-4">ورود با شماره موبایل</h3>
+
+        @if (Error is not null)
+        {
+            <div class="alert alert-danger">شماره موبایل معتبر نیست.</div>
+        }
+
+        <form method="post" action="/Account/RequestOtp">
+            <AntiforgeryToken />
+
+            <div class="mb-4">
+                <label class="form-label">شماره موبایل</label>
+                <input type="tel" name="phoneNumber" class="form-control" placeholder="09xxxxxxxxx" required pattern="09[0-9]{9}" />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">ارسال کد تأیید</button>
+        </form>
+
+        <p class="text-center text-muted mt-3 mb-0" style="font-size: 0.9rem;">
+            ورود با ایمیل؟ <a href="/login">اینجا کلیک کنید</a>
+        </p>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "error")]
+    private string? Error { get; set; }
+}
