@@ -1,0 +1,18 @@
+@* Dashboard.Web/Components/Shared/AppDateField.razor *@
+@using System.Linq.Expressions
+
+<div class="mb-3">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="form-label">@Label</label>
+    }
+    <InputDate class="form-control" Value="@Value" ValueChanged="@ValueChanged" ValueExpression="@ValueExpression" />
+    <ValidationMessage For="@ValueExpression" class="text-danger small mt-1 d-block" />
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public DateTime? Value { get; set; }
+    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<DateTime?>>? ValueExpression { get; set; }
+}

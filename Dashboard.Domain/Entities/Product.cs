@@ -18,4 +18,11 @@ public class Product
     {
         Price -= Price * (percent / 100);
     }
+
+    public void Update(string name, decimal price)
+    {
+        if (price < 0) throw new ArgumentException("Price cannot be negative.");
+        Name = name;
+        Price = price;
+    }
 }

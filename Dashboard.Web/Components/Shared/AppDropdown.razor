@@ -1,0 +1,27 @@
+@* Dashboard.Web/Components/Shared/AppDropdown.razor *@
+@using System.Linq.Expressions
+@typeparam TValue
+
+<div class="mb-3">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="form-label">@Label</label>
+    }
+    <InputSelect class="form-select" Value="@Value" ValueChanged="@ValueChanged" ValueExpression="@ValueExpression">
+        @if (!string.IsNullOrEmpty(Placeholder))
+        {
+            <option value="">@Placeholder</option>
+        }
+        @ChildContent
+    </InputSelect>
+    <ValidationMessage For="@ValueExpression" class="text-danger small mt-1 d-block" />
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public TValue? Value { get; set; }
+    [Parameter] public EventCallback<TValue?> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<TValue?>>? ValueExpression { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

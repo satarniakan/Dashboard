@@ -11,6 +11,8 @@ public interface IProductService
     Task<ProductDto?> GetProductAsync(int id);
     Task<IEnumerable<ProductDto>> GetAllProductsAsync();
     Task<ProductDto> CreateProductAsync(CreateProductDto dto, string? userEmail);
+    Task<ProductDto?> UpdateProductAsync(int id, UpdateProductDto dto, string? userEmail);
+    Task<bool> DeleteProductAsync(int id, string? userEmail);
 }
 
 public class ProductService : IProductService
@@ -54,5 +56,49 @@ public class ProductService : IProductService
         _logger.LogInformation("Product {ProductId} created by {UserEmail}", product.Id, userEmail ?? "unknown");
 
         return new ProductDto(product.Id, product.Name, product.Price);
+    }
+
+    public async Task<ProductDto?> UpdateProductAsync(int id, UpdateProductDto dto, string? userEmail)
+    {
+        var product = await _repository.GetByIdAsync(id);
+        if (product is null)
+        {
+            return null;
+        }
+
+        var oldName = product.Name;
+        var oldPrice = product.Price;
+
+        product.Update(dto.Name, dto.Price);
+        await _repository.UpdateAsync(product);
+
+        await _auditService.LogEventAsync(
+            "ProductUpdated",
+            userEmail,
+            $"Product (Id: {id}) changed from '{oldName}' ({oldPrice}) to '{product.Name}' ({product.Price})");
+
+        _logger.LogInformation("Product {ProductId} updated by {UserEmail}", id, userEmail ?? "unknown");
+
+        return new ProductDto(product.Id, product.Name, product.Price);
+    }
+
+    public async Task<bool> DeleteProductAsync(int id, string? userEmail)
+    {
+        var product = await _repository.GetByIdAsync(id);
+        if (product is null)
+        {
+            return false;
+        }
+
+        await _repository.DeleteAsync(id);
+
+        await _auditService.LogEventAsync(
+            "ProductDeleted",
+            userEmail,
+            $"Product '{product.Name}' (Id: {id}) deleted");
+
+        _logger.LogInformation("Product {ProductId} deleted by {UserEmail}", id, userEmail ?? "unknown");
+
+        return true;
     }
 }
