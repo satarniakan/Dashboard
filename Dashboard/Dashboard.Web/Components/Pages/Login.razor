@@ -1,0 +1,39 @@
+﻿@page "/login"
+@attribute [ExcludeFromInteractiveRouting]
+<PageTitle>ورود</PageTitle>
+
+<div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="card-panel" style="width: 100%; max-width: 420px;">
+        <h3 class="text-center mb-4">ورود به داشبورد</h3>
+
+        @if (Error is not null)
+        {
+            <div class="alert alert-danger">ایمیل یا رمز عبور اشتباه است.</div>
+        }
+
+        <form method="post" action="/Account/Login" data-enhance="false">
+            <AntiforgeryToken />
+
+            <div class="mb-3">
+                <label class="form-label">ایمیل</label>
+                <input type="email" name="email" class="form-control" required />
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">رمز عبور</label>
+                <input type="password" name="password" class="form-control" required />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">ورود</button>
+        </form>
+
+        <p class="text-center text-muted mt-3 mb-0" style="font-size: 0.9rem;">
+            حساب کاربری ندارید؟ <a href="/register">ثبت‌نام کنید</a>
+        </p>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "error")]
+    private string? Error { get; set; }
+}

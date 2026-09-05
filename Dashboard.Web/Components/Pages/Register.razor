@@ -1,37 +1,11 @@
-﻿@page "/register"
-
-<PageTitle>ثبت‌نام</PageTitle>
-
-<div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
-    <div class="card-panel" style="width: 100%; max-width: 420px;">
-        <h3 class="text-center mb-2">ثبت‌نام</h3>
-        <p class="text-center text-muted mb-4" style="font-size: 0.9rem;">
-            برای شروع، شماره موبایل خود را وارد کنید.
-        </p>
-
-        @if (Error is not null)
-        {
-            <div class="alert alert-danger">شماره موبایل معتبر نیست.</div>
-        }
-
-        <form method="post" action="/Account/RequestOtp" data-enhance="false">
-            <AntiforgeryToken />
-
-            <div class="mb-4">
-                <label class="form-label">شماره موبایل</label>
-                <input type="tel" name="phoneNumber" class="form-control" placeholder="09xxxxxxxxx" required pattern="09[0-9]{9}" />
-            </div>
-
-            <button type="submit" class="btn btn-primary w-100">ارسال کد تأیید</button>
-        </form>
-
-        <p class="text-center text-muted mt-3 mb-0" style="font-size: 0.9rem;">
-            قبلاً ثبت‌نام کرده‌اید؟ <a href="/login">ورود با ایمیل</a>
-        </p>
-    </div>
-</div>
+@page "/register"
+@attribute [ExcludeFromInteractiveRouting]
+@inject NavigationManager NavigationManager
 
 @code {
-    [SupplyParameterFromQuery(Name = "error")]
-    private string? Error { get; set; }
+    protected override void OnInitialized()
+    {
+        // صفحه ثبت‌نام جداگانه دیگر استفاده نمی‌شود؛ ثبت‌نام و ورود هر دو از صفحه /login انجام می‌شود.
+        NavigationManager.NavigateTo("/login");
+    }
 }

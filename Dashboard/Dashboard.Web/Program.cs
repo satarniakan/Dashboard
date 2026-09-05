@@ -93,26 +93,18 @@ app.UseAntiforgery();
 // Auth endpoints (plain HTTP POST — required so Identity can write auth cookies)
 app.MapPost("/Account/Login", async (
     HttpContext httpContext,
-    UserManager<ApplicationUser> userManager,
     SignInManager<ApplicationUser> signInManager,
     [FromForm] string email,
     [FromForm] string password) =>
 {
-    var user = await userManager.FindByEmailAsync(email);
-
-    if (user is null)
-    {
-        return Results.Redirect("/login-password?error=1");
-    }
-
-    var result = await signInManager.PasswordSignInAsync(user, password, isPersistent: true, lockoutOnFailure: false);
+    var result = await signInManager.PasswordSignInAsync(email, password, isPersistent: true, lockoutOnFailure: false);
 
     if (result.Succeeded)
     {
-        return Results.Redirect("/");
+        return Results.Redirect("/products");
     }
 
-    return Results.Redirect("/login-password?error=1");
+    return Results.Redirect("/login?error=1");
 });
 
 app.MapPost("/logout", async (SignInManager<ApplicationUser> signInManager) =>
@@ -157,7 +149,7 @@ app.MapPost("/Account/VerifyOtp", async (
         var result = await userManager.CreateAsync(user);
         if (!result.Succeeded)
         {
-            return Results.Redirect("/login?error=1");
+            return Results.Redirect("/register?error=1");
         }
     }
 
@@ -165,7 +157,7 @@ app.MapPost("/Account/VerifyOtp", async (
 
     return isNewUser
         ? Results.Redirect("/profile?welcome=1")
-        : Results.Redirect("/");
+        : Results.Redirect("/products");
 });
 app.MapPost("/Account/CompleteProfile", async (
     HttpContext httpContext,

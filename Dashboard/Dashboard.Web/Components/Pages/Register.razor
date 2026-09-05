@@ -1,13 +1,13 @@
-@page "/login"
+﻿@page "/register"
 @attribute [ExcludeFromInteractiveRouting]
 
-<PageTitle>ورود</PageTitle>
+<PageTitle>ثبت‌نام</PageTitle>
 
 <div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
     <div class="card-panel" style="width: 100%; max-width: 420px;">
-        <h3 class="text-center mb-2">ورود</h3>
+        <h3 class="text-center mb-2">ثبت‌نام</h3>
         <p class="text-center text-muted mb-4" style="font-size: 0.9rem;">
-            شماره موبایل خود را وارد کنید تا کد ورود برایتان پیامک شود.
+            برای شروع، شماره موبایل خود را وارد کنید.
         </p>
 
         @if (Error is not null)
@@ -23,11 +23,11 @@
                 <input type="tel" name="phoneNumber" class="form-control" placeholder="09xxxxxxxxx" required pattern="09[0-9]{9}" />
             </div>
 
-            <button type="submit" class="btn btn-primary w-100">ارسال کد ورود</button>
+            <button type="submit" class="btn btn-primary w-100">ارسال کد تأیید</button>
         </form>
 
         <p class="text-center text-muted mt-3 mb-0" style="font-size: 0.9rem;">
-            <a href="/login-password">ورود از طریق نام کاربری و رمز عبور</a>
+            قبلاً ثبت‌نام کرده‌اید؟ <a href="/login">ورود با ایمیل</a>
         </p>
     </div>
 </div>
