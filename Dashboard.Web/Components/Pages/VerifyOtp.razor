@@ -1,5 +1,4 @@
-﻿@* Dashboard.Web/Components/Pages/VerifyOtp.razor *@
-@page "/verify-otp"
+﻿@page "/verify-otp"
 
 <PageTitle>تأیید کد</PageTitle>
 
@@ -15,7 +14,7 @@
             <div class="alert alert-danger">کد وارد‌شده صحیح نیست یا منقضی شده است.</div>
         }
 
-        <form method="post" action="/Account/VerifyOtp">
+        <form method="post" action="/Account/VerifyOtp" data-enhance="false">
             <AntiforgeryToken />
             <input type="hidden" name="phoneNumber" value="@Phone" />
 
@@ -28,7 +27,7 @@
         </form>
 
         <p class="text-center text-muted mt-3 mb-0" style="font-size: 0.9rem;">
-            <a href="/phone-login">تغییر شماره موبایل</a>
+            <a href="/register">تغییر شماره موبایل</a>
         </p>
     </div>
 </div>

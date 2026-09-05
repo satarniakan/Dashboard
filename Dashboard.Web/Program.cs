@@ -5,14 +5,13 @@ using Dashboard.Domain.Interfaces;
 using Dashboard.Infrastructure.Data;
 using Dashboard.Infrastructure.Repositories;
 using Dashboard.Infrastructure.Services;
-using Dashboard.Infrastructure.Services;
 using Dashboard.Web.Components;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using System.Globalization;
-
+using Microsoft.AspNetCore.DataProtection;
 // Configure Serilog before the host is built
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -62,6 +61,8 @@ builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IOtpRepository, OtpCodeRepository>();
 builder.Services.AddScoped<ISmsSender, FakeSmsSender>();
 builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys")));
 var app = builder.Build();
 
 app.UseSerilogRequestLogging();
@@ -130,7 +131,105 @@ app.MapPost("/logout", async (SignInManager<ApplicationUser> signInManager) =>
     await signInManager.SignOutAsync();
     return Results.Redirect("/login");
 });
+app.MapPost("/Account/RequestOtp", async (
+    IOtpService otpService,
+    [FromForm] string phoneNumber) =>
+{
+    await otpService.GenerateAndSendOtpAsync(phoneNumber);
+    return Results.Redirect($"/verify-otp?phone={phoneNumber}");
+});
 
+app.MapPost("/Account/VerifyOtp", async (
+    IOtpService otpService,
+    UserManager<ApplicationUser> userManager,
+    SignInManager<ApplicationUser> signInManager,
+    [FromForm] string phoneNumber,
+    [FromForm] string code) =>
+{
+    var isValid = await otpService.VerifyOtpAsync(phoneNumber, code);
+
+    if (!isValid)
+    {
+        return Results.Redirect($"/verify-otp?phone={phoneNumber}&error=1");
+    }
+
+    var user = await userManager.FindByNameAsync(phoneNumber);
+    var isNewUser = user is null;
+
+    if (user is null)
+    {
+        user = new ApplicationUser
+        {
+            UserName = phoneNumber,
+            PhoneNumber = phoneNumber,
+            PhoneNumberConfirmed = true
+        };
+
+        var result = await userManager.CreateAsync(user);
+        if (!result.Succeeded)
+        {
+            return Results.Redirect("/register?error=1");
+        }
+    }
+
+    await signInManager.SignInAsync(user, isPersistent: true);
+
+    return isNewUser
+        ? Results.Redirect("/profile?welcome=1")
+        : Results.Redirect("/products");
+});
+app.MapPost("/Account/CompleteProfile", async (
+    HttpContext httpContext,
+    UserManager<ApplicationUser> userManager,
+    [FromForm] string fullName,
+    [FromForm] string? email,
+    [FromForm] string? password,
+    [FromForm] string? confirmPassword) =>
+{
+    var user = await userManager.GetUserAsync(httpContext.User);
+    if (user is null)
+    {
+        return Results.Redirect("/login");
+    }
+
+    user.FullName = fullName;
+
+    if (!string.IsNullOrWhiteSpace(email))
+    {
+        var emailResult = await userManager.SetEmailAsync(user, email);
+        if (!emailResult.Succeeded)
+        {
+            Log.Warning("SetEmail failed: {Errors}", string.Join(" | ", emailResult.Errors.Select(e => e.Description)));
+            return Results.Redirect("/profile?error=1");
+        }
+    }
+
+    if (!string.IsNullOrWhiteSpace(password))
+    {
+        var hasPassword = await userManager.HasPasswordAsync(user);
+
+        if (hasPassword)
+        {
+            return Results.Redirect("/profile?error=haspassword");
+        }
+
+        if (password != confirmPassword)
+        {
+            return Results.Redirect("/profile?error=mismatch");
+        }
+
+        var passwordResult = await userManager.AddPasswordAsync(user, password);
+        if (!passwordResult.Succeeded)
+        {
+            Log.Warning("AddPassword failed: {Errors}", string.Join(" | ", passwordResult.Errors.Select(e => e.Description)));
+            return Results.Redirect("/profile?error=1");
+        }
+    }
+
+    await userManager.UpdateAsync(user);
+
+    return Results.Redirect("/profile?success=1");
+});
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

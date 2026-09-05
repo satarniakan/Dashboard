@@ -1,5 +1,4 @@
-﻿// Dashboard.Domain/Interfaces/IOtpRepository.cs
-using Dashboard.Domain.Entities;
+﻿using Dashboard.Domain.Entities;
 
 namespace Dashboard.Domain.Interfaces;
 

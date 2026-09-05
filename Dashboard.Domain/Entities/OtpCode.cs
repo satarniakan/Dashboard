@@ -1,5 +1,4 @@
-﻿// Dashboard.Domain/Entities/OtpCode.cs
-namespace Dashboard.Domain.Entities;
+﻿namespace Dashboard.Domain.Entities;
 
 public class OtpCode
 {

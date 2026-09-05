@@ -1,5 +1,4 @@
-﻿// Dashboard.Domain/Interfaces/ISmsSender.cs
-namespace Dashboard.Domain.Interfaces;
+﻿namespace Dashboard.Domain.Interfaces;
 
 public interface ISmsSender
 {

@@ -1,0 +1,110 @@
+﻿@* Dashboard.Web/Components/Pages/Profile.razor *@
+@page "/profile"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Dashboard.Domain.Identity
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>پروفایل کاربری</PageTitle>
+
+<h3>پروفایل کاربری</h3>
+
+@if (Welcome is not null)
+{
+    <div class="alert alert-success">
+        خوش آمدید! برای دسترسی کامل به امکانات، لطفاً پروفایل خود را تکمیل کنید.
+    </div>
+}
+
+@if (Success is not null)
+{
+    <div class="alert alert-success">اطلاعات با موفقیت ذخیره شد.</div>
+}
+
+@if (Error is not null)
+{
+    <div class="alert alert-danger">@GetErrorMessage(Error)</div>
+}
+
+@if (currentUser is null)
+{
+    <p class="text-muted">در حال بارگذاری...</p>
+}
+else
+{
+    <div class="card-panel" style="max-width: 420px;">
+        <form method="post" action="/Account/CompleteProfile" data-enhance="false">
+            <AntiforgeryToken />
+
+            <div class="mb-3">
+                <label class="form-label">شماره موبایل</label>
+                <input type="text" class="form-control" value="@currentUser.PhoneNumber" disabled />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">نام کامل</label>
+                <input type="text" name="fullName" class="form-control" value="@currentUser.FullName" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">ایمیل</label>
+                <input type="email" name="email" class="form-control" value="@currentUser.Email" placeholder="ایمیل خود را وارد کنید" />
+            </div>
+
+            @if (!hasPassword)
+            {
+                <div class="mb-3">
+                    <label class="form-label">رمز عبور</label>
+                    <input type="password" name="password" class="form-control" placeholder="حداقل ۶ کاراکتر" />
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">تکرار رمز عبور</label>
+                    <input type="password" name="confirmPassword" class="form-control" />
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info" style="font-size: 0.85rem;">
+                    رمز عبور شما قبلاً تنظیم شده است.
+                </div>
+            }
+
+            <button type="submit" class="btn btn-primary w-100">ذخیره تغییرات</button>
+        </form>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "welcome")]
+    private string? Welcome { get; set; }
+
+    [SupplyParameterFromQuery(Name = "success")]
+    private string? Success { get; set; }
+
+    [SupplyParameterFromQuery(Name = "error")]
+    private string? Error { get; set; }
+
+    private ApplicationUser? currentUser;
+    private bool hasPassword;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        currentUser = await UserManager.GetUserAsync(authState.User);
+
+        if (currentUser is not null)
+        {
+            hasPassword = await UserManager.HasPasswordAsync(currentUser);
+        }
+    }
+
+    private string GetErrorMessage(string code) => code switch
+    {
+        "mismatch" => "رمز عبور و تکرار آن یکسان نیستند.",
+        "haspassword" => "رمز عبور شما قبلاً تنظیم شده است.",
+        _ => "ذخیره اطلاعات ناموفق بود. لطفاً دوباره تلاش کنید."
+    };
+}

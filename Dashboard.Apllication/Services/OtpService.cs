@@ -1,5 +1,4 @@
-﻿// Dashboard.Application/Services/OtpService.cs
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Interfaces;
 

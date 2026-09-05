@@ -1,5 +1,4 @@
-﻿// Dashboard.Infrastructure/Repositories/OtpCodeRepository.cs
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Interfaces;
 using Dashboard.Infrastructure.Data;
