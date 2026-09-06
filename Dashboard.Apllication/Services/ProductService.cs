@@ -5,6 +5,14 @@ using Dashboard.Application.DTOs;
 
 namespace Dashboard.Application.Services;
 
+public interface IProductService
+{
+    Task<ProductDto?> GetProductAsync(int id);
+    Task<IEnumerable<ProductDto>> GetAllProductsAsync();
+    Task<ProductDto> CreateProductAsync(CreateProductDto dto, string? userEmail);
+    Task<ProductDto?> UpdateProductAsync(int id, UpdateProductDto dto, string? userEmail);
+    Task<bool> DeleteProductAsync(int id, string? userEmail);
+}
 public class ProductService : IProductService
 {
     // تغییر اصلی: فقط UnitOfWork را داریم

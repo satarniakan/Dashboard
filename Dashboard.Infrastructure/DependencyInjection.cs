@@ -33,7 +33,7 @@ public static class DependencyInjection
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IOtpRepository, OtpCodeRepository>();
         services.AddScoped<ISmsSender, FakeSmsSender>();
-
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }
 }
