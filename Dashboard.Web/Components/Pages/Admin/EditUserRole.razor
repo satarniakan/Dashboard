@@ -1,0 +1,59 @@
+﻿@* Dashboard.Web/Components/Pages/Admin/EditUserRole.razor *@
+@page "/admin/users/{UserId}"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = Dashboard.Domain.Identity.Roles.Admin)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.Services
+@inject IUserAdminService UserAdminService
+@inject NavigationManager NavigationManager
+
+<PageTitle>تغییر نقش کاربر</PageTitle>
+
+<h3>تغییر نقش کاربر</h3>
+
+@if (user is null)
+{
+    <p class="text-muted">در حال بارگذاری...</p>
+}
+else
+{
+    <div class="card-panel" style="max-width: 420px;">
+        <p><strong>شماره موبایل:</strong> @user.PhoneNumber</p>
+        <p><strong>نام:</strong> @(user.FullName ?? "-")</p>
+
+        <div class="mb-4">
+            <label class="form-label">نقش</label>
+            <select class="form-select" @bind="selectedRole">
+                @foreach (var role in Dashboard.Domain.Identity.Roles.All)
+                {
+                    <option value="@role">@Dashboard.Domain.Identity.Roles.ToPersian(role)</option>
+                }
+            </select>
+        </div>
+
+        <button class="btn btn-primary" @onclick="SaveRole">ذخیره</button>
+        <a href="/admin/users" class="btn btn-outline-secondary">انصراف</a>
+    </div>
+}
+
+@code {
+    [Parameter] public string UserId { get; set; } = string.Empty;
+
+    private Dashboard.Application.DTOs.UserListItemDto? user;
+    private string selectedRole = Dashboard.Domain.Identity.Roles.User;
+
+    protected override async Task OnInitializedAsync()
+    {
+        user = await UserAdminService.GetUserAsync(UserId);
+        if (user?.CurrentRole is not null)
+        {
+            selectedRole = user.CurrentRole;
+        }
+    }
+
+    private async Task SaveRole()
+    {
+        await UserAdminService.SetRoleAsync(UserId, selectedRole);
+        NavigationManager.NavigateTo("/admin/users?success=1");
+    }
+}

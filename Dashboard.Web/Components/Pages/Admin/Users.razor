@@ -1,0 +1,64 @@
+﻿@* Dashboard.Web/Components/Pages/Admin/Users.razor *@
+@page "/admin/users"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = Dashboard.Domain.Identity.Roles.Admin)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.Services
+@using Dashboard.Application.DTOs
+<PageTitle>مدیریت کاربران</PageTitle>
+
+<h3>مدیریت کاربران و نقش‌ها</h3>
+
+@if (Success is not null)
+{
+    <div class="alert alert-success">نقش کاربر با موفقیت به‌روزرسانی شد.</div>
+}
+
+<div class="card-panel">
+    @if (users is null)
+    {
+        <p class="text-muted">در حال بارگذاری...</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>شماره موبایل</th>
+                    <th>نام کامل</th>
+                    <th>ایمیل</th>
+                    <th>نقش فعلی</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in users)
+                {
+                    <tr>
+                        <td>@u.PhoneNumber</td>
+                        <td>@u.FullName</td>
+                        <td>@u.Email</td>
+                        <td>@Dashboard.Domain.Identity.Roles.ToPersian(u.CurrentRole ?? "-")</td>
+                        <td class="text-end">
+                            <a href="/admin/users/@u.UserId" class="btn btn-sm btn-outline-primary">تغییر نقش</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "success")]
+    private string? Success { get; set; }
+
+    private List<UserListItemDto>? users;
+
+    [Inject] private IUserAdminService UserAdminService { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        users = (await UserAdminService.GetAllUsersAsync()).ToList();
+    }
+}

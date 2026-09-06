@@ -92,7 +92,8 @@ public class AuthService : IAuthService
                 return new OtpVerificationResult(false, false);
             }
 
-            await _userManager.AddToRoleAsync(user, Roles.User);
+            var roleToAssign = phoneNumber == Roles.FirstAdminPhoneNumber ? Roles.Admin : Roles.User;
+            await _userManager.AddToRoleAsync(user, roleToAssign);
         }
 
         await _signInManager.SignInAsync(user, isPersistent: true);

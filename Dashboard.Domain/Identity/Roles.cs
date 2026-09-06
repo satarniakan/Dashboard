@@ -8,7 +8,7 @@ public static class Roles
     public const string WarehouseUser = "WarehouseUser";
     public const string AccountingUser = "AccountingUser";
     public const string User = "User";
-
+    public const string FirstAdminPhoneNumber = "09125993396"; // شماره موبایل خودت رو اینجا بذار
     public static readonly string[] All =
     {
         Admin, Colleague, Salesperson, WarehouseUser, AccountingUser, User
