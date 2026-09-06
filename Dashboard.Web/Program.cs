@@ -1,17 +1,14 @@
 // Dashboard.Web/Program.cs
+using Dashboard.Application;
+using Dashboard.Application.DTOs;
 using Dashboard.Application.Services;
-using Dashboard.Domain.Identity;
-using Dashboard.Domain.Interfaces;
-using Dashboard.Infrastructure.Data;
-using Dashboard.Infrastructure.Repositories;
-using Dashboard.Infrastructure.Services;
+using Dashboard.Infrastructure;
 using Dashboard.Web.Components;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Serilog;
 using System.Globalization;
-using Microsoft.AspNetCore.DataProtection;
+
 // Configure Serilog before the host is built
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -34,35 +31,17 @@ builder.Host.UseSerilog();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Database
-builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
-
-// Identity
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
-{
-    options.Password.RequiredLength = 3;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequireLowercase = false;
-    options.Password.RequireDigit = false;
-})
-    .AddEntityFrameworkStores<AppDbContext>()
-    .AddDefaultTokenProviders();
-
 // Required for Blazor Server to flow auth state into components
 builder.Services.AddCascadingAuthenticationState();
 
-// Application services
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
-builder.Services.AddScoped<IProductService, ProductService>();
-builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
-builder.Services.AddScoped<IAuditService, AuditService>();
-builder.Services.AddScoped<IOtpRepository, OtpCodeRepository>();
-builder.Services.AddScoped<ISmsSender, FakeSmsSender>();
-builder.Services.AddScoped<IOtpService, OtpService>();
+// Persist Data Protection keys so cookies/antiforgery tokens survive app restarts
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys")));
+
+// هر لایه تنظیمات سرویس‌های خودش را رجیستر می‌کند
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+
 var app = builder.Build();
 
 app.UseSerilogRequestLogging();
@@ -85,140 +64,83 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
+// Antiforgery به هویت کاربر نیاز دارد، پس باید بعد از Authentication/Authorization بیاید
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.UseAntiforgery();
 
-// Auth endpoints (plain HTTP POST — required so Identity can write auth cookies)
+// ===== Auth endpoints — هر کدام فقط IAuthService را صدا می‌زنند، بدون منطق تجاری =====
+
 app.MapPost("/Account/Login", async (
-    HttpContext httpContext,
-    UserManager<ApplicationUser> userManager,
-    SignInManager<ApplicationUser> signInManager,
+    IAuthService authService,
     [FromForm] string email,
     [FromForm] string password) =>
 {
-    var user = await userManager.FindByEmailAsync(email);
+    var result = await authService.LoginWithPasswordAsync(email, password);
 
-    if (user is null)
-    {
-        return Results.Redirect("/login-password?error=1");
-    }
-
-    var result = await signInManager.PasswordSignInAsync(user, password, isPersistent: true, lockoutOnFailure: false);
-
-    if (result.Succeeded)
-    {
-        return Results.Redirect("/");
-    }
-
-    return Results.Redirect("/login-password?error=1");
+    return result.Succeeded
+        ? Results.Redirect("/")
+        : Results.Redirect("/login-password?error=1");
 });
 
-app.MapPost("/logout", async (SignInManager<ApplicationUser> signInManager) =>
-{
-    await signInManager.SignOutAsync();
-    return Results.Redirect("/login");
-});
 app.MapPost("/Account/RequestOtp", async (
-    IOtpService otpService,
+    IAuthService authService,
     [FromForm] string phoneNumber) =>
 {
-    await otpService.GenerateAndSendOtpAsync(phoneNumber);
+    await authService.RequestOtpAsync(phoneNumber);
     return Results.Redirect($"/verify-otp?phone={phoneNumber}");
 });
 
 app.MapPost("/Account/VerifyOtp", async (
-    IOtpService otpService,
-    UserManager<ApplicationUser> userManager,
-    SignInManager<ApplicationUser> signInManager,
+    IAuthService authService,
     [FromForm] string phoneNumber,
     [FromForm] string code) =>
 {
-    var isValid = await otpService.VerifyOtpAsync(phoneNumber, code);
+    var result = await authService.VerifyOtpAsync(phoneNumber, code);
 
-    if (!isValid)
+    if (!result.Succeeded)
     {
         return Results.Redirect($"/verify-otp?phone={phoneNumber}&error=1");
     }
 
-    var user = await userManager.FindByNameAsync(phoneNumber);
-    var isNewUser = user is null;
-
-    if (user is null)
-    {
-        user = new ApplicationUser
-        {
-            UserName = phoneNumber,
-            PhoneNumber = phoneNumber,
-            PhoneNumberConfirmed = true
-        };
-
-        var result = await userManager.CreateAsync(user);
-        if (!result.Succeeded)
-        {
-            return Results.Redirect("/login?error=1");
-        }
-    }
-
-    await signInManager.SignInAsync(user, isPersistent: true);
-
-    return isNewUser
+    return result.IsNewUser
         ? Results.Redirect("/profile?welcome=1")
         : Results.Redirect("/");
 });
+
 app.MapPost("/Account/CompleteProfile", async (
     HttpContext httpContext,
-    UserManager<ApplicationUser> userManager,
+    IAuthService authService,
     [FromForm] string fullName,
     [FromForm] string? email,
     [FromForm] string? password,
     [FromForm] string? confirmPassword) =>
 {
-    var user = await userManager.GetUserAsync(httpContext.User);
-    if (user is null)
+    var userId = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (userId is null)
     {
         return Results.Redirect("/login");
     }
 
-    user.FullName = fullName;
+    var result = await authService.CompleteProfileAsync(userId, fullName, email, password, confirmPassword);
 
-    if (!string.IsNullOrWhiteSpace(email))
+    return result.Status switch
     {
-        var emailResult = await userManager.SetEmailAsync(user, email);
-        if (!emailResult.Succeeded)
-        {
-            Log.Warning("SetEmail failed: {Errors}", string.Join(" | ", emailResult.Errors.Select(e => e.Description)));
-            return Results.Redirect("/profile?error=1");
-        }
-    }
-
-    if (!string.IsNullOrWhiteSpace(password))
-    {
-        var hasPassword = await userManager.HasPasswordAsync(user);
-
-        if (hasPassword)
-        {
-            return Results.Redirect("/profile?error=haspassword");
-        }
-
-        if (password != confirmPassword)
-        {
-            return Results.Redirect("/profile?error=mismatch");
-        }
-
-        var passwordResult = await userManager.AddPasswordAsync(user, password);
-        if (!passwordResult.Succeeded)
-        {
-            Log.Warning("AddPassword failed: {Errors}", string.Join(" | ", passwordResult.Errors.Select(e => e.Description)));
-            return Results.Redirect("/profile?error=1");
-        }
-    }
-
-    await userManager.UpdateAsync(user);
-
-    return Results.Redirect("/profile?success=1");
+        ProfileUpdateStatus.Success => Results.Redirect("/profile?success=1"),
+        ProfileUpdateStatus.PasswordMismatch => Results.Redirect("/profile?error=mismatch"),
+        ProfileUpdateStatus.PasswordAlreadySet => Results.Redirect("/profile?error=haspassword"),
+        ProfileUpdateStatus.EmailAlreadyExists => Results.Redirect("/profile?error=emailexists"),
+        ProfileUpdateStatus.UserNotFound => Results.Redirect("/login"),
+        _ => Results.Redirect("/profile?error=1")
+    };
 });
+
+app.MapPost("/logout", async (IAuthService authService) =>
+{
+    await authService.LogoutAsync();
+    return Results.Redirect("/login");
+});
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

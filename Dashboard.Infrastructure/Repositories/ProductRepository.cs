@@ -21,13 +21,13 @@ public class ProductRepository : IProductRepository
     public async Task AddAsync(Product product)
     {
         await _context.Products.AddAsync(product);
-        await _context.SaveChangesAsync();
+        //await _context.SaveChangesAsync();
     }
 
     public async Task UpdateAsync(Product product)
     {
         _context.Products.Update(product);
-        await _context.SaveChangesAsync();
+        //await _context.SaveChangesAsync();
     }
 
     public async Task DeleteAsync(int id)
@@ -36,7 +36,7 @@ public class ProductRepository : IProductRepository
         if (product is not null)
         {
             _context.Products.Remove(product);
-            await _context.SaveChangesAsync();
+            //await _context.SaveChangesAsync();
         }
     }
 }

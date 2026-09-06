@@ -1,11 +1,12 @@
-﻿@* Dashboard.Web/Components/Pages/Profile.razor *@
+@* Dashboard.Web/Components/Pages/Profile.razor *@
 @page "/profile"
 @attribute [Authorize]
 @attribute [ExcludeFromInteractiveRouting]
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Identity
-@using Dashboard.Domain.Identity
-@inject UserManager<ApplicationUser> UserManager
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using System.Security.Claims
+@inject IAuthService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>پروفایل کاربری</PageTitle>
@@ -29,7 +30,7 @@
     <div class="alert alert-danger">@GetErrorMessage(Error)</div>
 }
 
-@if (currentUser is null)
+@if (profile is null)
 {
     <p class="text-muted">در حال بارگذاری...</p>
 }
@@ -41,24 +42,24 @@ else
 
             <div class="mb-3">
                 <label class="form-label">شماره موبایل</label>
-                <input type="text" class="form-control" value="@currentUser.PhoneNumber" disabled />
+                <input type="text" class="form-control" value="@profile.PhoneNumber" disabled />
             </div>
 
             <div class="mb-3">
                 <label class="form-label">نام کامل</label>
-                <input type="text" name="fullName" class="form-control" value="@currentUser.FullName" />
+                <input type="text" name="fullName" class="form-control" value="@profile.FullName" />
             </div>
 
             <div class="mb-3">
                 <label class="form-label">ایمیل</label>
-                <input type="email" name="email" class="form-control" value="@currentUser.Email" placeholder="ایمیل خود را وارد کنید" />
+                <input type="email" name="email" class="form-control" value="@profile.Email" placeholder="ایمیل خود را وارد کنید" />
             </div>
 
-            @if (!hasPassword)
+            @if (!profile.HasPassword)
             {
                 <div class="mb-3">
                     <label class="form-label">رمز عبور</label>
-                    <input type="password" name="password" class="form-control" placeholder="حداقل ۶ کاراکتر" />
+                    <input type="password" name="password" class="form-control" placeholder="حداقل ۳ کاراکتر" />
                 </div>
 
                 <div class="mb-4">
@@ -88,17 +89,16 @@ else
     [SupplyParameterFromQuery(Name = "error")]
     private string? Error { get; set; }
 
-    private ApplicationUser? currentUser;
-    private bool hasPassword;
+    private UserProfileDto? profile;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        currentUser = await UserManager.GetUserAsync(authState.User);
+        var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        if (currentUser is not null)
+        if (userId is not null)
         {
-            hasPassword = await UserManager.HasPasswordAsync(currentUser);
+            profile = await AuthService.GetProfileAsync(userId);
         }
     }
 
@@ -106,6 +106,7 @@ else
     {
         "mismatch" => "رمز عبور و تکرار آن یکسان نیستند.",
         "haspassword" => "رمز عبور شما قبلاً تنظیم شده است.",
+        "emailexists" => "این ایمیل قبلاً توسط کاربر دیگری استفاده شده است.",
         _ => "ذخیره اطلاعات ناموفق بود. لطفاً دوباره تلاش کنید."
     };
 }
