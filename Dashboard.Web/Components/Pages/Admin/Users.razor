@@ -7,13 +7,15 @@
 @using Dashboard.Application.DTOs
 <PageTitle>مدیریت کاربران</PageTitle>
 
-<h3>مدیریت کاربران و نقش‌ها</h3>
 
 @if (Success is not null)
 {
     <div class="alert alert-success">نقش کاربر با موفقیت به‌روزرسانی شد.</div>
 }
-
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>مدیریت کاربران و نقش‌ها</h3>
+    <a href="/admin/users/add" class="btn btn-success">افزودن کاربر جدید</a>
+</div>
 <div class="card-panel">
     @if (users is null)
     {

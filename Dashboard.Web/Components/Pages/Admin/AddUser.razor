@@ -1,0 +1,94 @@
+﻿@page "/admin/users/add"
+@attribute [Authorize(Roles = Dashboard.Domain.Identity.Roles.Admin)]
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+
+@inject IUserAdminService UserAdminService
+@inject NavigationManager NavigationManager
+
+<PageTitle>افزودن کاربر جدید</PageTitle>
+
+<h3>افزودن کاربر جدید</h3>
+
+<div class="card-panel" style="max-width: 480px;">
+    <EditForm Model="@(newUser!)" OnValidSubmit="HandleValidSubmit" FormName="AddUserForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="mb-3" />
+
+        <div class="mb-3">
+            <label class="form-label">نام کامل</label>
+            <InputText class="form-control" @bind-Value="newUser!.FullName" placeholder="نام و نام خانوادگی" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">شماره موبایل</label>
+            <InputText class="form-control" @bind-Value="newUser!.PhoneNumber" placeholder="مثال: 09123456789" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">ایمیل</label>
+            <InputText class="form-control" @bind-Value="newUser!.Email" placeholder="example@domain.com" />
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">رمز عبور</label>
+            <InputText type="password" class="form-control" @bind-Value="newUser!.Password" placeholder="حداقل ۶ کاراکتر" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                @(isSaving ? "در حال ذخیره..." : "ذخیره کاربر")
+            </button>
+            <a href="/admin/users" class="btn btn-outline-secondary">انصراف</a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private CreateUserDto? newUser { get; set; }
+
+    private bool isSaving;
+    private string? errorMessage;
+
+    protected override void OnInitialized()
+    {
+        newUser ??= new();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+
+        try
+        {
+            var result = await UserAdminService.CreateUserAsync(newUser!);
+            if (result.Succeeded)
+            {
+                NavigationManager.NavigateTo("/admin/users?success=کاربر+با+موفقیت+ایجاد+شد");
+            }
+            else
+            {
+                errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"ذخیره کاربر ناموفق بود: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}
