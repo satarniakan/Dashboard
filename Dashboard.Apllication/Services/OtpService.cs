@@ -14,12 +14,14 @@ public class OtpService : IOtpService
 {
     private readonly IOtpRepository _otpRepository;
     private readonly ISmsSender _smsSender;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<OtpService> _logger;
 
-    public OtpService(IOtpRepository otpRepository, ISmsSender smsSender, ILogger<OtpService> logger)
+    public OtpService(IOtpRepository otpRepository, ISmsSender smsSender, IUnitOfWork unitOfWork, ILogger<OtpService> logger)
     {
         _otpRepository = otpRepository;
         _smsSender = smsSender;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -36,6 +38,7 @@ public class OtpService : IOtpService
         };
 
         await _otpRepository.AddAsync(otp);
+        await _unitOfWork.CompleteAsync();
         await _smsSender.SendAsync(phoneNumber, $"کد ورود شما: {code}");
 
         _logger.LogInformation("OTP generated for {PhoneNumber}", phoneNumber);
@@ -52,6 +55,7 @@ public class OtpService : IOtpService
         }
 
         await _otpRepository.MarkAsUsedAsync(otp.Id);
+        await _unitOfWork.CompleteAsync();  
         return true;
     }
 }

@@ -127,11 +127,8 @@ app.MapPost("/Account/CompleteProfile", async (
     return result.Status switch
     {
         ProfileUpdateStatus.Success => Results.Redirect("/profile?success=1"),
-        ProfileUpdateStatus.PasswordMismatch => Results.Redirect("/profile?error=mismatch"),
-        ProfileUpdateStatus.PasswordAlreadySet => Results.Redirect("/profile?error=haspassword"),
-        ProfileUpdateStatus.EmailAlreadyExists => Results.Redirect("/profile?error=emailexists"),
         ProfileUpdateStatus.UserNotFound => Results.Redirect("/login"),
-        _ => Results.Redirect("/profile?error=1")
+        _ => Results.Redirect($"/profile?error={result.Status}")
     };
 });
 

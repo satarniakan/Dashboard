@@ -1,5 +1,4 @@
-﻿// Dashboard.Application/Services/AuditService.cs
-using Dashboard.Domain.Entities;
+﻿using Dashboard.Domain.Entities;
 using Dashboard.Domain.Interfaces;
 
 namespace Dashboard.Application.Services;
@@ -13,8 +12,12 @@ public interface IAuditService
 public class AuditService : IAuditService
 {
     private readonly IAuditLogRepository _repository;
-
-    public AuditService(IAuditLogRepository repository) => _repository = repository;
+    private readonly IUnitOfWork _unitOfWork;
+    public AuditService(IAuditLogRepository repository, IUnitOfWork unitOfWork)
+    {
+        _repository = repository;
+        _unitOfWork = unitOfWork;
+    }
 
     public async Task LogEventAsync(string eventType, string? userEmail, string details)
     {
@@ -25,8 +28,9 @@ public class AuditService : IAuditService
             Details = details,
             OccurredAt = DateTime.UtcNow
         });
-    }
 
+        await _unitOfWork.CompleteAsync();
+    }
     public async Task<IEnumerable<AuditLog>> GetRecentEventsAsync(int count = 100) =>
         await _repository.GetRecentAsync(count);
 }

@@ -14,7 +14,7 @@ public class OtpCodeRepository : IOtpRepository
     public async Task AddAsync(OtpCode otp)
     {
         await _context.OtpCodes.AddAsync(otp);
-        await _context.SaveChangesAsync();
+        //await _context.SaveChangesAsync();
     }
 
     public async Task<OtpCode?> GetLatestValidAsync(string phoneNumber, string code)
@@ -34,7 +34,7 @@ public class OtpCodeRepository : IOtpRepository
         if (otp is not null)
         {
             otp.IsUsed = true;
-            await _context.SaveChangesAsync();
+            //await _context.SaveChangesAsync();
         }
     }
 }

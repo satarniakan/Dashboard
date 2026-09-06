@@ -102,11 +102,19 @@ else
         }
     }
 
-    private string GetErrorMessage(string code) => code switch
+    private string GetErrorMessage(string code)
     {
-        "mismatch" => "رمز عبور و تکرار آن یکسان نیستند.",
-        "haspassword" => "رمز عبور شما قبلاً تنظیم شده است.",
-        "emailexists" => "این ایمیل قبلاً توسط کاربر دیگری استفاده شده است.",
-        _ => "ذخیره اطلاعات ناموفق بود. لطفاً دوباره تلاش کنید."
-    };
+        if (!Enum.TryParse<ProfileUpdateStatus>(code, out var status))
+        {
+            return "ذخیره اطلاعات ناموفق بود. لطفاً دوباره تلاش کنید.";
+        }
+
+        return status switch
+        {
+            ProfileUpdateStatus.PasswordMismatch => "رمز عبور و تکرار آن یکسان نیستند.",
+            ProfileUpdateStatus.PasswordAlreadySet => "رمز عبور شما قبلاً تنظیم شده است.",
+            ProfileUpdateStatus.EmailAlreadyExists => "این ایمیل قبلاً توسط کاربر دیگری استفاده شده است.",
+            _ => "ذخیره اطلاعات ناموفق بود. لطفاً دوباره تلاش کنید."
+        };
+    }
 }
