@@ -1,7 +1,7 @@
 @* Dashboard.Web/Components/Pages/EditProduct.razor *@
 @page "/products/edit/{Id:int}"
 @rendermode InteractiveServer
-@attribute [Authorize]
+@attribute [Authorize(Roles = Dashboard.Domain.Identity.Roles.Admin)]
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services

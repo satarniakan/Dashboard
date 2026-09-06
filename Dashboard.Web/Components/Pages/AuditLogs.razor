@@ -1,6 +1,6 @@
 ﻿@page "/audit-logs"
 @rendermode InteractiveServer
-@attribute [Authorize]
+@attribute [Authorize(Roles = Dashboard.Domain.Identity.Roles.Admin)]
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.Services
 @using Dashboard.Domain.Entities

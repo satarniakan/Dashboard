@@ -14,7 +14,11 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h3 class="mb-0">محصولات</h3>
-    <a href="/products/add" class="btn btn-primary">+ افزودن محصول</a>
+    <AuthorizeView Roles="@Dashboard.Domain.Identity.Roles.Admin">
+        <Authorized>
+            <a href="/products/add" class="btn btn-primary">+ افزودن محصول</a>
+        </Authorized>
+    </AuthorizeView>
 </div>
 
 <div class="card-panel">
@@ -45,8 +49,12 @@
                         <td class="fw-medium">@product.Name</td>
                         <td>@CurrencyFormatter.ToToman(product.Price)</td>
                         <td class="text-end">
-                            <a href="/products/edit/@product.Id" class="btn btn-sm btn-outline-primary">ویرایش</a>
-                            <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(product.Id, product.Name)">حذف</button>
+                            <AuthorizeView Roles="@Dashboard.Domain.Identity.Roles.Admin">
+                                <Authorized>
+                                    <a href="/products/edit/@product.Id" class="btn btn-sm btn-outline-primary">ویرایش</a>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(product.Id, product.Name)">حذف</button>
+                                </Authorized>
+                            </AuthorizeView>
                         </td>
                     </tr>
                 }

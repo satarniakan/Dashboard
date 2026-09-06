@@ -43,7 +43,7 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
-
+await Dashboard.Infrastructure.RoleSeeder.SeedRolesAsync(app.Services);
 app.UseSerilogRequestLogging();
 
 // Persian culture / RTL number formatting

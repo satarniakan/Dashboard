@@ -19,17 +19,20 @@ public class AuthService : IAuthService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IOtpService _otpService;
     private readonly ILogger<AuthService> _logger;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
+        RoleManager<IdentityRole> roleManager,
         IOtpService otpService,
         ILogger<AuthService> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
+        _roleManager = roleManager;
         _otpService = otpService;
         _logger = logger;
     }
@@ -88,6 +91,8 @@ public class AuthService : IAuthService
                     phoneNumber, string.Join(" | ", createResult.Errors.Select(e => e.Description)));
                 return new OtpVerificationResult(false, false);
             }
+
+            await _userManager.AddToRoleAsync(user, Roles.User);
         }
 
         await _signInManager.SignInAsync(user, isPersistent: true);
