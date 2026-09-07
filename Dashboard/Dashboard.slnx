@@ -1,7 +1,0 @@
-<Solution>
-  <Project Path="Api/Api.csproj" />
-  <Project Path="Dashboard.Apllication/Dashboard.Apllication.csproj" />
-  <Project Path="Dashboard.Domain/Dashboard.Domain.csproj" />
-  <Project Path="Dashboard.Infrastructure/Dashboard.Infrastructure.csproj" />
-  <Project Path="Dashboard.Web/Dashboard.Web.csproj" Id="651de6c5-9546-4b87-9ec8-3bb0b89a1fb0" />
-</Solution>
