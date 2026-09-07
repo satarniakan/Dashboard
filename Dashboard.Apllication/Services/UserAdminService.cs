@@ -73,6 +73,14 @@ public class UserAdminService : IUserAdminService
     // متد برای ایجاد کاربر جدید
     public async Task<IdentityResult> CreateUserAsync(CreateUserDto model)
     {
+        if (!string.IsNullOrWhiteSpace(model.Email))
+        {
+            var existingByEmail = await _userManager.FindByEmailAsync(model.Email);
+            if (existingByEmail is not null)
+            {
+                return IdentityResult.Failed(new IdentityError { Description = "این ایمیل قبلاً استفاده شده است." });
+            }
+        }
         var user = new ApplicationUser
         {
             UserName = model.PhoneNumber, // شماره موبایل به عنوان نام کاربری
@@ -110,9 +118,9 @@ public class UserAdminService : IUserAdminService
         var roles = _roleManager.Roles.ToList(); // گرفتن لیست نقش‌ها از دیتابیس
         return roles.Select(r => new RoleDto
         {
-            Id = r.Id,
-            Name = r.Name,
-            PersianName = Dashboard.Domain.Identity.Roles.ToPersian(r.Name) ?? r.Name
+            Id = r.Id ?? string.Empty,
+            Name = r.Name ?? string.Empty,
+            PersianName = Dashboard.Domain.Identity.Roles.ToPersian(r.Name ?? string.Empty)
         }).ToList();
     }
 }

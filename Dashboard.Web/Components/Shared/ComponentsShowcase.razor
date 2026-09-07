@@ -54,12 +54,11 @@
     private SampleModel sample = new();
     private bool submitted;
 
-    private List<(string Value, string Label)> genderOptions = new()
-    {
-        ("Male", "مرد"),
-        ("Female", "زن")
-    };
-
+    private List<(string? Value, string Label)> genderOptions = new()
+{
+    ("Male", "مرد"),
+    ("Female", "زن")
+};
     private List<GridRow> sampleRows = new()
     {
         new GridRow { Id = 1, Title = "ردیف اول" },

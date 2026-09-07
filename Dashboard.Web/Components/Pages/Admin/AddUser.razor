@@ -3,7 +3,6 @@
 @rendermode InteractiveServer
 
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Identity
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
 
@@ -38,7 +37,16 @@
             <label class="form-label">رمز عبور</label>
             <InputText type="password" class="form-control" @bind-Value="newUser!.Password" placeholder="حداقل ۶ کاراکتر" />
         </div>
-
+        <div class="mb-4">
+            <label class="form-label">نقش</label>
+            <select class="form-select" @bind="newUser!.RoleName">
+                <option value="">-- انتخاب نقش --</option>
+                @foreach (var role in roles)
+                {
+                    <option value="@role.Name">@role.PersianName</option>
+                }
+            </select>
+        </div>
         @if (!string.IsNullOrEmpty(errorMessage))
         {
             <div class="alert alert-danger">@errorMessage</div>
@@ -59,10 +67,12 @@
 
     private bool isSaving;
     private string? errorMessage;
+    private List<RoleDto> roles = new();
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         newUser ??= new();
+        roles = await UserAdminService.GetAllRolesAsync();
     }
 
     private async Task HandleValidSubmit()
