@@ -1,0 +1,194 @@
+﻿@page "/warehouse/sales/add"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.SalesCreate)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using System.Security.Claims
+@inject ISalesService SalesService
+@inject IStockService StockService
+@inject IProductService ProductService
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>فاکتور فروش جدید</PageTitle>
+
+<h3>فاکتور فروش جدید</h3>
+
+<div class="card-panel" style="max-width: 800px;">
+    <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddSalesInvoiceForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="mb-3" />
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">مشتری (اختیاری — خالی = مشتری حضوری)</label>
+                <select class="form-select" @bind="model.CustomerId">
+                    <option value="">-- مشتری حضوری --</option>
+                    @if (customers is not null)
+                    {
+                        @foreach (var c in customers)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">انبار</label>
+                <select class="form-select" @bind="model.WarehouseId">
+                    <option value="0">-- انتخاب کنید --</option>
+                    @if (warehouses is not null)
+                    {
+                        @foreach (var w in warehouses)
+                        {
+                            <option value="@w.Id">@w.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">شماره فاکتور</label>
+                <InputText class="form-control" @bind-Value="model.InvoiceNumber" />
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">تاریخ</label>
+                <InputDate class="form-control" @bind-Value="model.InvoiceDate" />
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">تخفیف (تومان)</label>
+                <InputNumber class="form-control" @bind-Value="model.DiscountAmount" />
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">توضیحات (اختیاری)</label>
+            <InputTextArea class="form-control" @bind-Value="model.Notes" />
+        </div>
+
+        <hr />
+        <h6 class="mb-3">اقلام فاکتور</h6>
+
+        <table class="table mb-2">
+            <thead>
+                <tr>
+                    <th style="width: 35%">کالا</th>
+                    <th style="width: 15%">مقدار</th>
+                    <th style="width: 20%">قیمت واحد</th>
+                    <th style="width: 20%">جمع</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < model.Items.Count; i++)
+                {
+                    var row = model.Items[i];
+                    <tr>
+                        <td>
+                            <select class="form-select" value="@row.ProductId" @onchange="e => OnProductSelected(row, e.Value)">
+                                <option value="0">-- انتخاب کالا --</option>
+                                @if (products is not null)
+                                {
+                                    @foreach (var p in products)
+                                    {
+                                        <option value="@p.Id">@p.Name</option>
+                                    }
+                                }
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" class="form-control" step="0.01" min="0" @bind="row.Quantity" />
+                        </td>
+                        <td>
+                            <input type="number" class="form-control" step="0.01" min="0" @bind="row.UnitPrice" />
+                        </td>
+                        <td class="text-muted">@((row.Quantity * row.UnitPrice).ToString("N0"))</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => model.Items.Remove(row)">حذف</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <button type="button" class="btn btn-sm btn-outline-primary mb-4" @onclick="AddRow">+ افزودن ردیف</button>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                @(isSaving ? "در حال ذخیره..." : "ثبت پیش‌نویس فاکتور")
+            </button>
+            <a href="/warehouse/sales" class="btn btn-outline-secondary">انصراف</a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private CreateSalesInvoiceDto model { get; set; } = new();
+
+    private IEnumerable<ProductDto>? products;
+    private IEnumerable<WarehouseDto>? warehouses;
+    private IEnumerable<CustomerDto>? customers;
+
+    private bool isSaving;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        model.Items.Add(new SalesInvoiceItemInput());
+        products = await ProductService.GetAllProductsAsync();
+        warehouses = await StockService.GetWarehousesAsync();
+        customers = await SalesService.GetCustomersAsync();
+    }
+
+    private void AddRow() => model.Items.Add(new SalesInvoiceItemInput());
+
+    private void OnProductSelected(SalesInvoiceItemInput row, object? value)
+    {
+        if (int.TryParse(value?.ToString(), out var productId))
+        {
+            row.ProductId = productId;
+            var product = products?.FirstOrDefault(p => p.Id == productId);
+            if (product is not null)
+            {
+                row.UnitPrice = product.Price; // پیش‌فرض از قیمت فعلی محصول؛ کاربر می‌تواند تغییر دهد
+            }
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            if (model.WarehouseId == 0)
+            {
+                errorMessage = "انتخاب انبار الزامی است.";
+                return;
+            }
+
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+
+            var invoiceId = await SalesService.CreateDraftInvoiceAsync(model, userId);
+            NavigationManager.NavigateTo($"/warehouse/sales/{invoiceId}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"ثبت فاکتور ناموفق بود: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

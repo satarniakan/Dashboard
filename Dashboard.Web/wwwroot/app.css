@@ -134,3 +134,20 @@ a {
         inset-inline-end: 0.75rem;
         top: 0.5rem;
     }
+@media print {
+    .sidebar,
+    .top-row,
+    .no-print {
+        display: none !important;
+    }
+
+    main, .content {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .card-panel {
+        box-shadow: none !important;
+        border: none !important;
+    }
+}

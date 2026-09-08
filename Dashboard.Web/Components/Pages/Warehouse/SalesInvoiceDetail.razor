@@ -1,0 +1,176 @@
+﻿@page "/warehouse/sales/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.SalesView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@using System.Security.Claims
+@inject ISalesService SalesService
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
+
+<PageTitle>فاکتور @invoice?.InvoiceNumber</PageTitle>
+
+@if (invoice is null)
+{
+    <p class="text-muted">در حال بارگذاری...</p>
+}
+else
+{
+    <div class="no-print d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">فاکتور @invoice.InvoiceNumber</h3>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" @onclick="Print">چاپ</button>
+
+            @if (invoice.Status == "Draft")
+            {
+                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.SalesConfirm" Context="confirmContext">
+                    <Authorized>
+                        <button class="btn btn-primary" disabled="@isProcessing" @onclick="HandleConfirm">
+                            @(isProcessing ? "در حال تأیید..." : "تأیید فاکتور و کسر موجودی")
+                        </button>
+                    </Authorized>
+                </AuthorizeView>
+            }
+
+            @if (invoice.Status != "Canceled")
+            {
+                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.SalesCancel" Context="cancelContext">
+                    <Authorized>
+                        <button class="btn btn-outline-danger" disabled="@isProcessing" @onclick="HandleCancel">
+                            لغو فاکتور
+                        </button>
+                    </Authorized>
+                </AuthorizeView>
+            }
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="no-print alert alert-danger">@errorMessage</div>
+    }
+
+    <div class="card-panel" id="invoice-print-area">
+        <div class="d-flex justify-content-between mb-4">
+            <div>
+                <h5 class="mb-1">فاکتور فروش شماره @invoice.InvoiceNumber</h5>
+                <p class="text-muted mb-0">تاریخ: @invoice.InvoiceDate.ToString("yyyy/MM/dd")</p>
+            </div>
+            <div class="text-end">
+                <p class="mb-1"><strong>مشتری:</strong> @(invoice.CustomerName ?? "مشتری حضوری")</p>
+                <p class="mb-0"><strong>انبار:</strong> @invoice.WarehouseName</p>
+            </div>
+        </div>
+
+        <table class="table mb-3">
+            <thead>
+                <tr>
+                    <th>کالا</th>
+                    <th>مقدار</th>
+                    <th>قیمت واحد</th>
+                    <th>جمع</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in invoice.Items)
+                {
+                    <tr>
+                        <td>@item.ProductName</td>
+                        <td>@item.Quantity</td>
+                        <td>@CurrencyFormatter.ToToman(item.UnitPrice)</td>
+                        <td>@CurrencyFormatter.ToToman(item.LineTotal)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="d-flex justify-content-end">
+            <div style="min-width: 260px;">
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">تخفیف:</span>
+                    <span>@CurrencyFormatter.ToToman(invoice.DiscountAmount)</span>
+                </div>
+                <div class="d-flex justify-content-between fw-bold fs-5 mt-2">
+                    <span>مبلغ نهایی:</span>
+                    <span>@CurrencyFormatter.ToToman(invoice.TotalAmount)</span>
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(invoice.Notes))
+        {
+            <p class="text-muted mt-4 mb-0">توضیحات: @invoice.Notes</p>
+        }
+    </div>
+
+    <div class="no-print mt-3">
+        <a href="/warehouse/sales" class="btn btn-outline-secondary">بازگشت به لیست</a>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private SalesInvoiceDto? invoice;
+    private bool isProcessing;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        invoice = await SalesService.GetInvoiceAsync(Id);
+    }
+
+    private async Task<string?> GetUserIdAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        return authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+    }
+
+    private async Task HandleConfirm()
+    {
+        isProcessing = true;
+        errorMessage = null;
+        try
+        {
+            var userId = await GetUserIdAsync();
+            await SalesService.ConfirmInvoiceAsync(Id, userId);
+            invoice = await SalesService.GetInvoiceAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task HandleCancel()
+    {
+        isProcessing = true;
+        errorMessage = null;
+        try
+        {
+            var userId = await GetUserIdAsync();
+            await SalesService.CancelInvoiceAsync(Id, userId);
+            invoice = await SalesService.GetInvoiceAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task Print()
+    {
+        await JS.InvokeVoidAsync("print");
+    }
+}

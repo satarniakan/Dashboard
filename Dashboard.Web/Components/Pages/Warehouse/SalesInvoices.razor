@@ -1,0 +1,86 @@
+﻿@page "/warehouse/sales"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.SalesView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@inject ISalesService SalesService
+
+<PageTitle>فاکتورهای فروش</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">فاکتورهای فروش</h3>
+    <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.SalesCreate" Context="createContext">
+        <Authorized>
+            <a href="/warehouse/sales/add" class="btn btn-primary">+ فاکتور جدید</a>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+<div class="card-panel">
+    @if (invoices is null)
+    {
+        <p class="text-muted">در حال بارگذاری...</p>
+    }
+    else if (!invoices.Any())
+    {
+        <p class="text-muted text-center py-4">هنوز فاکتوری ثبت نشده است.</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>شماره فاکتور</th>
+                    <th>تاریخ</th>
+                    <th>مشتری</th>
+                    <th>انبار</th>
+                    <th>مبلغ کل</th>
+                    <th>وضعیت</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var inv in invoices)
+                {
+                    <tr>
+                        <td class="fw-medium">@inv.InvoiceNumber</td>
+                        <td class="text-muted">@inv.InvoiceDate.ToString("yyyy/MM/dd")</td>
+                        <td>@(inv.CustomerName ?? "مشتری حضوری")</td>
+                        <td>@inv.WarehouseName</td>
+                        <td>@CurrencyFormatter.ToToman(inv.TotalAmount)</td>
+                        <td>@StatusBadge(inv.Status)</td>
+                        <td class="text-end">
+                            <a href="/warehouse/sales/@inv.Id" class="btn btn-sm btn-outline-primary">مشاهده</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private IEnumerable<SalesInvoiceSummaryDto>? invoices;
+
+    protected override async Task OnInitializedAsync()
+    {
+        invoices = await SalesService.GetInvoicesAsync();
+    }
+
+    private RenderFragment StatusBadge(string status) => builder =>
+    {
+        var (cssClass, label) = status switch
+        {
+            "Draft" => ("bg-warning-subtle text-warning", "پیش‌نویس"),
+            "Confirmed" => ("bg-success-subtle text-success", "تأییدشده"),
+            "Canceled" => ("bg-danger-subtle text-danger", "لغوشده"),
+            _ => ("bg-secondary-subtle text-secondary", status)
+        };
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", $"badge {cssClass}");
+        builder.AddContent(2, label);
+        builder.CloseElement();
+    };
+}
