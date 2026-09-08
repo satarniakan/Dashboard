@@ -38,14 +38,16 @@
             <InputText type="password" class="form-control" @bind-Value="newUser!.Password" placeholder="حداقل ۶ کاراکتر" />
         </div>
         <div class="mb-4">
-            <label class="form-label">نقش</label>
-            <select class="form-select" @bind="newUser!.RoleName">
-                <option value="">-- انتخاب نقش --</option>
-                @foreach (var role in roles)
-                {
-                    <option value="@role.Name">@role.PersianName</option>
-                }
-            </select>
+            <label class="form-label">نقش‌ها</label>
+            @foreach (var role in roles)
+            {
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="@("role_" + role.Name)"
+                           checked="@newUser!.RoleNames.Contains(role.Name)"
+                           @onchange="@(e => ToggleRole(role.Name, (bool)e.Value!))" />
+                    <label class="form-check-label" for="@("role_" + role.Name)">@role.PersianName</label>
+                </div>
+            }
         </div>
         @if (!string.IsNullOrEmpty(errorMessage))
         {
@@ -68,13 +70,23 @@
     private bool isSaving;
     private string? errorMessage;
     private List<RoleDto> roles = new();
-
     protected override async Task OnInitializedAsync()
     {
         newUser ??= new();
         roles = await UserAdminService.GetAllRolesAsync();
     }
 
+    private void ToggleRole(string roleName, bool isChecked)
+    {
+        if (isChecked && !newUser!.RoleNames.Contains(roleName))
+        {
+            newUser.RoleNames.Add(roleName);
+        }
+        else if (!isChecked)
+        {
+            newUser!.RoleNames.Remove(roleName);
+        }
+    }
     private async Task HandleValidSubmit()
     {
         isSaving = true;

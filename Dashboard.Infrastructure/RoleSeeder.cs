@@ -18,5 +18,20 @@ public static class RoleSeeder
                 await roleManager.CreateAsync(new IdentityRole(roleName));
             }
         }
+
+        var adminRole = await roleManager.FindByNameAsync(Roles.Admin);
+        if (adminRole is not null)
+        {
+            var existingClaims = await roleManager.GetClaimsAsync(adminRole);
+            var existingPermissions = existingClaims.Where(c => c.Type == Permissions.ClaimType).Select(c => c.Value).ToList();
+
+            foreach (var permission in Permissions.All)
+            {
+                if (!existingPermissions.Contains(permission))
+                {
+                    await roleManager.AddClaimAsync(adminRole, new System.Security.Claims.Claim(Permissions.ClaimType, permission));
+                }
+            }
+        }
     }
 }

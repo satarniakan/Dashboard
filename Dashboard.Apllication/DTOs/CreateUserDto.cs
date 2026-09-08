@@ -18,5 +18,5 @@ public class CreateUserDto
     [MinLength(3, ErrorMessage = "رمز عبور باید حداقل ۳ کاراکتر باشد.")]
     public string Password { get; set; } = string.Empty;
 
-    public string? RoleName { get; set; }
+    public List<string> RoleNames { get; set; } = new();
 }

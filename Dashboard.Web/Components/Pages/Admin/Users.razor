@@ -40,7 +40,16 @@
                         <td>@u.PhoneNumber</td>
                         <td>@u.FullName</td>
                         <td>@u.Email</td>
-                        <td>@Dashboard.Domain.Identity.Roles.ToPersian(u.CurrentRole ?? "-")</td>
+                        <td>
+                            @if (u.Roles.Any())
+                            {
+                                @string.Join("، ", u.Roles.Select(r => Dashboard.Domain.Identity.Roles.ToPersian(r)))
+                            }
+                            else
+                            {
+                                <span class="text-muted">بدون نقش</span>
+                            }
+                        </td>
                         <td class="text-end">
                             <a href="/admin/users/@u.UserId" class="btn btn-sm btn-outline-primary">تغییر نقش</a>
                         </td>

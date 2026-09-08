@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Dashboard.Application.Services;
 
 namespace Dashboard.Application;
@@ -12,6 +12,10 @@ public static class DependencyInjection
         services.AddScoped<IOtpService, OtpService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserAdminService, UserAdminService>();
+        services.AddScoped<IPermissionService, PermissionService>();
+
+        // --- ماژول انبارداری (WMS) ---
+        services.AddScoped<IStockService, StockService>();
         return services;
     }
 }

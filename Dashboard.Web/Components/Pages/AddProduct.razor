@@ -1,6 +1,6 @@
 ﻿@page "/products/add"
 @rendermode InteractiveServer
-@attribute [Authorize(Roles = Dashboard.Domain.Identity.Roles.Admin)]
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.ProductsManage)]
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services

@@ -5,4 +5,4 @@ public record UserListItemDto(
     string? PhoneNumber,
     string? FullName,
     string? Email,
-    string? CurrentRole);
+    List<string> Roles);

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,7 +24,7 @@ public static class DependencyInjection
             options.Password.RequireUppercase = false;
             options.Password.RequireLowercase = false;
             options.Password.RequireDigit = false;
-      
+
         })
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
@@ -33,6 +33,19 @@ public static class DependencyInjection
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IOtpRepository, OtpCodeRepository>();
         services.AddScoped<ISmsSender, FakeSmsSender>();
+
+        // --- ماژول انبارداری (WMS) ---
+        services.AddScoped<IWarehouseRepository, WarehouseRepository>();
+        services.AddScoped<ISupplierRepository, SupplierRepository>();
+        services.AddScoped<IStockLevelRepository, StockLevelRepository>();
+        services.AddScoped<IStockTransactionRepository, StockTransactionRepository>();
+        services.AddScoped<IPurchaseReceiptRepository, PurchaseReceiptRepository>();
+        services.AddScoped<IInternalIssueRepository, InternalIssueRepository>();
+        services.AddScoped<ISalesReturnRepository, SalesReturnRepository>();
+        services.AddScoped<IScrapRecordRepository, ScrapRecordRepository>();
+        services.AddScoped<IStockTransferRepository, StockTransferRepository>();
+        services.AddScoped<IStockCountRepository, StockCountRepository>();
+
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }

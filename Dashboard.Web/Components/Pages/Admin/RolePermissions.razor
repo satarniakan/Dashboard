@@ -1,0 +1,92 @@
+﻿@* Dashboard.Web/Components/Pages/Admin/RolePermissions.razor *@
+@page "/admin/roles"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = Dashboard.Domain.Identity.Roles.Admin)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.Services
+@inject IPermissionService PermissionService
+
+<PageTitle>مدیریت مجوز نقش‌ها</PageTitle>
+
+<h3>مدیریت مجوز نقش‌ها</h3>
+
+@if (Success)
+{
+    <div class="alert alert-success">مجوزهای نقش ذخیره شد.</div>
+}
+
+<div class="card-panel">
+    <div class="mb-4">
+        <label class="form-label">انتخاب نقش</label>
+        <select class="form-select" style="max-width: 300px;" @bind="selectedRole" @bind:after="LoadPermissions">
+            @foreach (var role in Dashboard.Domain.Identity.Roles.All)
+            {
+                <option value="@role">@Dashboard.Domain.Identity.Roles.ToPersian(role)</option>
+            }
+        </select>
+    </div>
+
+    @if (selectedRole is not null)
+    {
+        <div class="mb-4">
+            <label class="form-label">مجوزهای این نقش</label>
+            @foreach (var permission in Dashboard.Domain.Identity.Permissions.All)
+            {
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="@("perm_" + permission)"
+                           checked="@currentPermissions.Contains(permission)"
+                           @onchange="@(e => TogglePermission(permission, (bool)e.Value!))" />
+                    <label class="form-check-label" for="@("perm_" + permission)">
+                        @Dashboard.Domain.Identity.Permissions.ToPersian(permission)
+                    </label>
+                </div>
+            }
+        </div>
+
+        <button class="btn btn-primary" @onclick="Save">ذخیره</button>
+        <p class="text-muted mt-3" style="font-size: 0.85rem;">
+            توجه: کاربرانی که از قبل وارد شده‌اند باید یک‌بار خارج و دوباره وارد شوند تا تغییرات مجوز روی آن‌ها اعمال شود.
+        </p>
+    }
+</div>
+
+@code {
+    private string? selectedRole = Dashboard.Domain.Identity.Roles.Admin;
+    private List<string> currentPermissions = new();
+    private bool Success;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPermissions();
+    }
+
+    private async Task LoadPermissions()
+    {
+        Success = false;
+        if (selectedRole is not null)
+        {
+            currentPermissions = await PermissionService.GetPermissionsForRoleAsync(selectedRole);
+        }
+    }
+
+    private void TogglePermission(string permission, bool isChecked)
+    {
+        if (isChecked && !currentPermissions.Contains(permission))
+        {
+            currentPermissions.Add(permission);
+        }
+        else if (!isChecked)
+        {
+            currentPermissions.Remove(permission);
+        }
+    }
+
+    private async Task Save()
+    {
+        if (selectedRole is not null)
+        {
+            await PermissionService.SetPermissionsForRoleAsync(selectedRole, currentPermissions);
+            Success = true;
+        }
+    }
+}

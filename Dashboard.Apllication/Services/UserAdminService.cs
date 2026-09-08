@@ -6,29 +6,25 @@ namespace Dashboard.Application.Services;
 
 public interface IUserAdminService
 {
-    // متدهای قبلی شما
     Task<IEnumerable<UserListItemDto>> GetAllUsersAsync();
     Task<UserListItemDto?> GetUserAsync(string userId);
-    Task<bool> SetRoleAsync(string userId, string roleName);
+    Task<bool> SetRolesAsync(string userId, List<string> roleNames);
 
-    // ===== متدهای جدید برای مدیریت کاربر =====
     Task<IdentityResult> CreateUserAsync(CreateUserDto model);
-    Task<List<RoleDto>> GetAllRolesAsync(); // متد جدید برای دریافت نقش‌ها
+    Task<List<RoleDto>> GetAllRolesAsync();
 }
 
 public class UserAdminService : IUserAdminService
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly RoleManager<IdentityRole> _roleManager; // اضافه کنید
+    private readonly RoleManager<IdentityRole> _roleManager;
 
-    // سازنده را به‌روز کنید
     public UserAdminService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
     {
         _userManager = userManager;
         _roleManager = roleManager;
     }
 
-    // متدهای قبلی شما بدون تغییر
     public async Task<IEnumerable<UserListItemDto>> GetAllUsersAsync()
     {
         var users = _userManager.Users.ToList();
@@ -38,7 +34,7 @@ public class UserAdminService : IUserAdminService
         {
             var roles = await _userManager.GetRolesAsync(user);
             result.Add(new UserListItemDto(
-                user.Id, user.PhoneNumber, user.FullName, user.Email, roles.FirstOrDefault()));
+                user.Id, user.PhoneNumber, user.FullName, user.Email, roles.ToList()));
         }
 
         return result;
@@ -50,10 +46,10 @@ public class UserAdminService : IUserAdminService
         if (user is null) return null;
 
         var roles = await _userManager.GetRolesAsync(user);
-        return new UserListItemDto(user.Id, user.PhoneNumber, user.FullName, user.Email, roles.FirstOrDefault());
+        return new UserListItemDto(user.Id, user.PhoneNumber, user.FullName, user.Email, roles.ToList());
     }
 
-    public async Task<bool> SetRoleAsync(string userId, string roleName)
+    public async Task<bool> SetRolesAsync(string userId, List<string> roleNames)
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null) return false;
@@ -64,13 +60,14 @@ public class UserAdminService : IUserAdminService
             await _userManager.RemoveFromRolesAsync(user, currentRoles);
         }
 
-        var result = await _userManager.AddToRoleAsync(user, roleName);
-        return result.Succeeded;
+        if (roleNames.Any())
+        {
+            await _userManager.AddToRolesAsync(user, roleNames);
+        }
+
+        return true;
     }
 
-    // ===== متدهای جدید =====
-
-    // متد برای ایجاد کاربر جدید
     public async Task<IdentityResult> CreateUserAsync(CreateUserDto model)
     {
         if (!string.IsNullOrWhiteSpace(model.Email))
@@ -81,41 +78,41 @@ public class UserAdminService : IUserAdminService
                 return IdentityResult.Failed(new IdentityError { Description = "این ایمیل قبلاً استفاده شده است." });
             }
         }
+
         var user = new ApplicationUser
         {
-            UserName = model.PhoneNumber, // شماره موبایل به عنوان نام کاربری
+            UserName = model.PhoneNumber,
             PhoneNumber = model.PhoneNumber,
             Email = model.Email,
             FullName = model.FullName,
-            EmailConfirmed = true // برای سادگی، ایمیل را تأیید شده در نظر می‌گیریم
+            EmailConfirmed = true
         };
 
-        // ایجاد کاربر
         var result = await _userManager.CreateAsync(user, model.Password);
 
-        // اگر کاربر ساخته شد و نقش انتخاب شده بود، نقش را اعمال کن
-        if (result.Succeeded && !string.IsNullOrEmpty(model.RoleName))
+        if (result.Succeeded && model.RoleNames is { Count: > 0 })
         {
-            var roleExists = await _roleManager.RoleExistsAsync(model.RoleName);
-            if (roleExists)
+            var validRoles = new List<string>();
+            foreach (var roleName in model.RoleNames)
             {
-                await _userManager.AddToRoleAsync(user, model.RoleName);
+                if (await _roleManager.RoleExistsAsync(roleName))
+                {
+                    validRoles.Add(roleName);
+                }
             }
-            else
+
+            if (validRoles.Any())
             {
-                // اگر نقش وجود نداشت، کاربر را حذف کن تا داده‌ها ناقص نمانند
-                await _userManager.DeleteAsync(user);
-                return IdentityResult.Failed(new IdentityError { Description = "نقش انتخاب شده معتبر نیست" });
+                await _userManager.AddToRolesAsync(user, validRoles);
             }
         }
 
         return result;
     }
 
-    // متد برای دریافت لیست نقش‌ها
     public async Task<List<RoleDto>> GetAllRolesAsync()
     {
-        var roles = _roleManager.Roles.ToList(); // گرفتن لیست نقش‌ها از دیتابیس
+        var roles = _roleManager.Roles.ToList();
         return roles.Select(r => new RoleDto
         {
             Id = r.Id ?? string.Empty,

@@ -33,7 +33,15 @@ builder.Services.AddRazorComponents()
 
 // Required for Blazor Server to flow auth state into components
 builder.Services.AddCascadingAuthenticationState();
-
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(Dashboard.Domain.Identity.Permissions.ProductsView, policy =>
+        policy.RequireAssertion(ctx =>
+            ctx.User.HasClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.ProductsView) ||
+            ctx.User.HasClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.ProductsManage)))
+    .AddPolicy(Dashboard.Domain.Identity.Permissions.ProductsManage, policy =>
+        policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.ProductsManage))
+    .AddPolicy(Dashboard.Domain.Identity.Permissions.AuditLogsView, policy =>
+        policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.AuditLogsView));
 // Persist Data Protection keys so cookies/antiforgery tokens survive app restarts
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys")));

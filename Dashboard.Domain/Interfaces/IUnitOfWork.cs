@@ -1,4 +1,4 @@
-﻿using Dashboard.Domain.Interfaces;
+using Dashboard.Domain.Interfaces;
 
 namespace Dashboard.Domain.Interfaces;
 
@@ -8,6 +8,18 @@ public interface IUnitOfWork
     IProductRepository Products { get; }
     IOtpRepository OtpCodes { get; }
     IAuditLogRepository AuditLogs { get; }
+
+    // --- ماژول انبارداری (WMS) ---
+    IWarehouseRepository Warehouses { get; }
+    ISupplierRepository Suppliers { get; }
+    IStockLevelRepository StockLevels { get; }
+    IStockTransactionRepository StockTransactions { get; }
+    IPurchaseReceiptRepository PurchaseReceipts { get; }
+    IInternalIssueRepository InternalIssues { get; }
+    ISalesReturnRepository SalesReturns { get; }
+    IScrapRecordRepository ScrapRecords { get; }
+    IStockTransferRepository StockTransfers { get; }
+    IStockCountRepository StockCounts { get; }
 
     // این همان متد جادویی است که در پایان، همه تغییرات را یک‌باره ذخیره می‌کند
     Task<int> CompleteAsync();
