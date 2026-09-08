@@ -16,6 +16,8 @@ public static class DependencyInjection
 
         // --- ماژول انبارداری (WMS) ---
         services.AddScoped<IStockService, StockService>();
+        //فروش
+        services.AddScoped<ISalesService, SalesService>();
         return services;
     }
 }

@@ -19,12 +19,19 @@ public static class Permissions
     public const string StockTransfersManage = "stock.transfers.manage";
     public const string StockCountsManage = "stock.counts.manage";
 
+    // --- ماژول فروش ---
+    public const string CustomersManage = "customers.manage";
+    public const string SalesCreate = "sales.create";
+    public const string SalesConfirm = "sales.confirm";
+    public const string SalesCancel = "sales.cancel";
+    public const string SalesView = "sales.view";
     public static readonly string[] All =
     {
         ProductsView, ProductsManage, AuditLogsView,
         WarehousesManage, SuppliersManage, StockView,
         PurchaseReceiptsManage, InternalIssuesManage, SalesReturnsManage,
-        ScrapRecordsManage, StockTransfersManage, StockCountsManage
+        ScrapRecordsManage, StockTransfersManage, StockCountsManage,
+        CustomersManage, SalesCreate, SalesConfirm, SalesCancel, SalesView
     };
 
     public static string ToPersian(string permission) => permission switch
@@ -41,6 +48,11 @@ public static class Permissions
         ScrapRecordsManage => "ثبت ضایعات",
         StockTransfersManage => "ثبت انتقال بین انبار",
         StockCountsManage => "انجام انبارگردانی",
+        CustomersManage => "مدیریت مشتریان",
+        SalesCreate => "ثبت فاکتور فروش",
+        SalesConfirm => "تأیید فاکتور فروش",
+        SalesCancel => "لغو فاکتور فروش",
+        SalesView => "مشاهده فاکتورهای فروش",
         _ => permission
     };
 }

@@ -56,6 +56,7 @@ builder.Services.AddAuthorizationBuilder()
                 || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.StockTransfersManage)
                 || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.StockCountsManage);
         }))
+
     .AddPolicy(Dashboard.Domain.Identity.Permissions.WarehousesManage, policy =>
         policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.WarehousesManage))
     .AddPolicy(Dashboard.Domain.Identity.Permissions.SuppliersManage, policy =>
@@ -71,7 +72,25 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(Dashboard.Domain.Identity.Permissions.StockTransfersManage, policy =>
         policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.StockTransfersManage))
     .AddPolicy(Dashboard.Domain.Identity.Permissions.StockCountsManage, policy =>
-        policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.StockCountsManage));
+        policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.StockCountsManage))
+    .AddPolicy(Dashboard.Domain.Identity.Permissions.CustomersManage, policy =>
+    policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.CustomersManage))
+.AddPolicy(Dashboard.Domain.Identity.Permissions.SalesCreate, policy =>
+    policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.SalesCreate))
+.AddPolicy(Dashboard.Domain.Identity.Permissions.SalesConfirm, policy =>
+    policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.SalesConfirm))
+.AddPolicy(Dashboard.Domain.Identity.Permissions.SalesCancel, policy =>
+    policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.SalesCancel))
+.AddPolicy(Dashboard.Domain.Identity.Permissions.SalesView, policy =>
+    policy.RequireAssertion(ctx =>
+    {
+        var claimType = Dashboard.Domain.Identity.Permissions.ClaimType;
+        return ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.SalesView)
+            || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.SalesCreate)
+            || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.SalesConfirm)
+            || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.SalesCancel);
+    })); ;
+
 // Persist Data Protection keys so cookies/antiforgery tokens survive app restarts
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys")));
