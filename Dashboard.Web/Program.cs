@@ -41,7 +41,37 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(Dashboard.Domain.Identity.Permissions.ProductsManage, policy =>
         policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.ProductsManage))
     .AddPolicy(Dashboard.Domain.Identity.Permissions.AuditLogsView, policy =>
-        policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.AuditLogsView));
+        policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.AuditLogsView))
+    // --- ماژول انبارداری (WMS) ---
+    // مشاهده‌ی موجودی: اگر StockView را داشته باشد یا هر کدام از مجوزهای مدیریتی زیر را، اجازه‌ی دیدن دارد
+    .AddPolicy(Dashboard.Domain.Identity.Permissions.StockView, policy =>
+        policy.RequireAssertion(ctx =>
+        {
+            var claimType = Dashboard.Domain.Identity.Permissions.ClaimType;
+            return ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.StockView)
+                || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.PurchaseReceiptsManage)
+                || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.InternalIssuesManage)
+                || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.SalesReturnsManage)
+                || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.ScrapRecordsManage)
+                || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.StockTransfersManage)
+                || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.StockCountsManage);
+        }))
+    .AddPolicy(Dashboard.Domain.Identity.Permissions.WarehousesManage, policy =>
+        policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.WarehousesManage))
+    .AddPolicy(Dashboard.Domain.Identity.Permissions.SuppliersManage, policy =>
+        policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.SuppliersManage))
+    .AddPolicy(Dashboard.Domain.Identity.Permissions.PurchaseReceiptsManage, policy =>
+        policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.PurchaseReceiptsManage))
+    .AddPolicy(Dashboard.Domain.Identity.Permissions.InternalIssuesManage, policy =>
+        policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.InternalIssuesManage))
+    .AddPolicy(Dashboard.Domain.Identity.Permissions.SalesReturnsManage, policy =>
+        policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.SalesReturnsManage))
+    .AddPolicy(Dashboard.Domain.Identity.Permissions.ScrapRecordsManage, policy =>
+        policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.ScrapRecordsManage))
+    .AddPolicy(Dashboard.Domain.Identity.Permissions.StockTransfersManage, policy =>
+        policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.StockTransfersManage))
+    .AddPolicy(Dashboard.Domain.Identity.Permissions.StockCountsManage, policy =>
+        policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.StockCountsManage));
 // Persist Data Protection keys so cookies/antiforgery tokens survive app restarts
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys")));

@@ -19,6 +19,7 @@ public class PurchaseReceiptRepository : IPurchaseReceiptRepository
 
     public async Task<IEnumerable<PurchaseReceipt>> GetAllAsync() =>
         await _context.PurchaseReceipts
+            .Include(r => r.Items)
             .Include(r => r.Supplier)
             .Include(r => r.Warehouse)
             .OrderByDescending(r => r.ReceiptDate)

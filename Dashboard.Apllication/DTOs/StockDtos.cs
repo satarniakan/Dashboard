@@ -86,3 +86,17 @@ public class CreateStockTransferDto
 public record StockCountItemDto(int ProductId, string ProductName, decimal SystemQuantity, decimal? CountedQuantity);
 
 public record StockCountDto(int Id, string CountNumber, string WarehouseName, string Status, DateTime CountDate, List<StockCountItemDto> Items);
+
+// --- خلاصه‌ی اسناد برای صفحات لیست ---
+
+public record PurchaseReceiptSummaryDto(int Id, string ReceiptNumber, DateTime ReceiptDate, string SupplierName, string WarehouseName, int ItemCount);
+
+public record InternalIssueSummaryDto(int Id, string IssueNumber, DateTime IssueDate, string WarehouseName, string? Purpose, int ItemCount);
+
+public record SalesReturnSummaryDto(int Id, string ReturnNumber, DateTime ReturnDate, string WarehouseName, string? CustomerReference, int ItemCount);
+
+public record ScrapRecordSummaryDto(int Id, string RecordNumber, DateTime RecordDate, string WarehouseName, string? Reason, int ItemCount);
+
+public record StockTransferSummaryDto(int Id, string TransferNumber, DateTime TransferDate, string SourceWarehouseName, string DestinationWarehouseName, string Status, int ItemCount);
+
+public record StockCountSummaryDto(int Id, string CountNumber, DateTime CountDate, string WarehouseName, string Status);

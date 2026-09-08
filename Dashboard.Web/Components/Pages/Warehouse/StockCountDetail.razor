@@ -1,0 +1,141 @@
+@page "/warehouse/stock-counts/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.StockView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using System.Security.Claims
+@inject IStockService StockService
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>انبارگردانی @stockCount?.CountNumber</PageTitle>
+
+@if (stockCount is null)
+{
+    <p class="text-muted">در حال بارگذاری...</p>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">انبارگردانی @stockCount.CountNumber — @stockCount.WarehouseName</h3>
+        @if (stockCount.Status == "Open")
+        {
+            <span class="badge bg-warning-subtle text-warning">باز</span>
+        }
+        else
+        {
+            <span class="badge bg-success-subtle text-success">بسته‌شده</span>
+        }
+    </div>
+
+    <div class="card-panel">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>کالا</th>
+                    <th>موجودی سیستمی</th>
+                    <th>موجودی شمارش‌شده</th>
+                    <th>مغایرت</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in stockCount.Items)
+                {
+                    var counted = countedByProductId.TryGetValue(item.ProductId, out var c) ? c : (item.CountedQuantity ?? item.SystemQuantity);
+                    var discrepancy = counted - item.SystemQuantity;
+                    <tr>
+                        <td class="fw-medium">@item.ProductName</td>
+                        <td class="text-muted">@item.SystemQuantity</td>
+                        <td style="max-width: 160px;">
+                            @if (stockCount.Status == "Open")
+                            {
+                                <input type="number" class="form-control" step="0.01"
+                                       value="@counted"
+                                       @onchange="e => OnCountedChanged(item.ProductId, e.Value)" />
+                            }
+                            else
+                            {
+                                @counted
+                            }
+                        </td>
+                        <td class="@(discrepancy == 0 ? "text-muted" : (discrepancy > 0 ? "text-success" : "text-danger"))">
+                            @(discrepancy > 0 ? "+" : "")@discrepancy
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3">@errorMessage</div>
+    }
+
+    @if (stockCount.Status == "Open")
+    {
+        <div class="d-flex gap-2 mt-3">
+            <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.StockCountsManage" Context="manageContext">
+                <Authorized>
+                    <button class="btn btn-primary" disabled="@isSaving" @onclick="HandleClose">
+                        @(isSaving ? "در حال بستن..." : "بستن انبارگردانی و اعمال اصلاحیه")
+                    </button>
+                </Authorized>
+            </AuthorizeView>
+            <a href="/warehouse/stock-counts" class="btn btn-outline-secondary">بازگشت</a>
+        </div>
+    }
+    else
+    {
+        <div class="mt-3">
+            <a href="/warehouse/stock-counts" class="btn btn-outline-secondary">بازگشت</a>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private StockCountDto? stockCount;
+    private Dictionary<int, decimal> countedByProductId = new();
+    private bool isSaving;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        stockCount = await StockService.GetStockCountAsync(Id);
+    }
+
+    private void OnCountedChanged(int productId, object? value)
+    {
+        if (decimal.TryParse(value?.ToString(), out var parsed))
+        {
+            countedByProductId[productId] = parsed;
+        }
+    }
+
+    private async Task HandleClose()
+    {
+        if (stockCount is null) return;
+
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+
+            await StockService.CloseStockCountAsync(stockCount.Id, countedByProductId, userId);
+            NavigationManager.NavigateTo("/warehouse/stock-counts");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"بستن انبارگردانی ناموفق بود: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

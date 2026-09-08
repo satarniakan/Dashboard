@@ -1,0 +1,64 @@
+@page "/warehouse/sales-returns"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.StockView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@inject IStockService StockService
+
+<PageTitle>برگشت از فروش</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">برگشت از فروش</h3>
+    <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.SalesReturnsManage" Context="manageContext">
+        <Authorized>
+            <a href="/warehouse/sales-returns/add" class="btn btn-primary">+ ثبت برگشت از فروش</a>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+<div class="card-panel">
+    @if (returns is null)
+    {
+        <p class="text-muted">در حال بارگذاری...</p>
+    }
+    else if (!returns.Any())
+    {
+        <p class="text-muted text-center py-4">هنوز موردی ثبت نشده است.</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>شماره</th>
+                    <th>تاریخ</th>
+                    <th>انبار</th>
+                    <th>ارجاع مشتری</th>
+                    <th>تعداد اقلام</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in returns)
+                {
+                    <tr>
+                        <td class="fw-medium">@r.ReturnNumber</td>
+                        <td class="text-muted">@r.ReturnDate.ToString("yyyy/MM/dd")</td>
+                        <td>@r.WarehouseName</td>
+                        <td class="text-muted">@(r.CustomerReference ?? "-")</td>
+                        <td>@r.ItemCount</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private IEnumerable<SalesReturnSummaryDto>? returns;
+
+    protected override async Task OnInitializedAsync()
+    {
+        returns = await StockService.GetSalesReturnsAsync();
+    }
+}

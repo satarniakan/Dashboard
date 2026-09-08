@@ -1,0 +1,56 @@
+@* Dashboard.Web/Components/Shared/StockItemRowsEditor.razor *@
+@using Dashboard.Application.DTOs
+
+<table class="table mb-2">
+    <thead>
+        <tr>
+            <th style="width: 60%">کالا</th>
+            <th style="width: 30%">مقدار</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @for (var i = 0; i < Items.Count; i++)
+        {
+            var row = Items[i];
+            <tr>
+                <td>
+                    <select class="form-select" @bind="row.ProductId">
+                        <option value="0">-- انتخاب کالا --</option>
+                        @foreach (var product in Products)
+                        {
+                            <option value="@product.Id">@product.Name</option>
+                        }
+                    </select>
+                </td>
+                <td>
+                    <input type="number" class="form-control" step="0.01" min="0"
+                           @bind="row.Quantity" @bind:event="oninput" />
+                </td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemoveRow(row)">حذف</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddRow">+ افزودن ردیف</button>
+
+@code {
+    [Parameter] public List<StockItemInput> Items { get; set; } = new();
+    [Parameter] public IEnumerable<ProductDto> Products { get; set; } = Enumerable.Empty<ProductDto>();
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private async Task AddRow()
+    {
+        Items.Add(new StockItemInput());
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task RemoveRow(StockItemInput row)
+    {
+        Items.Remove(row);
+        await OnChanged.InvokeAsync();
+    }
+}

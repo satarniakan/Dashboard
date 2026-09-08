@@ -1,0 +1,77 @@
+@page "/warehouse/stock-counts"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.StockView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@inject IStockService StockService
+
+<PageTitle>انبارگردانی</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">انبارگردانی</h3>
+    <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.StockCountsManage" Context="manageContext">
+        <Authorized>
+            <a href="/warehouse/stock-counts/open" class="btn btn-primary">+ شروع انبارگردانی جدید</a>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+<div class="card-panel">
+    @if (counts is null)
+    {
+        <p class="text-muted">در حال بارگذاری...</p>
+    }
+    else if (!counts.Any())
+    {
+        <p class="text-muted text-center py-4">هنوز انبارگردانی‌ای ثبت نشده است.</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>شماره</th>
+                    <th>تاریخ</th>
+                    <th>انبار</th>
+                    <th>وضعیت</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in counts)
+                {
+                    <tr>
+                        <td class="fw-medium">@c.CountNumber</td>
+                        <td class="text-muted">@c.CountDate.ToString("yyyy/MM/dd")</td>
+                        <td>@c.WarehouseName</td>
+                        <td>
+                            @if (c.Status == "Open")
+                            {
+                                <span class="badge bg-warning-subtle text-warning">باز</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success-subtle text-success">بسته‌شده</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <a href="/warehouse/stock-counts/@c.Id" class="btn btn-sm btn-outline-primary">
+                                @(c.Status == "Open" ? "ادامه/بستن" : "مشاهده")
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private IEnumerable<StockCountSummaryDto>? counts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        counts = await StockService.GetStockCountsAsync();
+    }
+}

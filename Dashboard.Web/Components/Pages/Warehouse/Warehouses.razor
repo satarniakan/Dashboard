@@ -1,0 +1,67 @@
+@page "/warehouse/warehouses"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.WarehousesManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@inject IStockService StockService
+
+<PageTitle>انبارها</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">انبارها</h3>
+    <a href="/warehouse/warehouses/add" class="btn btn-primary">+ افزودن انبار</a>
+</div>
+
+<div class="card-panel">
+    @if (warehouses is null)
+    {
+        <p class="text-muted">در حال بارگذاری...</p>
+    }
+    else if (!warehouses.Any())
+    {
+        <p class="text-muted text-center py-4">هنوز انباری ثبت نشده است.</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>نام</th>
+                    <th>کد</th>
+                    <th>آدرس</th>
+                    <th>وضعیت</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var warehouse in warehouses)
+                {
+                    <tr>
+                        <td class="fw-medium">@warehouse.Name</td>
+                        <td class="text-muted">@(warehouse.Code ?? "-")</td>
+                        <td class="text-muted">@(warehouse.Address ?? "-")</td>
+                        <td>
+                            @if (warehouse.IsActive)
+                            {
+                                <span class="badge bg-success-subtle text-success">فعال</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary-subtle text-secondary">غیرفعال</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private IEnumerable<WarehouseDto>? warehouses;
+
+    protected override async Task OnInitializedAsync()
+    {
+        warehouses = await StockService.GetWarehousesAsync();
+    }
+}

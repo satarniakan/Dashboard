@@ -1,0 +1,130 @@
+@page "/warehouse/transfers/add"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.StockTransfersManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using System.Security.Claims
+@inject IStockService StockService
+@inject IProductService ProductService
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>ثبت انتقال بین انبار</PageTitle>
+
+<h3>ثبت انتقال بین انبار</h3>
+
+<div class="card-panel" style="max-width: 680px;">
+    <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddStockTransferForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="mb-3" />
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">انبار مبدا</label>
+                <select class="form-select" @bind="model.SourceWarehouseId">
+                    <option value="0">-- انتخاب کنید --</option>
+                    @if (warehouses is not null)
+                    {
+                        @foreach (var w in warehouses)
+                        {
+                            <option value="@w.Id">@w.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">انبار مقصد</label>
+                <select class="form-select" @bind="model.DestinationWarehouseId">
+                    <option value="0">-- انتخاب کنید --</option>
+                    @if (warehouses is not null)
+                    {
+                        @foreach (var w in warehouses)
+                        {
+                            <option value="@w.Id">@w.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">شماره سند</label>
+                <InputText class="form-control" @bind-Value="model.TransferNumber" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">تاریخ</label>
+                <InputDate class="form-control" @bind-Value="model.TransferDate" />
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">توضیحات (اختیاری)</label>
+            <InputTextArea class="form-control" @bind-Value="model.Notes" />
+        </div>
+
+        <hr />
+        <h6 class="mb-3">اقلام انتقالی</h6>
+
+        <StockItemRowsEditor Items="model.Items" Products="@(products ?? Enumerable.Empty<ProductDto>())" />
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-3">@errorMessage</div>
+        }
+
+        <div class="d-flex gap-2 mt-3">
+            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                @(isSaving ? "در حال ذخیره..." : "ثبت انتقال")
+            </button>
+            <a href="/warehouse/transfers" class="btn btn-outline-secondary">انصراف</a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private CreateStockTransferDto model { get; set; } = new();
+
+    private IEnumerable<ProductDto>? products;
+    private IEnumerable<WarehouseDto>? warehouses;
+
+    private bool isSaving;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        model.Items.Add(new StockItemInput());
+        warehouses = await StockService.GetWarehousesAsync();
+        products = await ProductService.GetAllProductsAsync();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            if (model.SourceWarehouseId == 0 || model.DestinationWarehouseId == 0)
+            {
+                errorMessage = "انتخاب انبار مبدا و مقصد الزامی است.";
+                return;
+            }
+
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+
+            await StockService.RegisterStockTransferAsync(model, userId);
+            NavigationManager.NavigateTo("/warehouse/transfers");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"ثبت انتقال ناموفق بود: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

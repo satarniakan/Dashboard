@@ -1,0 +1,106 @@
+@page "/warehouse/stock-counts/open"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.StockCountsManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using System.Security.Claims
+@inject IStockService StockService
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>شروع انبارگردانی جدید</PageTitle>
+
+<h3>شروع انبارگردانی جدید</h3>
+
+<div class="alert alert-info" style="max-width: 480px;">
+    با ثبت این فرم، موجودی سیستمی فعلی همه‌ی کالاهای این انبار «اسنپ‌شات» می‌شود و
+    در مرحله‌ی بعد می‌توانید موجودی شمارش‌شده‌ی واقعی را وارد کنید.
+</div>
+
+<div class="card-panel" style="max-width: 480px;">
+    <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="OpenStockCountForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="mb-3" />
+
+        <div class="mb-3">
+            <label class="form-label">انبار</label>
+            <select class="form-select" @bind="model.WarehouseId">
+                <option value="0">-- انتخاب کنید --</option>
+                @if (warehouses is not null)
+                {
+                    @foreach (var w in warehouses)
+                    {
+                        <option value="@w.Id">@w.Name</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">شماره سند</label>
+            <InputText class="form-control" @bind-Value="model.CountNumber" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                @(isSaving ? "در حال ایجاد..." : "شروع انبارگردانی")
+            </button>
+            <a href="/warehouse/stock-counts" class="btn btn-outline-secondary">انصراف</a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private class OpenStockCountFormModel
+    {
+        public int WarehouseId { get; set; }
+        public string CountNumber { get; set; } = string.Empty;
+    }
+
+    [SupplyParameterFromForm]
+    private OpenStockCountFormModel model { get; set; } = new();
+
+    private IEnumerable<WarehouseDto>? warehouses;
+
+    private bool isSaving;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        warehouses = await StockService.GetWarehousesAsync();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            if (model.WarehouseId == 0)
+            {
+                errorMessage = "انتخاب انبار الزامی است.";
+                return;
+            }
+
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+
+            var stockCount = await StockService.OpenStockCountAsync(model.WarehouseId, model.CountNumber, userId);
+            NavigationManager.NavigateTo($"/warehouse/stock-counts/{stockCount.Id}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"شروع انبارگردانی ناموفق بود: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

@@ -19,6 +19,7 @@ public class StockTransferRepository : IStockTransferRepository
 
     public async Task<IEnumerable<StockTransfer>> GetAllAsync() =>
         await _context.StockTransfers
+            .Include(t => t.Items)
             .Include(t => t.SourceWarehouse)
             .Include(t => t.DestinationWarehouse)
             .OrderByDescending(t => t.TransferDate)

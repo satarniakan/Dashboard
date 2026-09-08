@@ -1,0 +1,64 @@
+@page "/warehouse/scrap"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.StockView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@inject IStockService StockService
+
+<PageTitle>ضایعات</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">ضایعات</h3>
+    <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.ScrapRecordsManage" Context="manageContext">
+        <Authorized>
+            <a href="/warehouse/scrap/add" class="btn btn-primary">+ ثبت ضایعات</a>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+<div class="card-panel">
+    @if (records is null)
+    {
+        <p class="text-muted">در حال بارگذاری...</p>
+    }
+    else if (!records.Any())
+    {
+        <p class="text-muted text-center py-4">هنوز موردی ثبت نشده است.</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>شماره سند</th>
+                    <th>تاریخ</th>
+                    <th>انبار</th>
+                    <th>دلیل</th>
+                    <th>تعداد اقلام</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in records)
+                {
+                    <tr>
+                        <td class="fw-medium">@r.RecordNumber</td>
+                        <td class="text-muted">@r.RecordDate.ToString("yyyy/MM/dd")</td>
+                        <td>@r.WarehouseName</td>
+                        <td class="text-muted">@(r.Reason ?? "-")</td>
+                        <td>@r.ItemCount</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private IEnumerable<ScrapRecordSummaryDto>? records;
+
+    protected override async Task OnInitializedAsync()
+    {
+        records = await StockService.GetScrapRecordsAsync();
+    }
+}

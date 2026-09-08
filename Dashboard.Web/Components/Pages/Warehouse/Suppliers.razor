@@ -1,0 +1,58 @@
+@page "/warehouse/suppliers"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.SuppliersManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@inject IStockService StockService
+
+<PageTitle>تأمین‌کنندگان</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">تأمین‌کنندگان</h3>
+    <a href="/warehouse/suppliers/add" class="btn btn-primary">+ افزودن تأمین‌کننده</a>
+</div>
+
+<div class="card-panel">
+    @if (suppliers is null)
+    {
+        <p class="text-muted">در حال بارگذاری...</p>
+    }
+    else if (!suppliers.Any())
+    {
+        <p class="text-muted text-center py-4">هنوز تأمین‌کننده‌ای ثبت نشده است.</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>نام</th>
+                    <th>شخص رابط</th>
+                    <th>تلفن</th>
+                    <th>آدرس</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var supplier in suppliers)
+                {
+                    <tr>
+                        <td class="fw-medium">@supplier.Name</td>
+                        <td class="text-muted">@(supplier.ContactPerson ?? "-")</td>
+                        <td class="text-muted">@(supplier.Phone ?? "-")</td>
+                        <td class="text-muted">@(supplier.Address ?? "-")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private IEnumerable<SupplierDto>? suppliers;
+
+    protected override async Task OnInitializedAsync()
+    {
+        suppliers = await StockService.GetSuppliersAsync();
+    }
+}

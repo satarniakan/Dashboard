@@ -1,0 +1,99 @@
+@page "/warehouse/history"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.StockView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@inject IStockService StockService
+
+<PageTitle>تاریخچه رویدادهای انبار</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">تاریخچه رویدادهای انبار</h3>
+    <div class="d-flex align-items-center gap-2">
+        <label class="form-label mb-0">انبار:</label>
+        <select class="form-select" style="width: auto;" @bind="selectedWarehouseId" @bind:after="LoadAsync">
+            <option value="0">همه‌ی انبارها</option>
+            @if (warehouses is not null)
+            {
+                @foreach (var w in warehouses)
+                {
+                    <option value="@w.Id">@w.Name</option>
+                }
+            }
+        </select>
+    </div>
+</div>
+
+<div class="card-panel">
+    @if (history is null)
+    {
+        <p class="text-muted">در حال بارگذاری...</p>
+    }
+    else if (!history.Any())
+    {
+        <p class="text-muted text-center py-4">رویدادی یافت نشد.</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>تاریخ</th>
+                    <th>نوع رویداد</th>
+                    <th>کالا</th>
+                    <th>انبار</th>
+                    <th>تغییر موجودی</th>
+                    <th>کاربر</th>
+                    <th>توضیحات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in history)
+                {
+                    <tr>
+                        <td class="text-muted" style="white-space: nowrap;">@t.OccurredAt.ToString("yyyy/MM/dd HH:mm")</td>
+                        <td><span class="badge bg-light text-dark">@TypeToPersian(t.Type)</span></td>
+                        <td class="fw-medium">@t.ProductName</td>
+                        <td>@t.WarehouseName</td>
+                        <td class="@(t.QuantityChange >= 0 ? "text-success" : "text-danger")">
+                            @(t.QuantityChange > 0 ? "+" : "")@t.QuantityChange
+                        </td>
+                        <td>@(t.CreatedByUserId ?? "-")</td>
+                        <td class="text-muted">@(t.Notes ?? "-")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private IEnumerable<WarehouseDto>? warehouses;
+    private IEnumerable<StockTransactionDto>? history;
+    private int selectedWarehouseId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        warehouses = await StockService.GetWarehousesAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        history = await StockService.GetStockHistoryAsync(warehouseId: selectedWarehouseId == 0 ? null : selectedWarehouseId);
+    }
+
+    private static string TypeToPersian(string type) => type switch
+    {
+        "PurchaseReceipt" => "رسید خرید",
+        "InternalIssue" => "حواله مصرف داخلی",
+        "SalesReturn" => "برگشت از فروش",
+        "Scrap" => "ضایعات",
+        "TransferOut" => "خروج (انتقال)",
+        "TransferIn" => "ورود (انتقال)",
+        "StockCountIncrease" => "اصلاح مثبت انبارگردانی",
+        "StockCountDecrease" => "اصلاح منفی انبارگردانی",
+        _ => type
+    };
+}

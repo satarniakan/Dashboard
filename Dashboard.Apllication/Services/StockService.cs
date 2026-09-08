@@ -25,11 +25,19 @@ public interface IStockService
     Task<int> RegisterSalesReturnAsync(CreateSalesReturnDto dto, string? userId);
     Task<int> RegisterScrapAsync(CreateScrapRecordDto dto, string? userId);
 
+    Task<IEnumerable<PurchaseReceiptSummaryDto>> GetPurchaseReceiptsAsync();
+    Task<IEnumerable<InternalIssueSummaryDto>> GetInternalIssuesAsync();
+    Task<IEnumerable<SalesReturnSummaryDto>> GetSalesReturnsAsync();
+    Task<IEnumerable<ScrapRecordSummaryDto>> GetScrapRecordsAsync();
+
     // انتقال بین انبار (۲-۲)
     Task<int> RegisterStockTransferAsync(CreateStockTransferDto dto, string? userId);
+    Task<IEnumerable<StockTransferSummaryDto>> GetStockTransfersAsync();
 
     // انبارگردانی (۲-۵)
     Task<StockCountDto> OpenStockCountAsync(int warehouseId, string countNumber, string? userId);
+    Task<StockCountDto?> GetStockCountAsync(int id);
+    Task<IEnumerable<StockCountSummaryDto>> GetStockCountsAsync();
     Task CloseStockCountAsync(int stockCountId, Dictionary<int, decimal> countedQuantities, string? userId);
 }
 
@@ -165,6 +173,14 @@ public class StockService : IStockService
         return receipt.Id;
     }
 
+    public async Task<IEnumerable<PurchaseReceiptSummaryDto>> GetPurchaseReceiptsAsync()
+    {
+        var receipts = await _unitOfWork.PurchaseReceipts.GetAllAsync();
+        return receipts.Select(r => new PurchaseReceiptSummaryDto(
+            r.Id, r.ReceiptNumber, r.ReceiptDate,
+            r.Supplier?.Name ?? "-", r.Warehouse?.Name ?? "-", r.Items.Count));
+    }
+
     // ---------------- حواله مصرف داخلی ----------------
 
     public async Task<int> RegisterInternalIssueAsync(CreateInternalIssueDto dto, string? userId)
@@ -207,6 +223,13 @@ public class StockService : IStockService
         return issue.Id;
     }
 
+    public async Task<IEnumerable<InternalIssueSummaryDto>> GetInternalIssuesAsync()
+    {
+        var issues = await _unitOfWork.InternalIssues.GetAllAsync();
+        return issues.Select(i => new InternalIssueSummaryDto(
+            i.Id, i.IssueNumber, i.IssueDate, i.Warehouse?.Name ?? "-", i.Purpose, i.Items.Count));
+    }
+
     // ---------------- برگشت از فروش ----------------
 
     public async Task<int> RegisterSalesReturnAsync(CreateSalesReturnDto dto, string? userId)
@@ -245,6 +268,13 @@ public class StockService : IStockService
         await _unitOfWork.CompleteAsync();
 
         return salesReturn.Id;
+    }
+
+    public async Task<IEnumerable<SalesReturnSummaryDto>> GetSalesReturnsAsync()
+    {
+        var returns = await _unitOfWork.SalesReturns.GetAllAsync();
+        return returns.Select(r => new SalesReturnSummaryDto(
+            r.Id, r.ReturnNumber, r.ReturnDate, r.Warehouse?.Name ?? "-", r.CustomerReference, r.Items.Count));
     }
 
     // ---------------- ضایعات ----------------
@@ -287,6 +317,13 @@ public class StockService : IStockService
         await _unitOfWork.CompleteAsync();
 
         return scrap.Id;
+    }
+
+    public async Task<IEnumerable<ScrapRecordSummaryDto>> GetScrapRecordsAsync()
+    {
+        var records = await _unitOfWork.ScrapRecords.GetAllAsync();
+        return records.Select(r => new ScrapRecordSummaryDto(
+            r.Id, r.RecordNumber, r.RecordDate, r.Warehouse?.Name ?? "-", r.Reason, r.Items.Count));
     }
 
     // ---------------- انتقال بین انبار ----------------
@@ -344,6 +381,15 @@ public class StockService : IStockService
         return transfer.Id;
     }
 
+    public async Task<IEnumerable<StockTransferSummaryDto>> GetStockTransfersAsync()
+    {
+        var transfers = await _unitOfWork.StockTransfers.GetAllAsync();
+        return transfers.Select(t => new StockTransferSummaryDto(
+            t.Id, t.TransferNumber, t.TransferDate,
+            t.SourceWarehouse?.Name ?? "-", t.DestinationWarehouse?.Name ?? "-",
+            t.Status.ToString(), t.Items.Count));
+    }
+
     // ---------------- انبارگردانی ----------------
 
     public async Task<StockCountDto> OpenStockCountAsync(int warehouseId, string countNumber, string? userId)
@@ -376,6 +422,25 @@ public class StockService : IStockService
         return new StockCountDto(
             stockCount.Id, stockCount.CountNumber, warehouse.Name, stockCount.Status.ToString(), stockCount.CountDate,
             stockCount.Items.Select(i => new StockCountItemDto(i.ProductId, i.Product?.Name ?? "-", i.SystemQuantity, i.CountedQuantity)).ToList());
+    }
+
+    public async Task<StockCountDto?> GetStockCountAsync(int id)
+    {
+        var stockCount = await _unitOfWork.StockCounts.GetByIdAsync(id);
+        if (stockCount is null) return null;
+
+        return new StockCountDto(
+            stockCount.Id, stockCount.CountNumber, stockCount.Warehouse?.Name ?? "-",
+            stockCount.Status.ToString(), stockCount.CountDate,
+            stockCount.Items.Select(i => new StockCountItemDto(
+                i.ProductId, i.Product?.Name ?? "-", i.SystemQuantity, i.CountedQuantity)).ToList());
+    }
+
+    public async Task<IEnumerable<StockCountSummaryDto>> GetStockCountsAsync()
+    {
+        var counts = await _unitOfWork.StockCounts.GetAllAsync();
+        return counts.Select(c => new StockCountSummaryDto(
+            c.Id, c.CountNumber, c.CountDate, c.Warehouse?.Name ?? "-", c.Status.ToString()));
     }
 
     public async Task CloseStockCountAsync(int stockCountId, Dictionary<int, decimal> countedQuantities, string? userId)

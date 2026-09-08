@@ -23,7 +23,8 @@ public class UnitOfWork : IUnitOfWork
     public IScrapRecordRepository ScrapRecords { get; private set; }
     public IStockTransferRepository StockTransfers { get; private set; }
     public IStockCountRepository StockCounts { get; private set; }
-
+    public ICustomerRepository Customers { get; private set; }
+    public ISalesInvoiceRepository SalesInvoices { get; private set; }
     public UnitOfWork(
         AppDbContext context,
         IProductRepository products,
@@ -38,7 +39,10 @@ public class UnitOfWork : IUnitOfWork
         ISalesReturnRepository salesReturns,
         IScrapRecordRepository scrapRecords,
         IStockTransferRepository stockTransfers,
-        IStockCountRepository stockCounts)
+        IStockCountRepository stockCounts,
+        ICustomerRepository customers,
+ISalesInvoiceRepository salesInvoices)
+
     {
         _context = context;
         Products = products;
@@ -55,6 +59,8 @@ public class UnitOfWork : IUnitOfWork
         ScrapRecords = scrapRecords;
         StockTransfers = stockTransfers;
         StockCounts = stockCounts;
+        Customers = customers;
+        SalesInvoices = salesInvoices;
     }
 
     // این همان متد جادویی است که همه چیز را یک‌باره ذخیره می‌کند

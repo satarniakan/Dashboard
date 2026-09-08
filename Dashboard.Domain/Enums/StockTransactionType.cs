@@ -12,5 +12,7 @@ public enum StockTransactionType
     TransferOut,            // خروج به‌خاطر انتقال بین انبار (کاهش)
     TransferIn,              // ورود به‌خاطر انتقال بین انبار (افزایش)
     StockCountIncrease,      // اصلاح مثبت پس از انبارگردانی
-    StockCountDecrease       // اصلاح منفی پس از انبارگردانی
+    StockCountDecrease,       // اصلاح منفی پس از انبارگردانی
+    Sale,               // <- جدید: کاهش موجودی به‌خاطر فروش
+    SaleCancellation    // <- جدید: برگشت موجودی به‌خاطر لغو فاکتور
 }

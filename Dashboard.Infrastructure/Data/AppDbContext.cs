@@ -37,7 +37,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<StockCount> StockCounts => Set<StockCount>();
     public DbSet<StockCountItem> StockCountItems => Set<StockCountItem>();
-
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<SalesInvoice> SalesInvoices => Set<SalesInvoice>();
+    public DbSet<SalesInvoiceItem> SalesInvoiceItems => Set<SalesInvoiceItem>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder); // required — sets up Identity's tables
@@ -171,6 +173,31 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.Property(i => i.SystemQuantity).HasColumnType("decimal(18,3)");
             e.Property(i => i.CountedQuantity).HasColumnType("decimal(18,3)");
             e.Ignore(i => i.Discrepancy); // محاسبه‌شده در حافظه، ستون دیتابیس نمی‌خواهد
+            e.HasOne(i => i.Product).WithMany().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);
+        });
+        // ---------- Customer ----------
+        builder.Entity<Customer>(e =>
+        {
+            e.Property(c => c.Name).HasMaxLength(150).IsRequired();
+        });
+
+        // ---------- SalesInvoice ----------
+        builder.Entity<SalesInvoice>(e =>
+        {
+            e.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(s => s.DiscountAmount).HasColumnType("decimal(18,2)");
+            e.Property(s => s.TotalAmount).HasColumnType("decimal(18,2)");
+            e.Property(s => s.InvoiceNumber).HasMaxLength(50).IsRequired();
+            e.HasIndex(s => s.InvoiceNumber).IsUnique();
+
+            e.HasOne(s => s.Customer).WithMany().HasForeignKey(s => s.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(s => s.Warehouse).WithMany().HasForeignKey(s => s.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(s => s.Items).WithOne(i => i.SalesInvoice!).HasForeignKey(i => i.SalesInvoiceId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<SalesInvoiceItem>(e =>
+        {
+            e.Property(i => i.Quantity).HasColumnType("decimal(18,3)");
+            e.Property(i => i.UnitPrice).HasColumnType("decimal(18,2)");
             e.HasOne(i => i.Product).WithMany().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);
         });
     }

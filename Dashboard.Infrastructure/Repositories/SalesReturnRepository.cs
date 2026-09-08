@@ -18,6 +18,7 @@ public class SalesReturnRepository : ISalesReturnRepository
 
     public async Task<IEnumerable<SalesReturn>> GetAllAsync() =>
         await _context.SalesReturns
+            .Include(r => r.Items)
             .Include(r => r.Warehouse)
             .OrderByDescending(r => r.ReturnDate)
             .ToListAsync();

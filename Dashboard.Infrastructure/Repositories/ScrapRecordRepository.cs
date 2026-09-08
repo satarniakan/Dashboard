@@ -18,6 +18,7 @@ public class ScrapRecordRepository : IScrapRecordRepository
 
     public async Task<IEnumerable<ScrapRecord>> GetAllAsync() =>
         await _context.ScrapRecords
+            .Include(r => r.Items)
             .Include(r => r.Warehouse)
             .OrderByDescending(r => r.RecordDate)
             .ToListAsync();

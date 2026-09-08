@@ -1,0 +1,126 @@
+@page "/warehouse/internal-issues/add"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.InternalIssuesManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using System.Security.Claims
+@inject IStockService StockService
+@inject IProductService ProductService
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>ثبت حواله مصرف داخلی</PageTitle>
+
+<h3>ثبت حواله مصرف داخلی</h3>
+
+<div class="card-panel" style="max-width: 680px;">
+    <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddInternalIssueForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="mb-3" />
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">انبار</label>
+                <select class="form-select" @bind="model.WarehouseId">
+                    <option value="0">-- انتخاب کنید --</option>
+                    @if (warehouses is not null)
+                    {
+                        @foreach (var w in warehouses)
+                        {
+                            <option value="@w.Id">@w.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">شماره حواله</label>
+                <InputText class="form-control" @bind-Value="model.IssueNumber" />
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">تاریخ</label>
+                <InputDate class="form-control" @bind-Value="model.IssueDate" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">هدف مصرف (اختیاری)</label>
+                <InputText class="form-control" @bind-Value="model.Purpose" placeholder="مثلاً: مصرف داخلی خط تولید" />
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">توضیحات (اختیاری)</label>
+            <InputTextArea class="form-control" @bind-Value="model.Notes" />
+        </div>
+
+        <hr />
+        <h6 class="mb-3">اقلام حواله</h6>
+
+        <StockItemRowsEditor Items="model.Items" Products="@(products ?? Enumerable.Empty<ProductDto>())" />
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-3">@errorMessage</div>
+        }
+
+        <div class="d-flex gap-2 mt-3">
+            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                @(isSaving ? "در حال ذخیره..." : "ثبت حواله")
+            </button>
+            <a href="/warehouse/internal-issues" class="btn btn-outline-secondary">انصراف</a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+
+    private CreateInternalIssueDto? model { get; set; } = new();
+    protected override void OnInitialized()
+    {
+        model ??= new();
+    }
+
+    private IEnumerable<ProductDto>? products;
+    private IEnumerable<WarehouseDto>? warehouses;
+
+    private bool isSaving;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        model.Items.Add(new StockItemInput());
+        warehouses = await StockService.GetWarehousesAsync();
+        products = await ProductService.GetAllProductsAsync();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            if (model.WarehouseId == 0)
+            {
+                errorMessage = "انتخاب انبار الزامی است.";
+                return;
+            }
+
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+
+            await StockService.RegisterInternalIssueAsync(model, userId);
+            NavigationManager.NavigateTo("/warehouse/internal-issues");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"ثبت حواله ناموفق بود: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

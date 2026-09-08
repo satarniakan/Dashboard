@@ -18,6 +18,7 @@ public class InternalIssueRepository : IInternalIssueRepository
 
     public async Task<IEnumerable<InternalIssue>> GetAllAsync() =>
         await _context.InternalIssues
+            .Include(i => i.Items)
             .Include(i => i.Warehouse)
             .OrderByDescending(i => i.IssueDate)
             .ToListAsync();

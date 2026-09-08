@@ -1,0 +1,78 @@
+@page "/warehouse/suppliers/add"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.SuppliersManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@inject IStockService StockService
+@inject NavigationManager NavigationManager
+
+<PageTitle>افزودن تأمین‌کننده</PageTitle>
+
+<h3>افزودن تأمین‌کننده</h3>
+
+<div class="card-panel" style="max-width: 480px;">
+    <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddSupplierForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="mb-3" />
+
+        <div class="mb-3">
+            <label class="form-label">نام تأمین‌کننده</label>
+            <InputText class="form-control" @bind-Value="model.Name" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">شخص رابط (اختیاری)</label>
+            <InputText class="form-control" @bind-Value="model.ContactPerson" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">تلفن (اختیاری)</label>
+            <InputText class="form-control" @bind-Value="model.Phone" />
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">آدرس (اختیاری)</label>
+            <InputText class="form-control" @bind-Value="model.Address" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                @(isSaving ? "در حال ذخیره..." : "ذخیره تأمین‌کننده")
+            </button>
+            <a href="/warehouse/suppliers" class="btn btn-outline-secondary">انصراف</a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private CreateSupplierDto model { get; set; } = new();
+
+    private bool isSaving;
+    private string? errorMessage;
+
+    private async Task HandleValidSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            await StockService.CreateSupplierAsync(model);
+            NavigationManager.NavigateTo("/warehouse/suppliers");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"ذخیره تأمین‌کننده ناموفق بود: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

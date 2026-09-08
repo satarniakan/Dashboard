@@ -1,0 +1,174 @@
+@page "/warehouse/purchase-receipts/add"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.PurchaseReceiptsManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using System.Security.Claims
+@inject IStockService StockService
+@inject IProductService ProductService
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>ثبت رسید خرید</PageTitle>
+
+<h3>ثبت رسید خرید</h3>
+
+<div class="card-panel" style="max-width: 720px;">
+    <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddPurchaseReceiptForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="mb-3" />
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">تأمین‌کننده</label>
+                <select class="form-select" @bind="model.SupplierId">
+                    <option value="0">-- انتخاب کنید --</option>
+                    @if (suppliers is not null)
+                    {
+                        @foreach (var s in suppliers)
+                        {
+                            <option value="@s.Id">@s.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">انبار مقصد</label>
+                <select class="form-select" @bind="model.WarehouseId">
+                    <option value="0">-- انتخاب کنید --</option>
+                    @if (warehouses is not null)
+                    {
+                        @foreach (var w in warehouses)
+                        {
+                            <option value="@w.Id">@w.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">شماره رسید</label>
+                <InputText class="form-control" @bind-Value="model.ReceiptNumber" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">تاریخ</label>
+                <InputDate class="form-control" @bind-Value="model.ReceiptDate" />
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">توضیحات (اختیاری)</label>
+            <InputTextArea class="form-control" @bind-Value="model.Notes" />
+        </div>
+
+        <hr />
+        <h6 class="mb-3">اقلام رسید</h6>
+
+        <table class="table mb-2">
+            <thead>
+                <tr>
+                    <th style="width: 45%">کالا</th>
+                    <th style="width: 20%">مقدار</th>
+                    <th style="width: 25%">بهای تمام‌شده واحد</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < model.Items.Count; i++)
+                {
+                    var row = model.Items[i];
+                    <tr>
+                        <td>
+                            <select class="form-select" @bind="row.ProductId">
+                                <option value="0">-- انتخاب کالا --</option>
+                                @if (products is not null)
+                                {
+                                    @foreach (var p in products)
+                                    {
+                                        <option value="@p.Id">@p.Name</option>
+                                    }
+                                }
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" class="form-control" step="0.01" min="0" @bind="row.Quantity" />
+                        </td>
+                        <td>
+                            <input type="number" class="form-control" step="0.01" min="0" @bind="row.UnitCost" />
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => model.Items.Remove(row)">حذف</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <button type="button" class="btn btn-sm btn-outline-primary mb-4" @onclick="AddRow">+ افزودن ردیف</button>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                @(isSaving ? "در حال ذخیره..." : "ثبت رسید")
+            </button>
+            <a href="/warehouse/purchase-receipts" class="btn btn-outline-secondary">انصراف</a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private CreatePurchaseReceiptDto model { get; set; } = new();
+
+    private IEnumerable<ProductDto>? products;
+    private IEnumerable<WarehouseDto>? warehouses;
+    private IEnumerable<SupplierDto>? suppliers;
+
+    private bool isSaving;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        model.Items.Add(new PurchaseReceiptItemInput());
+        warehouses = await StockService.GetWarehousesAsync();
+        suppliers = await StockService.GetSuppliersAsync();
+        products = await ProductService.GetAllProductsAsync();
+    }
+
+    private void AddRow() => model.Items.Add(new PurchaseReceiptItemInput());
+
+    private async Task HandleValidSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            if (model.SupplierId == 0 || model.WarehouseId == 0)
+            {
+                errorMessage = "انتخاب تأمین‌کننده و انبار الزامی است.";
+                return;
+            }
+
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+
+            await StockService.RegisterPurchaseReceiptAsync(model, userId);
+            NavigationManager.NavigateTo("/warehouse/purchase-receipts");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"ثبت رسید ناموفق بود: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

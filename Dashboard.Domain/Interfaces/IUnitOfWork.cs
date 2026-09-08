@@ -20,7 +20,8 @@ public interface IUnitOfWork
     IScrapRecordRepository ScrapRecords { get; }
     IStockTransferRepository StockTransfers { get; }
     IStockCountRepository StockCounts { get; }
-
+    ICustomerRepository Customers { get; }
+    ISalesInvoiceRepository SalesInvoices { get; }
     // این همان متد جادویی است که در پایان، همه تغییرات را یک‌باره ذخیره می‌کند
     Task<int> CompleteAsync();
 }
