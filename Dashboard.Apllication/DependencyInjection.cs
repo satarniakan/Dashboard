@@ -26,7 +26,7 @@ public static class DependencyInjection
         // (SalesService, TreasuryService) گذاشته‌ایم.
         services.AddScoped<IJournalService, JournalService>();
         services.AddScoped<ITreasuryService, TreasuryService>();
-
+        services.AddScoped<IInstallmentService, InstallmentService>();
         return services;
     }
 }

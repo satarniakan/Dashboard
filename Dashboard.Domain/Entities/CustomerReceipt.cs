@@ -24,4 +24,8 @@ public class CustomerReceipt
     public string? Notes { get; set; }
     public string? CreatedByUserId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    // اگر این دریافت بابت یک قسط مشخص است (اختیاری)
+    public int? InstallmentId { get; set; }
+    public Installment? Installment { get; set; }
+
 }

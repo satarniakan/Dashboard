@@ -95,8 +95,29 @@ public class TreasuryService : ITreasuryService
             ChequeNumber = dto.ChequeNumber,
             ChequeDueDate = dto.ChequeDueDate,
             Notes = dto.Notes,
+            InstallmentId = dto.InstallmentId,
             CreatedByUserId = userId
         };
+
+        await _unitOfWork.CustomerReceipts.AddAsync(receipt);
+
+        if (dto.InstallmentId.HasValue)
+        {
+            var installment = await _unitOfWork.InstallmentPlans.GetInstallmentByIdAsync(dto.InstallmentId.Value)
+                ?? throw new InvalidOperationException("قسط انتخاب‌شده یافت نشد.");
+
+            installment.PaidAmount += dto.Amount;
+        }
+
+        await _unitOfWork.CustomerReceipts.AddAsync(receipt);
+
+        if (dto.InstallmentId.HasValue)
+        {
+            var installment = await _unitOfWork.InstallmentPlans.GetInstallmentByIdAsync(dto.InstallmentId.Value)
+                ?? throw new InvalidOperationException("قسط انتخاب‌شده یافت نشد.");
+
+            installment.PaidAmount += dto.Amount;
+        }
 
         await _unitOfWork.CustomerReceipts.AddAsync(receipt);
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("CustomerReceiptRegistered", userId, $"دریافت {dto.ReceiptNumber} به مبلغ {dto.Amount} ثبت شد."));

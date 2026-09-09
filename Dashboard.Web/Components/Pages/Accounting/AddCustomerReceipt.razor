@@ -9,12 +9,16 @@
 @inject ISalesService SalesService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
-
+@inject IInstallmentService InstallmentService
 <PageTitle>ثبت دریافت از مشتری</PageTitle>
 
 <h3>ثبت دریافت از مشتری</h3>
 
 <div class="card-panel" style="max-width: 560px;">
+    @if (InstallmentIdFromQuery.HasValue)
+    {
+        <div class="alert alert-info">این دریافت برای یک قسط مشخص ثبت می‌شود.</div>
+    }
     <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddCustomerReceiptForm">
         <DataAnnotationsValidator />
         <ValidationSummary class="mb-3" />
@@ -121,9 +125,18 @@
     {
         customers = await SalesService.GetCustomersAsync();
         financialAccounts = await TreasuryService.GetFinancialAccountsAsync();
+        if (InstallmentIdFromQuery.HasValue)
+        {
+            model.InstallmentId = InstallmentIdFromQuery;
+            if (AmountFromQuery.HasValue)
+            {
+                model.Amount = AmountFromQuery.Value;
+            }
+        }
     }
 
     private async Task HandleValidSubmit()
+    
     {
         isSaving = true;
         errorMessage = null;
@@ -150,9 +163,11 @@
             isSaving = false;
         }
     }
+    [SupplyParameterFromQuery(Name = "installmentId")]
+    private int? InstallmentIdFromQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "amount")]
+    private decimal? AmountFromQuery { get; set; }
 }
 <h3>AddCustomerReceipt</h3>
 
-@code {
-
-}

@@ -46,6 +46,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<FinancialAccount> FinancialAccounts => Set<FinancialAccount>();
     public DbSet<CustomerReceipt> CustomerReceipts => Set<CustomerReceipt>();
     public DbSet<SupplierPayment> SupplierPayments => Set<SupplierPayment>();
+    public DbSet<InstallmentPlan> InstallmentPlans => Set<InstallmentPlan>();
+    public DbSet<Installment> Installments => Set<Installment>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder); // required — sets up Identity's tables
@@ -247,6 +249,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(r => r.ReceiptNumber).IsUnique();
             e.HasOne(r => r.Customer).WithMany().HasForeignKey(r => r.CustomerId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(r => r.FinancialAccount).WithMany().HasForeignKey(r => r.FinancialAccountId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(r => r.Installment).WithMany().HasForeignKey(r => r.InstallmentId).OnDelete(DeleteBehavior.Restrict);
+
         });
 
         // ---------- SupplierPayment ----------
@@ -258,6 +262,20 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(p => p.PaymentNumber).IsUnique();
             e.HasOne(p => p.Supplier).WithMany().HasForeignKey(p => p.SupplierId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(p => p.FinancialAccount).WithMany().HasForeignKey(p => p.FinancialAccountId).OnDelete(DeleteBehavior.Restrict);
+        });
+        // ---------- InstallmentPlan ----------
+        builder.Entity<InstallmentPlan>(e =>
+        {
+            e.HasOne(p => p.SalesInvoice).WithMany().HasForeignKey(p => p.SalesInvoiceId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(p => p.SalesInvoiceId).IsUnique(); // هر فاکتور فقط یک طرح اقساط
+            e.HasMany(p => p.Installments).WithOne(i => i.InstallmentPlan!).HasForeignKey(i => i.InstallmentPlanId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<Installment>(e =>
+        {
+            e.Property(i => i.Amount).HasColumnType("decimal(18,2)");
+            e.Property(i => i.PaidAmount).HasColumnType("decimal(18,2)");
+            e.Ignore(i => i.IsFullyPaid);
+            e.Ignore(i => i.IsOverdue);
         });
     }
 }

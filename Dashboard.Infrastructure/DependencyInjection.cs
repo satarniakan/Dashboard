@@ -55,7 +55,7 @@ public static class DependencyInjection
         services.AddScoped<IFinancialAccountRepository, FinancialAccountRepository>();
         services.AddScoped<ICustomerReceiptRepository, CustomerReceiptRepository>();
         services.AddScoped<ISupplierPaymentRepository, SupplierPaymentRepository>();
-
+        services.AddScoped<IInstallmentPlanRepository, InstallmentPlanRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }

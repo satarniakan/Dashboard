@@ -29,6 +29,7 @@ public interface IUnitOfWork
     IFinancialAccountRepository FinancialAccounts { get; }
     ICustomerReceiptRepository CustomerReceipts { get; }
     ISupplierPaymentRepository SupplierPayments { get; }
+    IInstallmentPlanRepository InstallmentPlans { get; }
 
     // این همان متد جادویی است که در پایان، همه تغییرات را یک‌باره ذخیره می‌کند
     Task<int> CompleteAsync();

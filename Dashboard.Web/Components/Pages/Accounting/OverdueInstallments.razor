@@ -1,0 +1,62 @@
+﻿@page "/accounting/overdue-installments"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.TreasuryManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@inject IInstallmentService InstallmentService
+
+<PageTitle>اقساط معوق</PageTitle>
+
+<h3>اقساط معوق</h3>
+
+<div class="card-panel">
+    @if (overdue is null)
+    {
+        <p class="text-muted">در حال بارگذاری...</p>
+    }
+    else if (!overdue.Any())
+    {
+        <p class="text-success text-center py-4">🎉 هیچ قسط معوقی وجود ندارد.</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>فاکتور</th>
+                    <th>مشتری</th>
+                    <th>سررسید</th>
+                    <th>روزهای تأخیر</th>
+                    <th>مبلغ باقی‌مانده</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var o in overdue)
+                {
+                    <tr class="table-danger">
+                        <td class="fw-medium">@o.InvoiceNumber</td>
+                        <td>@o.CustomerName</td>
+                        <td>@o.DueDate.ToString("yyyy/MM/dd")</td>
+                        <td class="fw-bold">@o.DaysOverdue روز</td>
+                        <td>@CurrencyFormatter.ToToman(o.Amount - o.PaidAmount)</td>
+                        <td>
+                            <a href="/accounting/customer-receipts/add?installmentId=@o.InstallmentId&amount=@(o.Amount - o.PaidAmount)" class="btn btn-sm btn-outline-primary">ثبت دریافت</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private IEnumerable<OverdueInstallmentDto>? overdue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        overdue = await InstallmentService.GetOverdueInstallmentsAsync();
+    }
+}

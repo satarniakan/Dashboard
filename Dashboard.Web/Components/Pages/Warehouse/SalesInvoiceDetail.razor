@@ -10,7 +10,7 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
-
+@inject IInstallmentService InstallmentService
 <PageTitle>فاکتور @invoice?.InvoiceNumber</PageTitle>
 
 @if (invoice is null)
@@ -105,7 +105,108 @@ else
             <p class="text-muted mt-4 mb-0">توضیحات: @invoice.Notes</p>
         }
     </div>
+    @if (invoice.Status == "Confirmed")
+    {
+        <div class="no-print card-panel mt-4">
+            <h5 class="mb-3">اقساط</h5>
 
+            @if (installmentPlan is null)
+            {
+                @if (!showPlanForm)
+                {
+                    <button class="btn btn-outline-primary" @onclick="() => showPlanForm = true">تعریف طرح اقساط</button>
+                }
+                else
+                {
+                    <p class="text-muted mb-3">جمع اقساط باید دقیقاً برابر @CurrencyFormatter.ToToman(invoice.TotalAmount) باشد.</p>
+
+                    <table class="table mb-2">
+                        <thead>
+                            <tr>
+                                <th>سررسید</th>
+                                <th>مبلغ</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < planRows.Count; i++)
+                            {
+                                var row = planRows[i];
+                                <tr>
+                                    <td><input type="date" class="form-control" @bind="row.DueDate" /></td>
+                                    <td><input type="number" class="form-control" @bind="row.Amount" /></td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => planRows.Remove(row)">حذف</button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddPlanRow">+ افزودن قسط</button>
+                        <span class="text-muted">
+                            جمع فعلی: @CurrencyFormatter.ToToman(planRows.Sum(r => r.Amount))
+                        </span>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(planError))
+                    {
+                        <div class="alert alert-danger">@planError</div>
+                    }
+
+                    <button class="btn btn-primary" disabled="@isSavingPlan" @onclick="SavePlan">
+                        @(isSavingPlan ? "در حال ذخیره..." : "ذخیره طرح اقساط")
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="() => showPlanForm = false">انصراف</button>
+                }
+            }
+            else
+            {
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>سررسید</th>
+                            <th>مبلغ</th>
+                            <th>پرداخت‌شده</th>
+                            <th>وضعیت</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var inst in installmentPlan.Installments)
+                        {
+                            <tr class="@(inst.IsOverdue ? "table-danger" : "")">
+                                <td>@inst.SequenceNumber</td>
+                                <td>@inst.DueDate.ToString("yyyy/MM/dd")</td>
+                                <td>@CurrencyFormatter.ToToman(inst.Amount)</td>
+                                <td>@CurrencyFormatter.ToToman(inst.PaidAmount)</td>
+                                <td>
+                                    @if (inst.IsFullyPaid)
+                                    {
+                                        <span class="badge bg-success-subtle text-success">تسویه‌شده</span>
+                                    }
+                                    else if (inst.IsOverdue)
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger">معوق</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning-subtle text-warning">در انتظار</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!inst.IsFullyPaid)
+                                    {
+                                        <a href="@GetReceiptLink(inst)" class="btn btn-sm btn-outline-primary">ثبت دریافت</a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    }
     <div class="no-print mt-3">
         <a href="/warehouse/sales" class="btn btn-outline-secondary">بازگشت به لیست</a>
     </div>
@@ -121,6 +222,10 @@ else
     protected override async Task OnInitializedAsync()
     {
         invoice = await SalesService.GetInvoiceAsync(Id);
+        if (invoice?.Status == "Confirmed")
+        {
+            installmentPlan = await InstallmentService.GetInstallmentPlanAsync(Id);
+        }
     }
 
     private async Task<string?> GetUserIdAsync()
@@ -172,5 +277,57 @@ else
     private async Task Print()
     {
         await JS.InvokeVoidAsync("print");
+    }
+    private InstallmentPlanDto? installmentPlan;
+    private bool showPlanForm;
+    private bool isSavingPlan;
+    private string? planError;
+    private List<InstallmentRowModel> planRows = new();
+
+    private class InstallmentRowModel
+    {
+        public DateTime DueDate { get; set; } = DateTime.UtcNow.AddMonths(1);
+        public decimal Amount { get; set; }
+    }
+    private void AddPlanRow() => planRows.Add(new InstallmentRowModel());
+
+    private async Task SavePlan()
+    {
+        isSavingPlan = true;
+        planError = null;
+        try
+        {
+            if (planRows.Sum(r => r.Amount) != invoice!.TotalAmount)
+            {
+                planError = "جمع اقساط باید دقیقاً برابر مبلغ فاکتور باشد.";
+                return;
+            }
+
+            var dto = new CreateInstallmentPlanDto
+            {
+                SalesInvoiceId = Id,
+                Installments = planRows.Select(r => new InstallmentInput(r.DueDate, r.Amount)).ToList()
+            };
+
+            var userId = await GetUserIdAsync();
+            await InstallmentService.CreateInstallmentPlanAsync(dto, userId);
+
+            installmentPlan = await InstallmentService.GetInstallmentPlanAsync(Id);
+            showPlanForm = false;
+        }
+        catch (Exception ex)
+        {
+            planError = ex.Message;
+        }
+        finally
+        {
+            isSavingPlan = false;
+        }
+    }
+
+    private string GetReceiptLink(InstallmentDto inst)
+    {
+        var remaining = inst.Amount - inst.PaidAmount;
+        return $"/accounting/customer-receipts/add?installmentId={inst.Id}&amount={remaining}";
     }
 }

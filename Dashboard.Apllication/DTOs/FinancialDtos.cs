@@ -9,6 +9,7 @@ public class CreateFinancialAccountDto
     public string? BankName { get; set; }
     public string? AccountNumber { get; set; }
     public string? Iban { get; set; }
+
 }
 
 public class CreateCustomerReceiptDto
@@ -22,6 +23,7 @@ public class CreateCustomerReceiptDto
     public string? ChequeNumber { get; set; }
     public DateTime? ChequeDueDate { get; set; }
     public string? Notes { get; set; }
+    public int? InstallmentId { get; set; }
 }
 
 public record CustomerReceiptDto(int Id, string ReceiptNumber, DateTime ReceiptDate, string? CustomerName, string FinancialAccountName, decimal Amount, string Method);
