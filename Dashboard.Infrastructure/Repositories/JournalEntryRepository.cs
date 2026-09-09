@@ -17,7 +17,10 @@ public class JournalEntryRepository : IJournalEntryRepository
 
     public async Task<IEnumerable<JournalEntry>> GetAllAsync() =>
         await _context.JournalEntries
-            .Include(e => e.Lines)
+            // ThenInclude(Account) لازم است چون MapToDto در JournalService از l.Account.Code/Name
+            // استفاده می‌کند؛ بدونش همیشه "-" برمی‌گشت (به‌خاطر ?? در همان متد، خطا نمی‌داد
+            // ولی داده‌ی غلط نشان می‌داد).
+            .Include(e => e.Lines).ThenInclude(l => l.Account)
             .OrderByDescending(e => e.EntryDate)
             .ToListAsync();
 

@@ -1,137 +1,182 @@
 @using Microsoft.AspNetCore.Components.Authorization
-<AuthorizeView>
-    <Authorized>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="">خانه</NavLink>
-        </div>
 
-        <AuthorizeView Roles="@Dashboard.Domain.Identity.Roles.Admin" Context="adminMenuContext">
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="products">محصولات</NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="audit-logs">گزارش رویدادها</NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="admin/users">مدیریت کاربران</NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="admin/roles">مدیریت مجوزها</NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Dashboard</a>
+    </div>
+</div>
 
-        <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.StockView" Context="warehouseMenuContext">
-            <Authorized>
-                <div class="nav-item px-3 mt-2">
-                    <span class="text-muted small">انبارداری</span>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="warehouse/stock">موجودی کالاها</NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="warehouse/purchase-receipts">رسیدهای خرید</NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="warehouse/internal-issues">حواله‌های مصرف داخلی</NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="warehouse/sales-returns">برگشت از فروش</NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="warehouse/scrap">ضایعات</NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="warehouse/transfers">انتقال بین انبار</NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="warehouse/stock-counts">انبارگردانی</NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="warehouse/history">تاریخچه رویدادهای انبار</NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
-        <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.WarehousesManage" Context="warehousesManageContext">
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <AuthorizeView>
             <Authorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="warehouse/warehouses">انبارها</NavLink>
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">خانه</NavLink>
                 </div>
-            </Authorized>
-        </AuthorizeView>
-        <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.CustomersManage" Context="customersMenuContext">
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="warehouse/customers">مشتریان</NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-        <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.SalesView" Context="salesMenuContext">
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="warehouse/sales">فاکتورهای فروش</NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-        <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.AccountingView" Context="accountingMenuContext">
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="accounting/journal">دفتر روزنامه</NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="accounting/trial-balance">تراز آزمایشی</NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-        <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.AccountingView" Context="accountingMenuContext">
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="accounting/journal">دفتر روزنامه</NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="accounting/trial-balance">تراز آزمایشی</NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-        <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.TreasuryManage" Context="treasuryMenuContext">
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="accounting/financial-accounts">صندوق و بانک</NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="accounting/customer-receipts">دریافت از مشتری</NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="accounting/supplier-payments">پرداخت به تأمین‌کننده</NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-        <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.SuppliersManage" Context="suppliersManageContext">
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="warehouse/suppliers">تأمین‌کنندگان</NavLink>
-                </div>
-            </Authorized>
-        </AuthorizeView>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="profile">پروفایل من</NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <form action="/logout" method="post" data-enhance="false">
-                <AntiforgeryToken />
-                <button type="submit" class="nav-link btn btn-link">خروج</button>
-            </form>
-        </div>
-    </Authorized>
-    <NotAuthorized>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="">خانه</NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="login">ورود / ثبت‌نام</NavLink>
-        </div>
-    </NotAuthorized>
-</AuthorizeView>
+                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.ProductsView" Context="productsCtx">
+                    <Authorized>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="products">محصولات</NavLink>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+
+                <!-- ===================== بخش انبار ===================== -->
+                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.StockView" Context="warehouseSectionCtx">
+                    <Authorized>
+                        <div class="nav-section">
+                            <div class="nav-section-header" @onclick="() => Toggle(nameof(warehouseOpen))">
+                                <span>انبار</span>
+                                <span class="nav-caret">@(warehouseOpen ? "⌄" : "›")</span>
+                            </div>
+                            <div class="nav-section-body @(warehouseOpen ? "" : "d-none")">
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.WarehousesManage" Context="c1">
+                                    <Authorized><div class="nav-item px-3"><NavLink class="nav-link" href="warehouse/warehouses">انبارها</NavLink></div></Authorized>
+                                </AuthorizeView>
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.SuppliersManage" Context="c2">
+                                    <Authorized><div class="nav-item px-3"><NavLink class="nav-link" href="warehouse/suppliers">تأمین‌کنندگان</NavLink></div></Authorized>
+                                </AuthorizeView>
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.StockView" Context="c3">
+                                    <Authorized><div class="nav-item px-3"><NavLink class="nav-link" href="warehouse/stock-levels">موجودی کالا</NavLink></div></Authorized>
+                                </AuthorizeView>
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.PurchaseReceiptsManage" Context="c4">
+                                    <Authorized><div class="nav-item px-3"><NavLink class="nav-link" href="warehouse/purchase-receipts">رسیدهای خرید</NavLink></div></Authorized>
+                                </AuthorizeView>
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.InternalIssuesManage" Context="c5">
+                                    <Authorized><div class="nav-item px-3"><NavLink class="nav-link" href="warehouse/internal-issues">حواله مصرف داخلی</NavLink></div></Authorized>
+                                </AuthorizeView>
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.SalesReturnsManage" Context="c6">
+                                    <Authorized><div class="nav-item px-3"><NavLink class="nav-link" href="warehouse/sales-returns">برگشت از فروش</NavLink></div></Authorized>
+                                </AuthorizeView>
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.ScrapRecordsManage" Context="c7">
+                                    <Authorized><div class="nav-item px-3"><NavLink class="nav-link" href="warehouse/scrap-records">ضایعات</NavLink></div></Authorized>
+                                </AuthorizeView>
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.StockTransfersManage" Context="c8">
+                                    <Authorized><div class="nav-item px-3"><NavLink class="nav-link" href="warehouse/stock-transfers">انتقال بین انبار</NavLink></div></Authorized>
+                                </AuthorizeView>
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.StockCountsManage" Context="c9">
+                                    <Authorized><div class="nav-item px-3"><NavLink class="nav-link" href="warehouse/stock-counts">انبارگردانی</NavLink></div></Authorized>
+                                </AuthorizeView>
+                            </div>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+
+                <!-- ===================== بخش فروش ===================== -->
+                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.SalesView" Context="salesSectionCtx">
+                    <Authorized>
+                        <div class="nav-section">
+                            <div class="nav-section-header" @onclick="() => Toggle(nameof(salesOpen))">
+                                <span>فروش</span>
+                                <span class="nav-caret">@(salesOpen ? "⌄" : "›")</span>
+                            </div>
+                            <div class="nav-section-body @(salesOpen ? "" : "d-none")">
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.CustomersManage" Context="c10">
+                                    <Authorized><div class="nav-item px-3"><NavLink class="nav-link" href="warehouse/customers">مشتریان</NavLink></div></Authorized>
+                                </AuthorizeView>
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.SalesView" Context="c11">
+                                    <Authorized><div class="nav-item px-3"><NavLink class="nav-link" href="warehouse/sales">فاکتورهای فروش</NavLink></div></Authorized>
+                                </AuthorizeView>
+                            </div>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+
+                <!-- ===================== بخش حسابداری ===================== -->
+                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.AccountingView" Context="accountingSectionCtx">
+                    <Authorized>
+                        <div class="nav-section">
+                            <div class="nav-section-header" @onclick="() => Toggle(nameof(accountingOpen))">
+                                <span>حسابداری</span>
+                                <span class="nav-caret">@(accountingOpen ? "⌄" : "›")</span>
+                            </div>
+                            <div class="nav-section-body @(accountingOpen ? "" : "d-none")">
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.AccountingView" Context="c12">
+                                    <Authorized>
+                                        <div class="nav-item px-3"><NavLink class="nav-link" href="accounting/journal">دفتر روزنامه</NavLink></div>
+                                        <div class="nav-item px-3"><NavLink class="nav-link" href="accounting/trial-balance">تراز آزمایشی</NavLink></div>
+                                        <div class="nav-item px-3"><NavLink class="nav-link" href="accounting/customer-statement">گردش حساب مشتری</NavLink></div>
+                                        <div class="nav-item px-3"><NavLink class="nav-link" href="accounting/supplier-statement">گردش حساب تأمین‌کننده</NavLink></div>
+                                        <div class="nav-item px-3"><NavLink class="nav-link" href="accounting/profit-and-loss">صورت سود و زیان</NavLink></div>
+                                    </Authorized>
+                                </AuthorizeView>
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.TreasuryManage" Context="c13">
+                                    <Authorized>
+                                        <div class="nav-item px-3"><NavLink class="nav-link" href="accounting/financial-accounts">صندوق و بانک</NavLink></div>
+                                        <div class="nav-item px-3"><NavLink class="nav-link" href="accounting/customer-receipts">دریافت از مشتری</NavLink></div>
+                                        <div class="nav-item px-3"><NavLink class="nav-link" href="accounting/supplier-payments">پرداخت به تأمین‌کننده</NavLink></div>
+                                    </Authorized>
+                                </AuthorizeView>
+                            </div>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+
+                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.AuditLogsView" Context="auditCtx">
+                    <Authorized>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="audit-logs">گزارش رویدادها</NavLink>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+
+                <!-- ===================== بخش مدیریت (فقط ادمین) ===================== -->
+                <AuthorizeView Roles="@Dashboard.Domain.Identity.Roles.Admin" Context="adminSectionCtx">
+                    <Authorized>
+                        <div class="nav-section">
+                            <div class="nav-section-header" @onclick="() => Toggle(nameof(adminOpen))">
+                                <span>مدیریت</span>
+                                <span class="nav-caret">@(adminOpen ? "⌄" : "›")</span>
+                            </div>
+                            <div class="nav-section-body @(adminOpen ? "" : "d-none")">
+                                <div class="nav-item px-3"><NavLink class="nav-link" href="admin/users">کاربران</NavLink></div>
+                                <div class="nav-item px-3"><NavLink class="nav-link" href="admin/roles">مدیریت مجوزها</NavLink></div>
+                            </div>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+
+                <hr class="nav-divider" />
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="profile">پروفایل من</NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <form action="/logout" method="post" data-enhance="false">
+                        <AntiforgeryToken />
+                        <button type="submit" class="nav-link btn btn-link">خروج</button>
+                    </form>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">خانه</NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="login">ورود / ثبت‌نام</NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    private bool warehouseOpen = true;
+    private bool salesOpen;
+    private bool accountingOpen;
+    private bool adminOpen;
+
+    private void Toggle(string sectionName)
+    {
+        switch (sectionName)
+        {
+            case nameof(warehouseOpen): warehouseOpen = !warehouseOpen; break;
+            case nameof(salesOpen): salesOpen = !salesOpen; break;
+            case nameof(accountingOpen): accountingOpen = !accountingOpen; break;
+            case nameof(adminOpen): adminOpen = !adminOpen; break;
+        }
+    }
+}

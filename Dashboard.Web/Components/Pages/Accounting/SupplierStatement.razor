@@ -1,0 +1,91 @@
+﻿@page "/accounting/supplier-statement"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.AccountingView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@inject IJournalService JournalService
+@inject IStockService StockService
+
+<PageTitle>گردش حساب تأمین‌کننده</PageTitle>
+
+<h3>گردش حساب تأمین‌کننده</h3>
+
+<div class="card-panel mb-3" style="max-width: 400px;">
+    <label class="form-label">انتخاب تأمین‌کننده</label>
+    <select class="form-select" @bind="selectedSupplierId" @bind:after="LoadStatement">
+        <option value="0">-- انتخاب کنید --</option>
+        @if (suppliers is not null)
+        {
+            @foreach (var s in suppliers)
+            {
+                <option value="@s.Id">@s.Name</option>
+            }
+        }
+    </select>
+</div>
+
+@if (selectedSupplierId > 0)
+{
+    <div class="card-panel">
+        @if (rows is null)
+        {
+            <p class="text-muted">در حال بارگذاری...</p>
+        }
+        else if (!rows.Any())
+        {
+            <p class="text-muted text-center py-4">این تأمین‌کننده هنوز تراکنشی ندارد.</p>
+        }
+        else
+        {
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>تاریخ</th>
+                        <th>شماره سند</th>
+                        <th>شرح</th>
+                        <th>بدهکار</th>
+                        <th>بستانکار</th>
+                        <th>مانده</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in rows)
+                    {
+                        <tr>
+                            <td class="text-muted">@row.Date.ToString("yyyy/MM/dd")</td>
+                            <td>@row.EntryNumber</td>
+                            <td>@row.Description</td>
+                            <td>@(row.Debit > 0 ? CurrencyFormatter.ToToman(row.Debit) : "-")</td>
+                            <td>@(row.Credit > 0 ? CurrencyFormatter.ToToman(row.Credit) : "-")</td>
+                            <td class="@(row.RunningBalance <= 0 ? "text-danger" : "text-success")">
+                                @CurrencyFormatter.ToToman(Math.Abs(row.RunningBalance))
+                                @(row.RunningBalance < 0 ? "(بدهکار تو به او)" : "(تسویه/بستانکار)")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+}
+
+@code {
+    private IEnumerable<SupplierDto>? suppliers;
+    private List<AccountStatementRowDto>? rows;
+    private int selectedSupplierId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        suppliers = await StockService.GetSuppliersAsync();
+    }
+
+    private async Task LoadStatement()
+    {
+        if (selectedSupplierId > 0)
+        {
+            rows = await JournalService.GetSupplierStatementAsync(selectedSupplierId);
+        }
+    }
+}

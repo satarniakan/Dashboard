@@ -106,3 +106,38 @@
         overflow-y: auto;
     }
 }
+
+.nav-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 1.5rem;
+    margin: 0.2rem 0.75rem;
+    color: #cbd5e1;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 6px;
+    user-select: none;
+}
+
+    .nav-section-header:hover {
+        background-color: rgba(255,255,255,0.08);
+        color: #fff;
+    }
+
+.nav-caret {
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+.nav-section-body .nav-item ::deep .nav-link {
+    padding-inline-start: 2.2rem;
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+.nav-divider {
+    border-color: rgba(255,255,255,0.15);
+    margin: 0.75rem 1rem;
+}

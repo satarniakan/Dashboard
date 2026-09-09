@@ -24,7 +24,6 @@ public static class DependencyInjection
             options.Password.RequireUppercase = false;
             options.Password.RequireLowercase = false;
             options.Password.RequireDigit = false;
-
         })
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
@@ -45,13 +44,18 @@ public static class DependencyInjection
         services.AddScoped<IScrapRecordRepository, ScrapRecordRepository>();
         services.AddScoped<IStockTransferRepository, StockTransferRepository>();
         services.AddScoped<IStockCountRepository, StockCountRepository>();
+
+        // --- ماژول فروش ---
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<ISalesInvoiceRepository, SalesInvoiceRepository>();
+
+        // --- ماژول حسابداری و خزانه‌داری ---
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<IJournalEntryRepository, JournalEntryRepository>();
         services.AddScoped<IFinancialAccountRepository, FinancialAccountRepository>();
         services.AddScoped<ICustomerReceiptRepository, CustomerReceiptRepository>();
         services.AddScoped<ISupplierPaymentRepository, SupplierPaymentRepository>();
+
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }

@@ -1,4 +1,5 @@
-﻿using Dashboard.Domain.Entities;
+﻿using Dashboard.Domain.Accounting;
+using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
 using Dashboard.Domain.Interfaces;
 using Dashboard.Application.DTOs;
@@ -28,11 +29,21 @@ public class TreasuryService : ITreasuryService
         _journalService = journalService;
     }
 
-    // هر صندوق/بانک جدید، خودش هم یه سرفصل حساب معادل تو دفتر کل می‌سازه
+    // هر صندوق/بانک جدید، خودش هم یک سرفصل حساب معادل در دفتر کل می‌سازد؛ چون اگر موجودی
+    // چند صندوق را زیر یک سرفصل مشترک بگذاریم، تراز آزمایشی دیگر نمی‌تواند موجودی هرکدام
+    // را جدا نشان بدهد.
     public async Task<int> CreateFinancialAccountAsync(CreateFinancialAccountDto dto)
     {
         var type = Enum.Parse<FinancialAccountType>(dto.Type);
-        var accountCode = type == FinancialAccountType.Cash ? $"1101-{Guid.NewGuid().ToString()[..4]}" : $"1102-{Guid.NewGuid().ToString()[..4]}";
+
+        // کد سرفصل را به‌صورت پیاپی می‌سازیم (مثلاً 1101-01, 1101-02, ...) تا برای حسابدار
+        // قابل‌خواندن و دنبال‌کردن باشد. توجه: این شمارش بر پایه‌ی تعداد فعلی است، پس در
+        // حالت درخواست‌های همزمان (که برای این عملیات مدیریتی بسیار نامحتمل است) ممکن است
+        // نیاز به قفل‌گذاری بیشتری داشته باشد.
+        var prefix = type == FinancialAccountType.Cash ? "1101" : "1102";
+        var existingAccounts = await _unitOfWork.Accounts.GetAllAsync();
+        var sameTypeCount = existingAccounts.Count(a => a.Code.StartsWith(prefix + "-"));
+        var accountCode = $"{prefix}-{(sameTypeCount + 1):D2}";
 
         var ledgerAccount = new Account
         {
@@ -91,13 +102,16 @@ public class TreasuryService : ITreasuryService
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("CustomerReceiptRegistered", userId, $"دریافت {dto.ReceiptNumber} به مبلغ {dto.Amount} ثبت شد."));
         await _unitOfWork.CompleteAsync();
 
-        // دریافت پول: بدهکار صندوق/بانک، بستانکار حساب‌های دریافتنی (طلب از مشتری کم می‌شود)
+        // دریافت پول: بدهکار صندوق/بانک، بستانکار حساب‌های دریافتنی (طلب از مشتری کم می‌شود).
+        // نکته‌ی مهم: سطر دوم را حتماً با SubsidiaryType="Customer" تگ می‌زنیم — قبلاً این
+        // تگ جا افتاده بود و در نتیجه این دریافت‌ها هیچ‌وقت در گزارش «گردش حساب مشتری»
+        // (GetCustomerStatementAsync) دیده نمی‌شدند، چون آن گزارش دقیقاً بر اساس همین دو فیلد فیلتر می‌کند.
         await _journalService.PostEntryAsync(
             description: $"دریافت وجه طبق رسید {dto.ReceiptNumber}",
             lines: new List<JournalLineInput>
             {
                 new(financialAccount.Account!.Code, dto.Amount, 0, "افزایش موجودی صندوق/بانک"),
-                new("1200", 0, dto.Amount, "کاهش طلب از مشتری")
+                new(SystemAccountCodes.AccountsReceivable, 0, dto.Amount, "کاهش طلب از مشتری", "Customer", dto.CustomerId)
             },
             referenceType: nameof(CustomerReceipt),
             referenceId: receipt.Id,
@@ -145,7 +159,7 @@ public class TreasuryService : ITreasuryService
             description: $"پرداخت وجه طبق سند {dto.PaymentNumber}",
             lines: new List<JournalLineInput>
             {
-                new("2100", dto.Amount, 0, "کاهش بدهی به تأمین‌کننده", "Supplier", dto.SupplierId),
+                new(SystemAccountCodes.AccountsPayable, dto.Amount, 0, "کاهش بدهی به تأمین‌کننده", "Supplier", dto.SupplierId),
                 new(financialAccount.Account!.Code, 0, dto.Amount, "کاهش موجودی صندوق/بانک")
             },
             referenceType: nameof(SupplierPayment),

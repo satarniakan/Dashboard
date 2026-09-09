@@ -1,0 +1,91 @@
+﻿@page "/accounting/customer-statement"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.AccountingView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@inject IJournalService JournalService
+@inject ISalesService SalesService
+
+<PageTitle>گردش حساب مشتری</PageTitle>
+
+<h3>گردش حساب مشتری</h3>
+
+<div class="card-panel mb-3" style="max-width: 400px;">
+    <label class="form-label">انتخاب مشتری</label>
+    <select class="form-select" @bind="selectedCustomerId" @bind:after="LoadStatement">
+        <option value="0">-- انتخاب کنید --</option>
+        @if (customers is not null)
+        {
+            @foreach (var c in customers)
+            {
+                <option value="@c.Id">@c.Name</option>
+            }
+        }
+    </select>
+</div>
+
+@if (selectedCustomerId > 0)
+{
+    <div class="card-panel">
+        @if (rows is null)
+        {
+            <p class="text-muted">در حال بارگذاری...</p>
+        }
+        else if (!rows.Any())
+        {
+            <p class="text-muted text-center py-4">این مشتری هنوز تراکنشی ندارد.</p>
+        }
+        else
+        {
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>تاریخ</th>
+                        <th>شماره سند</th>
+                        <th>شرح</th>
+                        <th>بدهکار</th>
+                        <th>بستانکار</th>
+                        <th>مانده</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in rows)
+                    {
+                        <tr>
+                            <td class="text-muted">@row.Date.ToString("yyyy/MM/dd")</td>
+                            <td>@row.EntryNumber</td>
+                            <td>@row.Description</td>
+                            <td>@(row.Debit > 0 ? CurrencyFormatter.ToToman(row.Debit) : "-")</td>
+                            <td>@(row.Credit > 0 ? CurrencyFormatter.ToToman(row.Credit) : "-")</td>
+                            <td class="@(row.RunningBalance >= 0 ? "text-danger" : "text-success")">
+                                @CurrencyFormatter.ToToman(Math.Abs(row.RunningBalance))
+                                @(row.RunningBalance >= 0 ? "(بدهکار مشتری)" : "(بستانکار مشتری)")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+}
+
+@code {
+    private IEnumerable<CustomerDto>? customers;
+    private List<AccountStatementRowDto>? rows;
+    private int selectedCustomerId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        customers = await SalesService.GetCustomersAsync();
+    }
+
+    private async Task LoadStatement()
+    {
+        if (selectedCustomerId > 0)
+        {
+            rows = await JournalService.GetCustomerStatementAsync(selectedCustomerId);
+        }
+    }
+}

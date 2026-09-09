@@ -82,7 +82,12 @@ builder.Services.AddAuthorizationBuilder()
 .AddPolicy(Dashboard.Domain.Identity.Permissions.SalesCancel, policy =>
     policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.SalesCancel))
 .AddPolicy(Dashboard.Domain.Identity.Permissions.AccountingView, policy =>
-    policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.AccountingView))
+    policy.RequireAssertion(ctx =>
+    {
+        var claimType = Dashboard.Domain.Identity.Permissions.ClaimType;
+        return ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.AccountingView)
+            || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.TreasuryManage);
+    }))
 .AddPolicy(Dashboard.Domain.Identity.Permissions.TreasuryManage, policy =>
     policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.TreasuryManage))
 .AddPolicy(Dashboard.Domain.Identity.Permissions.SalesView, policy =>
@@ -92,8 +97,9 @@ builder.Services.AddAuthorizationBuilder()
         return ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.SalesView)
             || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.SalesCreate)
             || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.SalesConfirm)
-            || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.SalesCancel);
-    })); ;
+            || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.SalesCancel)
+            || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.CustomersManage);
+    })); 
 
 // Persist Data Protection keys so cookies/antiforgery tokens survive app restarts
 builder.Services.AddDataProtection()

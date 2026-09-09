@@ -11,6 +11,4 @@ public interface IJournalEntryRepository
     // برای گزارش گردش حساب و تراز آزمایشی، مستقیم روی سطرها کوئری می‌زنیم
     Task<IEnumerable<JournalEntryLine>> GetLinesByAccountAsync(int accountId);
     Task<IEnumerable<JournalEntryLine>> GetAllLinesAsync();
-
-    
 }

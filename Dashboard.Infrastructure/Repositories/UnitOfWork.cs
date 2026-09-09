@@ -24,18 +24,18 @@ public class UnitOfWork : IUnitOfWork
     public IScrapRecordRepository ScrapRecords { get; private set; }
     public IStockTransferRepository StockTransfers { get; private set; }
     public IStockCountRepository StockCounts { get; private set; }
+
+    // --- ماژول فروش ---
     public ICustomerRepository Customers { get; private set; }
     public ISalesInvoiceRepository SalesInvoices { get; private set; }
-    public ISupplierPaymentRepository SupplierPayments { get; private set; }
-    public ICustomerReceiptRepository CustomerReceipts { get; private set; }
-    public IFinancialAccountRepository FinancialAccounts { get; private set; }
-    
-        
-        
-        
 
+    // --- ماژول حسابداری و خزانه‌داری ---
     public IAccountRepository Accounts { get; private set; }
     public IJournalEntryRepository JournalEntries { get; private set; }
+    public IFinancialAccountRepository FinancialAccounts { get; private set; }
+    public ICustomerReceiptRepository CustomerReceipts { get; private set; }
+    public ISupplierPaymentRepository SupplierPayments { get; private set; }
+
     public UnitOfWork(
         AppDbContext context,
         IProductRepository products,
@@ -52,11 +52,12 @@ public class UnitOfWork : IUnitOfWork
         IStockTransferRepository stockTransfers,
         IStockCountRepository stockCounts,
         ICustomerRepository customers,
-ISalesInvoiceRepository salesInvoices,
-IAccountRepository accounts,
-IJournalEntryRepository journalEntries
-)
-
+        ISalesInvoiceRepository salesInvoices,
+        IAccountRepository accounts,
+        IJournalEntryRepository journalEntries,
+        IFinancialAccountRepository financialAccounts,
+        ICustomerReceiptRepository customerReceipts,
+        ISupplierPaymentRepository supplierPayments)
     {
         _context = context;
         Products = products;
@@ -73,10 +74,18 @@ IJournalEntryRepository journalEntries
         ScrapRecords = scrapRecords;
         StockTransfers = stockTransfers;
         StockCounts = stockCounts;
+
         Customers = customers;
         SalesInvoices = salesInvoices;
+
+        // نکته: این سه خط قبلاً جا افتاده بودند — پراپرتی‌های بالا تعریف شده بودند ولی
+        // اینجا مقداردهی نمی‌شدند، پس همیشه null می‌ماندند و اولین استفاده از
+        // TreasuryService با NullReferenceException کرش می‌کرد.
         Accounts = accounts;
         JournalEntries = journalEntries;
+        FinancialAccounts = financialAccounts;
+        CustomerReceipts = customerReceipts;
+        SupplierPayments = supplierPayments;
     }
 
     // این همان متد جادویی است که همه چیز را یک‌باره ذخیره می‌کند

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using Dashboard.Domain.Accounting;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
 using Dashboard.Domain.Interfaces;
@@ -135,16 +136,20 @@ public class SalesService : ISalesService
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesInvoiceConfirmed", userId, $"فاکتور {invoice.InvoiceNumber} تأیید و موجودی کسر شد."));
         await _unitOfWork.CompleteAsync();
 
+        // بهای تمام‌شده از روی CostPrice لحظه‌ای کالا محاسبه می‌شود (نه میانگین موزون واقعی)؛
+        // برای فاز اول کافی است، اما اگر کنترل دقیق‌تر سود ناخالص لازم شد باید این را
+        // به یک روش هزینه‌یابی واقعی (FIFO/میانگین موزون) ارتقا داد.
         var totalCost = invoice.Items.Sum(i => i.Quantity * (i.Product?.CostPrice ?? 0));
 
+        // سند فروش: بدهکار مشتری (طلب) و بدهکار COGS، بستانکار درآمد فروش و بستانکار موجودی کالا
         await _journalService.PostEntryAsync(
             description: $"فروش طبق فاکتور {invoice.InvoiceNumber}",
             lines: new List<JournalLineInput>
             {
-       new("1200", invoice.TotalAmount, 0, "بدهکار شدن حساب مشتری", "Customer", invoice.CustomerId),
-        new("4000", 0, invoice.TotalAmount, "شناسایی درآمد فروش"),
-        new("5000", totalCost, 0, "بهای تمام‌شده کالای فروش‌رفته"),
-        new("1300", 0, totalCost, "کاهش موجودی کالا")
+                new(SystemAccountCodes.AccountsReceivable, invoice.TotalAmount, 0, "بدهکار شدن حساب مشتری", "Customer", invoice.CustomerId),
+                new(SystemAccountCodes.SalesRevenue, 0, invoice.TotalAmount, "شناسایی درآمد فروش"),
+                new(SystemAccountCodes.CostOfGoodsSold, totalCost, 0, "بهای تمام‌شده کالای فروش‌رفته"),
+                new(SystemAccountCodes.Inventory, 0, totalCost, "کاهش موجودی کالا")
             },
             referenceType: nameof(SalesInvoice),
             referenceId: invoice.Id,
@@ -194,14 +199,15 @@ public class SalesService : ISalesService
         {
             var totalCost = invoice.Items.Sum(i => i.Quantity * (i.Product?.CostPrice ?? 0));
 
+            // سند برگشت، دقیقاً برعکس سند فروش اصلی است تا اثر آن به‌طور کامل خنثی شود
             await _journalService.PostEntryAsync(
                 description: $"برگشت از فروش طبق لغو فاکتور {invoice.InvoiceNumber}",
                 lines: new List<JournalLineInput>
                 {
-            new("4000", invoice.TotalAmount, 0, "برگشت درآمد فروش"),
-            new("1200", 0, invoice.TotalAmount, "بستانکار شدن حساب مشتری", "Customer", invoice.CustomerId),
-            new("1300", totalCost, 0, "برگشت موجودی کالا"),
-            new("5000", 0, totalCost, "برگشت بهای تمام‌شده")
+                    new(SystemAccountCodes.SalesRevenue, invoice.TotalAmount, 0, "برگشت درآمد فروش"),
+                    new(SystemAccountCodes.AccountsReceivable, 0, invoice.TotalAmount, "بستانکار شدن حساب مشتری", "Customer", invoice.CustomerId),
+                    new(SystemAccountCodes.Inventory, totalCost, 0, "برگشت موجودی کالا"),
+                    new(SystemAccountCodes.CostOfGoodsSold, 0, totalCost, "برگشت بهای تمام‌شده")
                 },
                 referenceType: nameof(SalesInvoice),
                 referenceId: invoice.Id,

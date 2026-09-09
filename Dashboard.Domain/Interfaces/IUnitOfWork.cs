@@ -1,5 +1,3 @@
-using Dashboard.Domain.Interfaces;
-
 namespace Dashboard.Domain.Interfaces;
 
 public interface IUnitOfWork
@@ -20,13 +18,18 @@ public interface IUnitOfWork
     IScrapRecordRepository ScrapRecords { get; }
     IStockTransferRepository StockTransfers { get; }
     IStockCountRepository StockCounts { get; }
+
+    // --- ماژول فروش ---
     ICustomerRepository Customers { get; }
     ISalesInvoiceRepository SalesInvoices { get; }
+
+    // --- ماژول حسابداری و خزانه‌داری ---
     IAccountRepository Accounts { get; }
     IJournalEntryRepository JournalEntries { get; }
     IFinancialAccountRepository FinancialAccounts { get; }
     ICustomerReceiptRepository CustomerReceipts { get; }
     ISupplierPaymentRepository SupplierPayments { get; }
+
     // این همان متد جادویی است که در پایان، همه تغییرات را یک‌باره ذخیره می‌کند
     Task<int> CompleteAsync();
 }

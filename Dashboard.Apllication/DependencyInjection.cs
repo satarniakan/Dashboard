@@ -13,13 +13,20 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserAdminService, UserAdminService>();
         services.AddScoped<IPermissionService, PermissionService>();
-        services.AddScoped<IJournalService, JournalService>();
+
         // --- ماژول انبارداری (WMS) ---
         services.AddScoped<IStockService, StockService>();
-        //فروش
+
+        // --- ماژول فروش ---
         services.AddScoped<ISalesService, SalesService>();
-        //حسابداری
+
+        // --- ماژول حسابداری و خزانه‌داری ---
+        // ترتیب ثبت در DI اهمیتی ندارد (Container خودش وابستگی‌ها را resolve می‌کند)،
+        // اینجا فقط برای خوانایی، JournalService را قبل از سرویس‌هایی که به آن وابسته‌اند
+        // (SalesService, TreasuryService) گذاشته‌ایم.
+        services.AddScoped<IJournalService, JournalService>();
         services.AddScoped<ITreasuryService, TreasuryService>();
+
         return services;
     }
 }

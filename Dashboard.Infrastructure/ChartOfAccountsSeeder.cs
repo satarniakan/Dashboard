@@ -1,11 +1,17 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Dashboard.Domain.Accounting;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
 using Dashboard.Infrastructure.Data;
 
 namespace Dashboard.Infrastructure;
 
+/// <summary>
+/// سرفصل‌های پایه‌ی حسابداری را در اولین اجرا می‌سازد. این سرفصل‌ها «سیستمی» هستند
+/// (IsSystemAccount = true) چون کد از روی کدشان (نه Id) به آن‌ها ارجاع می‌دهد — پس
+/// نباید از داخل UI قابل حذف باشند.
+/// </summary>
 public static class ChartOfAccountsSeeder
 {
     public static async Task SeedAsync(IServiceProvider services)
@@ -15,12 +21,12 @@ public static class ChartOfAccountsSeeder
 
         var defaults = new (string Code, string Name, AccountType Type)[]
         {
-            ("1100", "صندوق", AccountType.Asset),
-            ("1200", "حساب‌های دریافتنی (مشتریان)", AccountType.Asset),
-            ("1300", "موجودی کالا", AccountType.Asset),
-            ("2100", "حساب‌های پرداختنی (تأمین‌کنندگان)", AccountType.Liability),
-            ("4000", "فروش کالا", AccountType.Revenue),
-            ("5000", "بهای تمام‌شده کالای فروش‌رفته", AccountType.Expense),
+            (SystemAccountCodes.Cash, "صندوق", AccountType.Asset),
+            (SystemAccountCodes.AccountsReceivable, "حساب‌های دریافتنی (مشتریان)", AccountType.Asset),
+            (SystemAccountCodes.Inventory, "موجودی کالا", AccountType.Asset),
+            (SystemAccountCodes.AccountsPayable, "حساب‌های پرداختنی (تأمین‌کنندگان)", AccountType.Liability),
+            (SystemAccountCodes.SalesRevenue, "فروش کالا", AccountType.Revenue),
+            (SystemAccountCodes.CostOfGoodsSold, "بهای تمام‌شده کالای فروش‌رفته", AccountType.Expense),
         };
 
         foreach (var (code, name, type) in defaults)

@@ -1,0 +1,87 @@
+﻿@page "/accounting/profit-and-loss"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.AccountingView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@inject IJournalService JournalService
+
+<PageTitle>صورت سود و زیان</PageTitle>
+
+<h3>صورت سود و زیان</h3>
+
+<div class="card-panel mb-3">
+    <div class="row align-items-end">
+        <div class="col-md-4">
+            <label class="form-label">از تاریخ</label>
+            <input type="date" class="form-control" @bind="fromDate" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">تا تاریخ</label>
+            <input type="date" class="form-control" @bind="toDate" />
+        </div>
+        <div class="col-md-4">
+            <button class="btn btn-primary w-100" @onclick="LoadReport">نمایش گزارش</button>
+        </div>
+    </div>
+</div>
+
+@if (report is not null)
+{
+    <div class="card-panel">
+        <h6 class="mb-3">درآمدها</h6>
+        <table class="table">
+            <tbody>
+                @foreach (var (name, amount) in report.RevenueBreakdown)
+                {
+                    <tr>
+                        <td>@name</td>
+                        <td class="text-end">@CurrencyFormatter.ToToman(amount)</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="fw-bold">
+                    <td>جمع درآمد</td>
+                    <td class="text-end">@CurrencyFormatter.ToToman(report.TotalRevenue)</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <h6 class="mb-3 mt-4">هزینه‌ها</h6>
+        <table class="table">
+            <tbody>
+                @foreach (var (name, amount) in report.ExpenseBreakdown)
+                {
+                    <tr>
+                        <td>@name</td>
+                        <td class="text-end">@CurrencyFormatter.ToToman(amount)</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="fw-bold">
+                    <td>جمع هزینه</td>
+                    <td class="text-end">@CurrencyFormatter.ToToman(report.TotalExpense)</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <hr />
+        <div class="d-flex justify-content-between fs-5 fw-bold @(report.NetProfit >= 0 ? "text-success" : "text-danger")">
+            <span>سود (زیان) خالص</span>
+            <span>@CurrencyFormatter.ToToman(report.NetProfit)</span>
+        </div>
+    </div>
+}
+
+@code {
+    private DateTime? fromDate;
+    private DateTime? toDate;
+    private Dashboard.Application.DTOs.ProfitAndLossDto? report;
+
+    private async Task LoadReport()
+    {
+        report = await JournalService.GetProfitAndLossAsync(fromDate, toDate);
+    }
+}

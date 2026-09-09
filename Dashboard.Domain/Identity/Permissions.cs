@@ -25,16 +25,24 @@ public static class Permissions
     public const string SalesConfirm = "sales.confirm";
     public const string SalesCancel = "sales.cancel";
     public const string SalesView = "sales.view";
+
+    // --- ماژول حسابداری و خزانه‌داری ---
+    public const string AccountingView = "accounting.view";
     public const string TreasuryManage = "treasury.manage";
+
+    // نکته: AccountingView و TreasuryManage قبلاً بعد از این آرایه تعریف شده بودند،
+    // پس داخلش نبودند. نتیجه: نه در صفحه‌ی «مدیریت مجوزها» دیده می‌شدند، نه حتی
+    // به نقش Admin به‌صورت خودکار داده می‌شدند (چون RoleSeeder فقط همین آرایه را می‌خواند).
     public static readonly string[] All =
     {
         ProductsView, ProductsManage, AuditLogsView,
         WarehousesManage, SuppliersManage, StockView,
         PurchaseReceiptsManage, InternalIssuesManage, SalesReturnsManage,
         ScrapRecordsManage, StockTransfersManage, StockCountsManage,
-        CustomersManage, SalesCreate, SalesConfirm, SalesCancel, SalesView
+        CustomersManage, SalesCreate, SalesConfirm, SalesCancel, SalesView,
+        AccountingView, TreasuryManage
     };
-    public const string AccountingView = "accounting.view";
+
     public static string ToPersian(string permission) => permission switch
     {
         ProductsView => "مشاهده محصولات",
