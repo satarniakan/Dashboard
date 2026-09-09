@@ -1,0 +1,64 @@
+﻿@page "/accounting/journal/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.AccountingView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@inject IJournalService JournalService
+
+<PageTitle>سند @entry?.EntryNumber</PageTitle>
+
+@if (entry is null)
+{
+    <p class="text-muted">در حال بارگذاری...</p>
+}
+else
+{
+    <h3>سند شماره @entry.EntryNumber</h3>
+    <p class="text-muted">@entry.EntryDate.ToString("yyyy/MM/dd HH:mm") — @entry.Description</p>
+
+    <div class="card-panel">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>کد حساب</th>
+                    <th>نام حساب</th>
+                    <th>شرح</th>
+                    <th>بدهکار</th>
+                    <th>بستانکار</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var line in entry.Lines)
+                {
+                    <tr>
+                        <td class="text-muted">@line.AccountCode</td>
+                        <td class="fw-medium">@line.AccountName</td>
+                        <td class="text-muted">@line.Description</td>
+                        <td>@(line.Debit > 0 ? CurrencyFormatter.ToToman(line.Debit) : "-")</td>
+                        <td>@(line.Credit > 0 ? CurrencyFormatter.ToToman(line.Credit) : "-")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="fw-bold">
+                    <td colspan="3">جمع</td>
+                    <td>@CurrencyFormatter.ToToman(entry.Lines.Sum(l => l.Debit))</td>
+                    <td>@CurrencyFormatter.ToToman(entry.Lines.Sum(l => l.Credit))</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <a href="/accounting/journal" class="btn btn-outline-secondary mt-3">بازگشت</a>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private Dashboard.Application.DTOs.JournalEntryDto? entry;
+
+    protected override async Task OnInitializedAsync()
+    {
+        entry = await JournalService.GetEntryAsync(Id);
+    }
+}

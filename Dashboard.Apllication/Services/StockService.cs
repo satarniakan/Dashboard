@@ -45,11 +45,14 @@ public class StockService : IStockService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<StockService> _logger;
-
-    public StockService(IUnitOfWork unitOfWork, ILogger<StockService> logger)
+    private readonly IJournalService _journalService;
+    // ... تو Constructor:
+   
+    public StockService(IUnitOfWork unitOfWork, ILogger<StockService> logger, IJournalService journalService)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _journalService = journalService;
     }
 
     // ---------------- انبارها / تأمین‌کنندگان ----------------
@@ -168,7 +171,21 @@ public class StockService : IStockService
         await _unitOfWork.PurchaseReceipts.AddAsync(receipt);
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("PurchaseReceiptRegistered", userId, $"رسید خرید {dto.ReceiptNumber} ثبت شد."));
         await _unitOfWork.CompleteAsync();
+        var totalAmount = receipt.Items.Sum(i => i.Quantity * i.UnitCost);
 
+        if (totalAmount > 0)
+        {
+            await _journalService.PostEntryAsync(
+                description: $"خرید طبق رسید {dto.ReceiptNumber}",
+                lines: new List<JournalLineInput>
+                {
+            new("1300", totalAmount, 0, "افزایش موجودی کالا"),
+            new("2100", 0, totalAmount, "بدهی به تأمین‌کننده", "Supplier", dto.SupplierId)
+                },
+                referenceType: nameof(PurchaseReceipt),
+                referenceId: receipt.Id,
+                userId: userId);
+        }
         _logger.LogInformation("Purchase receipt {ReceiptNumber} registered by {UserId}", dto.ReceiptNumber, userId);
         return receipt.Id;
     }

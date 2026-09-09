@@ -22,11 +22,13 @@ public interface ISalesService
 public class SalesService : ISalesService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IJournalService _journalService;
     private readonly ILogger<SalesService> _logger;
 
-    public SalesService(IUnitOfWork unitOfWork, ILogger<SalesService> logger)
+    public SalesService(IUnitOfWork unitOfWork, IJournalService journalService, ILogger<SalesService> logger)
     {
         _unitOfWork = unitOfWork;
+        _journalService = journalService;
         _logger = logger;
     }
 
@@ -133,6 +135,21 @@ public class SalesService : ISalesService
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesInvoiceConfirmed", userId, $"فاکتور {invoice.InvoiceNumber} تأیید و موجودی کسر شد."));
         await _unitOfWork.CompleteAsync();
 
+        var totalCost = invoice.Items.Sum(i => i.Quantity * (i.Product?.CostPrice ?? 0));
+
+        await _journalService.PostEntryAsync(
+            description: $"فروش طبق فاکتور {invoice.InvoiceNumber}",
+            lines: new List<JournalLineInput>
+            {
+       new("1200", invoice.TotalAmount, 0, "بدهکار شدن حساب مشتری", "Customer", invoice.CustomerId),
+        new("4000", 0, invoice.TotalAmount, "شناسایی درآمد فروش"),
+        new("5000", totalCost, 0, "بهای تمام‌شده کالای فروش‌رفته"),
+        new("1300", 0, totalCost, "کاهش موجودی کالا")
+            },
+            referenceType: nameof(SalesInvoice),
+            referenceId: invoice.Id,
+            userId: userId);
+
         _logger.LogInformation("Sales invoice {InvoiceNumber} confirmed by {UserId}", invoice.InvoiceNumber, userId);
     }
 
@@ -173,6 +190,23 @@ public class SalesService : ISalesService
         await _unitOfWork.SalesInvoices.UpdateAsync(invoice);
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesInvoiceCanceled", userId, $"فاکتور {invoice.InvoiceNumber} لغو شد."));
         await _unitOfWork.CompleteAsync();
+        if (wasConfirmed)
+        {
+            var totalCost = invoice.Items.Sum(i => i.Quantity * (i.Product?.CostPrice ?? 0));
+
+            await _journalService.PostEntryAsync(
+                description: $"برگشت از فروش طبق لغو فاکتور {invoice.InvoiceNumber}",
+                lines: new List<JournalLineInput>
+                {
+            new("4000", invoice.TotalAmount, 0, "برگشت درآمد فروش"),
+            new("1200", 0, invoice.TotalAmount, "بستانکار شدن حساب مشتری", "Customer", invoice.CustomerId),
+            new("1300", totalCost, 0, "برگشت موجودی کالا"),
+            new("5000", 0, totalCost, "برگشت بهای تمام‌شده")
+                },
+                referenceType: nameof(SalesInvoice),
+                referenceId: invoice.Id,
+                userId: userId);
+        }
     }
 
     // ---------------- خواندن ----------------

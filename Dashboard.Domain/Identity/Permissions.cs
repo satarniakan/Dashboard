@@ -25,6 +25,7 @@ public static class Permissions
     public const string SalesConfirm = "sales.confirm";
     public const string SalesCancel = "sales.cancel";
     public const string SalesView = "sales.view";
+    public const string TreasuryManage = "treasury.manage";
     public static readonly string[] All =
     {
         ProductsView, ProductsManage, AuditLogsView,
@@ -33,7 +34,7 @@ public static class Permissions
         ScrapRecordsManage, StockTransfersManage, StockCountsManage,
         CustomersManage, SalesCreate, SalesConfirm, SalesCancel, SalesView
     };
-
+    public const string AccountingView = "accounting.view";
     public static string ToPersian(string permission) => permission switch
     {
         ProductsView => "مشاهده محصولات",
@@ -53,6 +54,8 @@ public static class Permissions
         SalesConfirm => "تأیید فاکتور فروش",
         SalesCancel => "لغو فاکتور فروش",
         SalesView => "مشاهده فاکتورهای فروش",
+        AccountingView => "مشاهده حسابداری",
+        TreasuryManage => "مدیریت صندوق و بانک",
         _ => permission
     };
 }

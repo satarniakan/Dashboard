@@ -4,6 +4,7 @@ using Dashboard.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Dashboard.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909061049_AddAccountingCore")]
+    partial class AddAccountingCore
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -116,103 +119,6 @@ namespace Dashboard.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Customers");
-                });
-
-            modelBuilder.Entity("Dashboard.Domain.Entities.CustomerReceipt", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("ChequeDueDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ChequeNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedByUserId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("CustomerId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("FinancialAccountId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Method")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("ReceiptDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ReceiptNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CustomerId");
-
-                    b.HasIndex("FinancialAccountId");
-
-                    b.HasIndex("ReceiptNumber")
-                        .IsUnique();
-
-                    b.ToTable("CustomerReceipts");
-                });
-
-            modelBuilder.Entity("Dashboard.Domain.Entities.FinancialAccount", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AccountId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("AccountNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("BankName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Iban")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AccountId");
-
-                    b.ToTable("FinancialAccounts");
                 });
 
             modelBuilder.Entity("Dashboard.Domain.Entities.InternalIssue", b =>
@@ -982,63 +888,6 @@ namespace Dashboard.Infrastructure.Migrations
                     b.ToTable("Suppliers");
                 });
 
-            modelBuilder.Entity("Dashboard.Domain.Entities.SupplierPayment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("ChequeDueDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ChequeNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedByUserId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("FinancialAccountId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Method")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("PaymentDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("PaymentNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<int>("SupplierId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FinancialAccountId");
-
-                    b.HasIndex("PaymentNumber")
-                        .IsUnique();
-
-                    b.HasIndex("SupplierId");
-
-                    b.ToTable("SupplierPayments");
-                });
-
             modelBuilder.Entity("Dashboard.Domain.Entities.Warehouse", b =>
                 {
                     b.Property<int>("Id")
@@ -1281,35 +1130,6 @@ namespace Dashboard.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("ParentAccount");
-                });
-
-            modelBuilder.Entity("Dashboard.Domain.Entities.CustomerReceipt", b =>
-                {
-                    b.HasOne("Dashboard.Domain.Entities.Customer", "Customer")
-                        .WithMany()
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Dashboard.Domain.Entities.FinancialAccount", "FinancialAccount")
-                        .WithMany()
-                        .HasForeignKey("FinancialAccountId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Customer");
-
-                    b.Navigation("FinancialAccount");
-                });
-
-            modelBuilder.Entity("Dashboard.Domain.Entities.FinancialAccount", b =>
-                {
-                    b.HasOne("Dashboard.Domain.Entities.Account", "Account")
-                        .WithMany()
-                        .HasForeignKey("AccountId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Account");
                 });
 
             modelBuilder.Entity("Dashboard.Domain.Entities.InternalIssue", b =>
@@ -1600,25 +1420,6 @@ namespace Dashboard.Infrastructure.Migrations
                     b.Navigation("Product");
 
                     b.Navigation("StockTransfer");
-                });
-
-            modelBuilder.Entity("Dashboard.Domain.Entities.SupplierPayment", b =>
-                {
-                    b.HasOne("Dashboard.Domain.Entities.FinancialAccount", "FinancialAccount")
-                        .WithMany()
-                        .HasForeignKey("FinancialAccountId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Dashboard.Domain.Entities.Supplier", "Supplier")
-                        .WithMany()
-                        .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("FinancialAccount");
-
-                    b.Navigation("Supplier");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

@@ -1,0 +1,43 @@
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Dashboard.Domain.Entities;
+using Dashboard.Domain.Enums;
+using Dashboard.Infrastructure.Data;
+
+namespace Dashboard.Infrastructure;
+
+public static class ChartOfAccountsSeeder
+{
+    public static async Task SeedAsync(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var defaults = new (string Code, string Name, AccountType Type)[]
+        {
+            ("1100", "صندوق", AccountType.Asset),
+            ("1200", "حساب‌های دریافتنی (مشتریان)", AccountType.Asset),
+            ("1300", "موجودی کالا", AccountType.Asset),
+            ("2100", "حساب‌های پرداختنی (تأمین‌کنندگان)", AccountType.Liability),
+            ("4000", "فروش کالا", AccountType.Revenue),
+            ("5000", "بهای تمام‌شده کالای فروش‌رفته", AccountType.Expense),
+        };
+
+        foreach (var (code, name, type) in defaults)
+        {
+            var exists = await context.Accounts.AnyAsync(a => a.Code == code);
+            if (!exists)
+            {
+                context.Accounts.Add(new Account
+                {
+                    Code = code,
+                    Name = name,
+                    Type = type,
+                    IsSystemAccount = true
+                });
+            }
+        }
+
+        await context.SaveChangesAsync();
+    }
+}

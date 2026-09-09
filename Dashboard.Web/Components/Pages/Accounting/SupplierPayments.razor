@@ -1,0 +1,72 @@
+﻿@page "/accounting/supplier-payments"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.TreasuryManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@inject ITreasuryService TreasuryService
+
+<PageTitle>پرداخت به تأمین‌کنندگان</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">پرداخت به تأمین‌کنندگان</h3>
+    <a href="/accounting/supplier-payments/add" class="btn btn-primary">+ ثبت پرداخت</a>
+</div>
+
+<div class="card-panel">
+    @if (payments is null)
+    {
+        <p class="text-muted">در حال بارگذاری...</p>
+    }
+    else if (!payments.Any())
+    {
+        <p class="text-muted text-center py-4">هنوز پرداختی ثبت نشده است.</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>شماره سند</th>
+                    <th>تاریخ</th>
+                    <th>تأمین‌کننده</th>
+                    <th>صندوق/بانک</th>
+                    <th>روش</th>
+                    <th>مبلغ</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in payments)
+                {
+                    <tr>
+                        <td class="fw-medium">@p.PaymentNumber</td>
+                        <td class="text-muted">@p.PaymentDate.ToString("yyyy/MM/dd")</td>
+                        <td>@p.SupplierName</td>
+                        <td>@p.FinancialAccountName</td>
+                        <td>@MethodLabel(p.Method)</td>
+                        <td>@CurrencyFormatter.ToToman(p.Amount)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private IEnumerable<SupplierPaymentDto>? payments;
+
+    protected override async Task OnInitializedAsync()
+    {
+        payments = await TreasuryService.GetSupplierPaymentsAsync();
+    }
+
+    private string MethodLabel(string method) => method switch
+    {
+        "Cash" => "نقدی",
+        "CardTransfer" => "کارت به کارت",
+        "Cheque" => "چک",
+        "BankTransfer" => "حواله بانکی",
+        _ => method
+    };
+}

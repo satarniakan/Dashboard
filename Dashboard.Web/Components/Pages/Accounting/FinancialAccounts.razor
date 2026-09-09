@@ -1,0 +1,54 @@
+﻿@page "/accounting/financial-accounts"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.TreasuryManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@inject ITreasuryService TreasuryService
+
+<PageTitle>صندوق و بانک</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">صندوق‌ها و حساب‌های بانکی</h3>
+    <a href="/accounting/financial-accounts/add" class="btn btn-primary">+ افزودن صندوق/بانک</a>
+</div>
+
+<div class="card-panel">
+    @if (accounts is null)
+    {
+        <p class="text-muted">در حال بارگذاری...</p>
+    }
+    else if (!accounts.Any())
+    {
+        <p class="text-muted text-center py-4">هنوز صندوق یا حساب بانکی‌ای ثبت نشده است.</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>نام</th>
+                    <th>نوع</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in accounts)
+                {
+                    <tr>
+                        <td class="fw-medium">@a.Name</td>
+                        <td>@(a.Type == "Cash" ? "صندوق" : "بانک")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private IEnumerable<FinancialAccountDto>? accounts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        accounts = await TreasuryService.GetFinancialAccountsAsync();
+    }
+}

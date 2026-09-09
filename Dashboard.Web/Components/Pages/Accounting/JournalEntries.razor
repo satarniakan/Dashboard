@@ -1,0 +1,60 @@
+﻿@page "/accounting/journal"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.AccountingView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@inject IJournalService JournalService
+
+<PageTitle>دفتر روزنامه</PageTitle>
+
+<h3>دفتر روزنامه (سندهای حسابداری)</h3>
+
+<div class="card-panel">
+    @if (entries is null)
+    {
+        <p class="text-muted">در حال بارگذاری...</p>
+    }
+    else if (!entries.Any())
+    {
+        <p class="text-muted text-center py-4">هنوز سندی صادر نشده است.</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>شماره سند</th>
+                    <th>تاریخ</th>
+                    <th>شرح</th>
+                    <th>مبلغ سند</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var e in entries)
+                {
+                    <tr>
+                        <td class="fw-medium">@e.EntryNumber</td>
+                        <td class="text-muted">@e.EntryDate.ToString("yyyy/MM/dd HH:mm")</td>
+                        <td>@e.Description</td>
+                        <td>@CurrencyFormatter.ToToman(e.Lines.Sum(l => l.Debit))</td>
+                        <td class="text-end">
+                            <a href="/accounting/journal/@e.Id" class="btn btn-sm btn-outline-primary">جزئیات</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private IEnumerable<JournalEntryDto>? entries;
+
+    protected override async Task OnInitializedAsync()
+    {
+        entries = await JournalService.GetEntriesAsync();
+    }
+}

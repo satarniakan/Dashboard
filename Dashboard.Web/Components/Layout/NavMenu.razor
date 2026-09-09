@@ -75,7 +75,39 @@
                 </div>
             </Authorized>
         </AuthorizeView>
-
+        <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.AccountingView" Context="accountingMenuContext">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="accounting/journal">دفتر روزنامه</NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="accounting/trial-balance">تراز آزمایشی</NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.AccountingView" Context="accountingMenuContext">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="accounting/journal">دفتر روزنامه</NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="accounting/trial-balance">تراز آزمایشی</NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.TreasuryManage" Context="treasuryMenuContext">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="accounting/financial-accounts">صندوق و بانک</NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="accounting/customer-receipts">دریافت از مشتری</NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="accounting/supplier-payments">پرداخت به تأمین‌کننده</NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
         <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.SuppliersManage" Context="suppliersManageContext">
             <Authorized>
                 <div class="nav-item px-3">

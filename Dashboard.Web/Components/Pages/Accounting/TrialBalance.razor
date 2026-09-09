@@ -1,0 +1,77 @@
+﻿@page "/accounting/trial-balance"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.AccountingView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@inject IJournalService JournalService
+
+<PageTitle>تراز آزمایشی</PageTitle>
+
+<h3>تراز آزمایشی</h3>
+
+<div class="card-panel">
+    @if (rows is null)
+    {
+        <p class="text-muted">در حال بارگذاری...</p>
+    }
+    else if (!rows.Any())
+    {
+        <p class="text-muted text-center py-4">هیچ سندی برای محاسبه تراز وجود ندارد.</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>کد</th>
+                    <th>نام حساب</th>
+                    <th>جمع بدهکار</th>
+                    <th>جمع بستانکار</th>
+                    <th>مانده</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in rows)
+                {
+                    <tr>
+                        <td class="text-muted">@r.AccountCode</td>
+                        <td class="fw-medium">@r.AccountName</td>
+                        <td>@CurrencyFormatter.ToToman(r.TotalDebit)</td>
+                        <td>@CurrencyFormatter.ToToman(r.TotalCredit)</td>
+                        <td class="@(r.Balance >= 0 ? "text-success" : "text-danger")">
+                            @CurrencyFormatter.ToToman(Math.Abs(r.Balance)) (@(r.Balance >= 0 ? "بدهکار" : "بستانکار"))
+                        </td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr class="fw-bold">
+                    <td colspan="2">جمع کل</td>
+                    <td>@CurrencyFormatter.ToToman(rows.Sum(r => r.TotalDebit))</td>
+                    <td>@CurrencyFormatter.ToToman(rows.Sum(r => r.TotalCredit))</td>
+                    <td></td>
+                </tr>
+
+            </tfoot>
+          
+        </table>
+        @if (rows.Sum(r => r.TotalDebit) != rows.Sum(r => r.TotalCredit))
+        {
+            <div class="alert alert-danger mt-3">
+                ⚠️ تراز نامتوازن است! این نباید اتفاق بیفتد — لطفاً بررسی کنید.
+            </div>
+        }
+       
+    }
+
+</div>
+
+@code {
+    private List<Dashboard.Application.DTOs.TrialBalanceRowDto>? rows;
+
+    protected override async Task OnInitializedAsync()
+    {
+        rows = (await JournalService.GetTrialBalanceAsync()).ToList();
+    }
+}

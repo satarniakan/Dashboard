@@ -81,6 +81,10 @@ builder.Services.AddAuthorizationBuilder()
     policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.SalesConfirm))
 .AddPolicy(Dashboard.Domain.Identity.Permissions.SalesCancel, policy =>
     policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.SalesCancel))
+.AddPolicy(Dashboard.Domain.Identity.Permissions.AccountingView, policy =>
+    policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.AccountingView))
+.AddPolicy(Dashboard.Domain.Identity.Permissions.TreasuryManage, policy =>
+    policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.TreasuryManage))
 .AddPolicy(Dashboard.Domain.Identity.Permissions.SalesView, policy =>
     policy.RequireAssertion(ctx =>
     {
@@ -102,7 +106,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 var app = builder.Build();
 await Dashboard.Infrastructure.RoleSeeder.SeedRolesAsync(app.Services);
 app.UseSerilogRequestLogging();
-
+await Dashboard.Infrastructure.ChartOfAccountsSeeder.SeedAsync(app.Services);
 // Persian culture / RTL number formatting
 var supportedCultures = new[] { new CultureInfo("fa-IR") };
 app.UseRequestLocalization(new RequestLocalizationOptions

@@ -1,0 +1,158 @@
+﻿@page "/accounting/customer-receipts/add"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.TreasuryManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using System.Security.Claims
+@inject ITreasuryService TreasuryService
+@inject ISalesService SalesService
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>ثبت دریافت از مشتری</PageTitle>
+
+<h3>ثبت دریافت از مشتری</h3>
+
+<div class="card-panel" style="max-width: 560px;">
+    <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddCustomerReceiptForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="mb-3" />
+
+        <div class="mb-3">
+            <label class="form-label">مشتری (اختیاری)</label>
+            <select class="form-select" @bind="model.CustomerId">
+                <option value="">-- بدون مشتری مشخص --</option>
+                @if (customers is not null)
+                {
+                    @foreach (var c in customers)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">واریز به صندوق/بانک</label>
+            <select class="form-select" @bind="model.FinancialAccountId">
+                <option value="0">-- انتخاب کنید --</option>
+                @if (financialAccounts is not null)
+                {
+                    @foreach (var f in financialAccounts)
+                    {
+                        <option value="@f.Id">@f.Name</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">شماره رسید</label>
+                <InputText class="form-control" @bind-Value="model.ReceiptNumber" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">مبلغ (تومان)</label>
+                <InputNumber class="form-control" @bind-Value="model.Amount" />
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">روش دریافت</label>
+                <select class="form-select" @bind="model.Method">
+                    <option value="Cash">نقدی</option>
+                    <option value="CardTransfer">کارت به کارت</option>
+                    <option value="Cheque">چک</option>
+                    <option value="BankTransfer">حواله بانکی</option>
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">تاریخ</label>
+                <InputDate class="form-control" @bind-Value="model.ReceiptDate" />
+            </div>
+        </div>
+
+        @if (model.Method == "Cheque")
+        {
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">شماره چک</label>
+                    <InputText class="form-control" @bind-Value="model.ChequeNumber" />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">تاریخ سررسید چک</label>
+                    <InputDate class="form-control" @bind-Value="model.ChequeDueDate" />
+                </div>
+            </div>
+        }
+
+        <div class="mb-4">
+            <label class="form-label">توضیحات (اختیاری)</label>
+            <InputTextArea class="form-control" @bind-Value="model.Notes" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                @(isSaving ? "در حال ذخیره..." : "ثبت دریافت")
+            </button>
+            <a href="/accounting/customer-receipts" class="btn btn-outline-secondary">انصراف</a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private CreateCustomerReceiptDto model { get; set; } = new();
+
+    private IEnumerable<CustomerDto>? customers;
+    private IEnumerable<FinancialAccountDto>? financialAccounts;
+
+    private bool isSaving;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        customers = await SalesService.GetCustomersAsync();
+        financialAccounts = await TreasuryService.GetFinancialAccountsAsync();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            if (model.FinancialAccountId == 0)
+            {
+                errorMessage = "انتخاب صندوق/بانک الزامی است.";
+                return;
+            }
+
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+
+            await TreasuryService.RegisterCustomerReceiptAsync(model, userId);
+            NavigationManager.NavigateTo("/accounting/customer-receipts");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"ثبت ناموفق بود: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}
+<h3>AddCustomerReceipt</h3>
+
+@code {
+
+}

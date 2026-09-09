@@ -40,6 +40,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<SalesInvoice> SalesInvoices => Set<SalesInvoice>();
     public DbSet<SalesInvoiceItem> SalesInvoiceItems => Set<SalesInvoiceItem>();
+    public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
+    public DbSet<JournalEntryLine> JournalEntryLines => Set<JournalEntryLine>();
+    public DbSet<FinancialAccount> FinancialAccounts => Set<FinancialAccount>();
+    public DbSet<CustomerReceipt> CustomerReceipts => Set<CustomerReceipt>();
+    public DbSet<SupplierPayment> SupplierPayments => Set<SupplierPayment>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder); // required — sets up Identity's tables
@@ -199,6 +205,59 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.Property(i => i.Quantity).HasColumnType("decimal(18,3)");
             e.Property(i => i.UnitPrice).HasColumnType("decimal(18,2)");
             e.HasOne(i => i.Product).WithMany().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);
+        });
+        // ---------- Account ----------
+        builder.Entity<Account>(e =>
+        {
+            e.Property(a => a.Code).HasMaxLength(20).IsRequired();
+            e.Property(a => a.Name).HasMaxLength(150).IsRequired();
+            e.Property(a => a.Type).HasConversion<string>().HasMaxLength(20);
+            e.HasIndex(a => a.Code).IsUnique();
+            e.HasOne(a => a.ParentAccount).WithMany().HasForeignKey(a => a.ParentAccountId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ---------- JournalEntry ----------
+        builder.Entity<JournalEntry>(e =>
+        {
+            e.Property(j => j.EntryNumber).HasMaxLength(50).IsRequired();
+            e.HasIndex(j => j.EntryNumber).IsUnique();
+            e.HasMany(j => j.Lines).WithOne(l => l.JournalEntry!).HasForeignKey(l => l.JournalEntryId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<JournalEntryLine>(e =>
+        {
+            e.Property(l => l.DebitAmount).HasColumnType("decimal(18,2)");
+            e.Property(l => l.CreditAmount).HasColumnType("decimal(18,2)");
+            e.HasOne(l => l.Account).WithMany().HasForeignKey(l => l.AccountId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(l => new { l.SubsidiaryType, l.SubsidiaryId }); // برای سرعت گزارش گردش حساب
+        });
+        // ---------- FinancialAccount ----------
+        builder.Entity<FinancialAccount>(e =>
+        {
+            e.Property(f => f.Name).HasMaxLength(150).IsRequired();
+            e.Property(f => f.Type).HasConversion<string>().HasMaxLength(20);
+            e.HasOne(f => f.Account).WithMany().HasForeignKey(f => f.AccountId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ---------- CustomerReceipt ----------
+        builder.Entity<CustomerReceipt>(e =>
+        {
+            e.Property(r => r.Amount).HasColumnType("decimal(18,2)");
+            e.Property(r => r.Method).HasConversion<string>().HasMaxLength(20);
+            e.Property(r => r.ReceiptNumber).HasMaxLength(50).IsRequired();
+            e.HasIndex(r => r.ReceiptNumber).IsUnique();
+            e.HasOne(r => r.Customer).WithMany().HasForeignKey(r => r.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(r => r.FinancialAccount).WithMany().HasForeignKey(r => r.FinancialAccountId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ---------- SupplierPayment ----------
+        builder.Entity<SupplierPayment>(e =>
+        {
+            e.Property(p => p.Amount).HasColumnType("decimal(18,2)");
+            e.Property(p => p.Method).HasConversion<string>().HasMaxLength(20);
+            e.Property(p => p.PaymentNumber).HasMaxLength(50).IsRequired();
+            e.HasIndex(p => p.PaymentNumber).IsUnique();
+            e.HasOne(p => p.Supplier).WithMany().HasForeignKey(p => p.SupplierId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(p => p.FinancialAccount).WithMany().HasForeignKey(p => p.FinancialAccountId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

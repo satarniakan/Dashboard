@@ -22,6 +22,11 @@ public interface IUnitOfWork
     IStockCountRepository StockCounts { get; }
     ICustomerRepository Customers { get; }
     ISalesInvoiceRepository SalesInvoices { get; }
+    IAccountRepository Accounts { get; }
+    IJournalEntryRepository JournalEntries { get; }
+    IFinancialAccountRepository FinancialAccounts { get; }
+    ICustomerReceiptRepository CustomerReceipts { get; }
+    ISupplierPaymentRepository SupplierPayments { get; }
     // این همان متد جادویی است که در پایان، همه تغییرات را یک‌باره ذخیره می‌کند
     Task<int> CompleteAsync();
 }

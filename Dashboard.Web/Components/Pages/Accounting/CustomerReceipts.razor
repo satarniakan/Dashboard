@@ -1,0 +1,72 @@
+﻿@page "/accounting/customer-receipts"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.TreasuryManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@inject ITreasuryService TreasuryService
+
+<PageTitle>دریافت از مشتریان</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">دریافت از مشتریان</h3>
+    <a href="/accounting/customer-receipts/add" class="btn btn-primary">+ ثبت دریافت</a>
+</div>
+
+<div class="card-panel">
+    @if (receipts is null)
+    {
+        <p class="text-muted">در حال بارگذاری...</p>
+    }
+    else if (!receipts.Any())
+    {
+        <p class="text-muted text-center py-4">هنوز دریافتی ثبت نشده است.</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>شماره رسید</th>
+                    <th>تاریخ</th>
+                    <th>مشتری</th>
+                    <th>صندوق/بانک</th>
+                    <th>روش</th>
+                    <th>مبلغ</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in receipts)
+                {
+                    <tr>
+                        <td class="fw-medium">@r.ReceiptNumber</td>
+                        <td class="text-muted">@r.ReceiptDate.ToString("yyyy/MM/dd")</td>
+                        <td>@(r.CustomerName ?? "-")</td>
+                        <td>@r.FinancialAccountName</td>
+                        <td>@MethodLabel(r.Method)</td>
+                        <td>@CurrencyFormatter.ToToman(r.Amount)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private IEnumerable<CustomerReceiptDto>? receipts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        receipts = await TreasuryService.GetCustomerReceiptsAsync();
+    }
+
+    private string MethodLabel(string method) => method switch
+    {
+        "Cash" => "نقدی",
+        "CardTransfer" => "کارت به کارت",
+        "Cheque" => "چک",
+        "BankTransfer" => "حواله بانکی",
+        _ => method
+    };
+}

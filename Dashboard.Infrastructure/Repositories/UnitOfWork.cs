@@ -1,3 +1,4 @@
+using Dashboard.Domain.Entities;
 using Dashboard.Domain.Interfaces;
 using Dashboard.Infrastructure.Data;
 
@@ -25,6 +26,16 @@ public class UnitOfWork : IUnitOfWork
     public IStockCountRepository StockCounts { get; private set; }
     public ICustomerRepository Customers { get; private set; }
     public ISalesInvoiceRepository SalesInvoices { get; private set; }
+    public ISupplierPaymentRepository SupplierPayments { get; private set; }
+    public ICustomerReceiptRepository CustomerReceipts { get; private set; }
+    public IFinancialAccountRepository FinancialAccounts { get; private set; }
+    
+        
+        
+        
+
+    public IAccountRepository Accounts { get; private set; }
+    public IJournalEntryRepository JournalEntries { get; private set; }
     public UnitOfWork(
         AppDbContext context,
         IProductRepository products,
@@ -41,7 +52,10 @@ public class UnitOfWork : IUnitOfWork
         IStockTransferRepository stockTransfers,
         IStockCountRepository stockCounts,
         ICustomerRepository customers,
-ISalesInvoiceRepository salesInvoices)
+ISalesInvoiceRepository salesInvoices,
+IAccountRepository accounts,
+IJournalEntryRepository journalEntries
+)
 
     {
         _context = context;
@@ -61,6 +75,8 @@ ISalesInvoiceRepository salesInvoices)
         StockCounts = stockCounts;
         Customers = customers;
         SalesInvoices = salesInvoices;
+        Accounts = accounts;
+        JournalEntries = journalEntries;
     }
 
     // این همان متد جادویی است که همه چیز را یک‌باره ذخیره می‌کند

@@ -1,0 +1,87 @@
+﻿@page "/accounting/financial-accounts/add"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.TreasuryManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@inject ITreasuryService TreasuryService
+@inject NavigationManager NavigationManager
+
+<PageTitle>افزودن صندوق/بانک</PageTitle>
+
+<h3>افزودن صندوق یا حساب بانکی</h3>
+
+<div class="card-panel" style="max-width: 480px;">
+    <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddFinancialAccountForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="mb-3" />
+
+        <div class="mb-3">
+            <label class="form-label">نوع</label>
+            <select class="form-select" @bind="model.Type">
+                <option value="Cash">صندوق نقدی</option>
+                <option value="Bank">حساب بانکی</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">نام (مثلاً: صندوق اصلی، بانک ملت)</label>
+            <InputText class="form-control" @bind-Value="model.Name" />
+        </div>
+
+        @if (model.Type == "Bank")
+        {
+            <div class="mb-3">
+                <label class="form-label">نام بانک</label>
+                <InputText class="form-control" @bind-Value="model.BankName" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">شماره حساب</label>
+                <InputText class="form-control" @bind-Value="model.AccountNumber" />
+            </div>
+            <div class="mb-4">
+                <label class="form-label">شبا (اختیاری)</label>
+                <InputText class="form-control" @bind-Value="model.Iban" />
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                @(isSaving ? "در حال ذخیره..." : "ذخیره")
+            </button>
+            <a href="/accounting/financial-accounts" class="btn btn-outline-secondary">انصراف</a>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private CreateFinancialAccountDto model { get; set; } = new();
+
+    private bool isSaving;
+    private string? errorMessage;
+
+    private async Task HandleValidSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            await TreasuryService.CreateFinancialAccountAsync(model);
+            NavigationManager.NavigateTo("/accounting/financial-accounts");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"ذخیره ناموفق بود: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

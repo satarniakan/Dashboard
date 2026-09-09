@@ -13,11 +13,13 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserAdminService, UserAdminService>();
         services.AddScoped<IPermissionService, PermissionService>();
-
+        services.AddScoped<IJournalService, JournalService>();
         // --- ماژول انبارداری (WMS) ---
         services.AddScoped<IStockService, StockService>();
         //فروش
         services.AddScoped<ISalesService, SalesService>();
+        //حسابداری
+        services.AddScoped<ITreasuryService, TreasuryService>();
         return services;
     }
 }
