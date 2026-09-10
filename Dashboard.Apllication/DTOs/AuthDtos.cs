@@ -8,7 +8,7 @@ public enum ProfileUpdateStatus
 {
     Success,
     UserNotFound,
-    EmailAlreadyExists,      
+    EmailAlreadyExists,
     EmailUpdateFailed,
     PasswordAlreadySet,
     PasswordMismatch,

@@ -99,7 +99,7 @@ builder.Services.AddAuthorizationBuilder()
             || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.SalesConfirm)
             || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.SalesCancel)
             || ctx.User.HasClaim(claimType, Dashboard.Domain.Identity.Permissions.CustomersManage);
-    })); 
+    }));
 
 // Persist Data Protection keys so cookies/antiforgery tokens survive app restarts
 builder.Services.AddDataProtection()

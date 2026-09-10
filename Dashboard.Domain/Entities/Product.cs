@@ -22,7 +22,9 @@ public class Product
     public int ReorderPoint { get; private set; }
     public bool IsActive { get; private set; } = true;
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
-
+    // اگر این محصول یکی از Variant های یک گروه محصول باشد (برای فروشگاه اینترنتی)، این مقدار پر می‌شود
+    public int? ProductGroupId { get; private set; }
+    public ProductGroup? ProductGroup { get; private set; }
     private Product() { } // برای EF Core
 
     // سازنده‌ی قبلی — دست‌نخورده، تا کدهای موجود (ProductService و غیره) کار کنند
@@ -103,6 +105,10 @@ public class Product
 
     public void Deactivate() => IsActive = false;
     public void Activate() => IsActive = true;
-
+    // یک محصول موجود را به‌عنوان یکی از Variant های یک گروه محصول علامت‌گذاری می‌کند
+    public void AssignToGroup(int productGroupId)
+    {
+        ProductGroupId = productGroupId;
+    }
     private static string GenerateFallbackSku() => $"SKU-{Guid.NewGuid().ToString()[..8].ToUpperInvariant()}";
 }
