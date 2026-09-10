@@ -1,0 +1,61 @@
+@page "/catalog/product-groups/add"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.CatalogManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@inject ICatalogService CatalogService
+@inject NavigationManager NavigationManager
+
+<PageTitle>گروه محصول جدید</PageTitle>
+
+<h3>گروه محصول جدید</h3>
+
+<div class="card-panel" style="max-width: 480px;">
+    <EditForm Model="@model" OnValidSubmit="HandleSubmit" FormName="AddProductGroupForm">
+        <div class="mb-3">
+            <label class="form-label">نام</label>
+            <InputText class="form-control" @bind-Value="model.Name" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Slug</label>
+            <InputText class="form-control" @bind-Value="model.Slug" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">دسته‌بندی</label>
+            <select class="form-select" @bind="model.CategoryId">
+                <option value="">-- بدون دسته --</option>
+                @if (categories is not null)
+                {
+                    @foreach (var c in categories)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="mb-4">
+            <label class="form-label">توضیحات</label>
+            <InputTextArea class="form-control" @bind-Value="model.Description" />
+        </div>
+        <button type="submit" class="btn btn-primary">ذخیره و ادامه</button>
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private CreateProductGroupDto model { get; set; } = new();
+
+    private List<CategoryDto>? categories;
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = (await CatalogService.GetCategoriesAsync()).ToList();
+    }
+
+    private async Task HandleSubmit()
+    {
+        var id = await CatalogService.CreateProductGroupAsync(model);
+        NavigationManager.NavigateTo($"/catalog/product-groups/{id}");
+    }
+}

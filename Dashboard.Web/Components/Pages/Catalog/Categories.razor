@@ -1,0 +1,78 @@
+@page "/catalog/categories"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.CatalogManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@inject ICatalogService CatalogService
+
+<PageTitle>دسته‌بندی‌ها</PageTitle>
+
+<h3>دسته‌بندی‌ها</h3>
+
+<div class="card-panel mb-4" style="max-width: 480px;">
+    <EditForm Model="@newCategory" OnValidSubmit="HandleAdd" FormName="AddCategoryForm">
+        <div class="mb-3">
+            <label class="form-label">نام دسته</label>
+            <InputText class="form-control" @bind-Value="newCategory.Name" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Slug (برای آدرس صفحه، مثلاً: mens-tshirts)</label>
+            <InputText class="form-control" @bind-Value="newCategory.Slug" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">دسته والد (اختیاری)</label>
+            <select class="form-select" @bind="newCategory.ParentCategoryId">
+                <option value="">-- بدون والد (دسته اصلی) --</option>
+                @if (categories is not null)
+                {
+                    @foreach (var c in categories)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                }
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">افزودن دسته</button>
+    </EditForm>
+</div>
+
+<div class="card-panel">
+    @if (categories is null || !categories.Any())
+    {
+        <p class="text-muted text-center py-4">هنوز دسته‌ای ثبت نشده است.</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead><tr><th>نام</th><th>Slug</th><th>دسته والد</th></tr></thead>
+            <tbody>
+                @foreach (var c in categories)
+                {
+                    <tr>
+                        <td class="fw-medium">@c.Name</td>
+                        <td class="text-muted">@c.Slug</td>
+                        <td class="text-muted">@(categories.FirstOrDefault(p => p.Id == c.ParentCategoryId)?.Name ?? "-")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<CategoryDto>? categories;
+    private CreateCategoryDto newCategory = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = (await CatalogService.GetCategoriesAsync()).ToList();
+    }
+
+    private async Task HandleAdd()
+    {
+        await CatalogService.CreateCategoryAsync(newCategory);
+        categories = (await CatalogService.GetCategoriesAsync()).ToList();
+        newCategory = new();
+    }
+}

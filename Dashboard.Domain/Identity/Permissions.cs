@@ -29,6 +29,7 @@ public static class Permissions
     // --- ماژول حسابداری و خزانه‌داری ---
     public const string AccountingView = "accounting.view";
     public const string TreasuryManage = "treasury.manage";
+    public const string CatalogManage = "catalog.manage";
 
     // نکته: AccountingView و TreasuryManage قبلاً بعد از این آرایه تعریف شده بودند،
     // پس داخلش نبودند. نتیجه: نه در صفحه‌ی «مدیریت مجوزها» دیده می‌شدند، نه حتی
@@ -64,6 +65,7 @@ public static class Permissions
         SalesView => "مشاهده فاکتورهای فروش",
         AccountingView => "مشاهده حسابداری",
         TreasuryManage => "مدیریت صندوق و بانک",
+        CatalogManage => "مدیریت کاتالوگ فروشگاه",
         _ => permission
     };
 }

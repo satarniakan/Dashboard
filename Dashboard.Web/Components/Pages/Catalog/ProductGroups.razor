@@ -1,0 +1,47 @@
+@page "/catalog/product-groups"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.CatalogManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@inject ICatalogService CatalogService
+
+<PageTitle>گروه‌های محصول</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">گروه‌های محصول</h3>
+    <a href="/catalog/product-groups/add" class="btn btn-primary">+ گروه محصول جدید</a>
+</div>
+
+<div class="card-panel">
+    @if (groups is null || !groups.Any())
+    {
+        <p class="text-muted text-center py-4">هنوز گروه محصولی ثبت نشده است.</p>
+    }
+    else
+    {
+        <table class="table mb-0">
+            <thead><tr><th>نام</th><th>دسته</th><th>تعداد Variant</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var g in groups)
+                {
+                    <tr>
+                        <td class="fw-medium">@g.Name</td>
+                        <td class="text-muted">@(g.CategoryName ?? "-")</td>
+                        <td>@g.VariantCount</td>
+                        <td class="text-end"><a href="/catalog/product-groups/@g.Id" class="btn btn-sm btn-outline-primary">مدیریت</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<ProductGroupSummaryDto>? groups;
+
+    protected override async Task OnInitializedAsync()
+    {
+        groups = (await CatalogService.GetProductGroupsAsync()).ToList();
+    }
+}
