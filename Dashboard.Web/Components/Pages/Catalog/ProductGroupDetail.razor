@@ -1,0 +1,189 @@
+@page "/catalog/product-groups/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.CatalogManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@inject ICatalogService CatalogService
+
+<PageTitle>@group?.Name</PageTitle>
+
+@if (group is null)
+{
+    <p class="text-muted">در حال بارگذاری...</p>
+}
+else
+{
+    <h3>@group.Name</h3>
+    <p class="text-muted">@group.CategoryName</p>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card-panel mb-4">
+                <h5 class="mb-3">تصاویر</h5>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    @foreach (var img in group.Images)
+                    {
+                        <img src="@img.Url" style="width:80px;height:80px;object-fit:cover;border-radius:8px;" />
+                    }
+                </div>
+                <InputFile OnChange="HandleImageUpload" class="form-control" accept="image/*" />
+                @if (isUploading)
+                {
+                    <p class="text-muted mt-2">در حال آپلود...</p>
+                }
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card-panel mb-4">
+                <h5 class="mb-3">افزودن Variant جدید</h5>
+                <div class="mb-2">
+                    <label class="form-label">کد کالا (SKU)</label>
+                    <input class="form-control" @bind="newVariant.Sku" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">بارکد (اختیاری)</label>
+                    <input class="form-control" @bind="newVariant.Barcode" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">نام نمایشی (مثلاً: قرمز - L)</label>
+                    <input class="form-control" @bind="newVariant.VariantName" />
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-2">
+                        <label class="form-label">قیمت فروش</label>
+                        <input type="number" class="form-control" @bind="newVariant.Price" />
+                    </div>
+                    <div class="col-6 mb-2">
+                        <label class="form-label">بهای تمام‌شده</label>
+                        <input type="number" class="form-control" @bind="newVariant.CostPrice" />
+                    </div>
+                </div>
+
+                @if (attributes is not null)
+                {
+                    @foreach (var attr in attributes)
+                    {
+                        <div class="mb-2">
+                            <label class="form-label">@attr.Name</label>
+                            <select class="form-select" @onchange="e => OnAttributeSelected(attr.Id, e.Value)">
+                                <option value="0">-- ندارد --</option>
+                                @foreach (var val in attr.Values)
+                                {
+                                    <option value="@val.Id">@val.Value</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                }
+
+                @if (!string.IsNullOrEmpty(variantError))
+                {
+                    <div class="alert alert-danger">@variantError</div>
+                }
+
+                <button class="btn btn-primary mt-2" disabled="@isSavingVariant" @onclick="HandleAddVariant">
+                    @(isSavingVariant ? "در حال ذخیره..." : "افزودن Variant")
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-panel">
+        <h5 class="mb-3">Variant های این گروه</h5>
+        @if (!group.Variants.Any())
+        {
+            <p class="text-muted text-center py-4">هنوز Variant ای اضافه نشده است.</p>
+        }
+        else
+        {
+            <table class="table mb-0">
+                <thead><tr><th>کد کالا</th><th>نام</th><th>قیمت</th></tr></thead>
+                <tbody>
+                    @foreach (var v in group.Variants)
+                    {
+                        <tr>
+                            <td>@v.Sku</td>
+                            <td>@v.AttributeSummary</td>
+                            <td>@v.Price.ToString("N0")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private ProductGroupDto? group;
+    private List<AttributeDto>? attributes;
+    private CreateVariantDto newVariant = new();
+    private bool isSavingVariant;
+    private bool isUploading;
+    private string? variantError;
+
+    [Inject] private IFileStorageService FileStorage { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadGroup();
+        attributes = (await CatalogService.GetAttributesAsync()).ToList();
+    }
+
+    private async Task LoadGroup()
+    {
+        group = await CatalogService.GetProductGroupAsync(Id);
+    }
+
+    private void OnAttributeSelected(int attributeId, object? value)
+    {
+        if (int.TryParse(value?.ToString(), out var valueId) && valueId > 0)
+        {
+            if (!newVariant.AttributeValueIds.Contains(valueId))
+            {
+                newVariant.AttributeValueIds.Add(valueId);
+            }
+        }
+    }
+
+    private async Task HandleAddVariant()
+    {
+        isSavingVariant = true;
+        variantError = null;
+        try
+        {
+            newVariant.ProductGroupId = Id;
+            await CatalogService.AddVariantAsync(newVariant);
+            await LoadGroup();
+            newVariant = new();
+        }
+        catch (Exception ex)
+        {
+            variantError = ex.Message;
+        }
+        finally
+        {
+            isSavingVariant = false;
+        }
+    }
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        isUploading = true;
+        try
+        {
+            var file = e.File;
+            await using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024); // حداکثر ۵ مگابایت
+            var url = await FileStorage.SaveFileAsync(stream, file.Name);
+            await CatalogService.AddImageAsync(Id, url, isPrimary: group?.Images.Count == 0);
+            await LoadGroup();
+        }
+        finally
+        {
+            isUploading = false;
+        }
+    }
+}

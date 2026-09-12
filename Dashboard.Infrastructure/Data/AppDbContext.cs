@@ -48,6 +48,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<SupplierPayment> SupplierPayments => Set<SupplierPayment>();
     public DbSet<InstallmentPlan> InstallmentPlans => Set<InstallmentPlan>();
     public DbSet<Installment> Installments => Set<Installment>();
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<ProductGroup> ProductGroups => Set<ProductGroup>();
+    public DbSet<ProductAttribute> ProductAttributes => Set<ProductAttribute>();
+    public DbSet<ProductAttributeValue> ProductAttributeValues => Set<ProductAttributeValue>();
+    public DbSet<ProductVariantAttribute> ProductVariantAttributes => Set<ProductVariantAttribute>();
+    public DbSet<ProductImage> ProductImages => Set<ProductImage>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder); // required — sets up Identity's tables
@@ -276,6 +282,50 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.Property(i => i.PaidAmount).HasColumnType("decimal(18,2)");
             e.Ignore(i => i.IsFullyPaid);
             e.Ignore(i => i.IsOverdue);
+        });
+        // ---------- Category ----------
+        builder.Entity<Category>(e =>
+        {
+            e.Property(c => c.Name).HasMaxLength(150).IsRequired();
+            e.Property(c => c.Slug).HasMaxLength(150).IsRequired();
+            e.HasIndex(c => c.Slug).IsUnique();
+            e.HasOne(c => c.ParentCategory).WithMany().HasForeignKey(c => c.ParentCategoryId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ---------- ProductGroup ----------
+        builder.Entity<ProductGroup>(e =>
+        {
+            e.Property(g => g.Name).HasMaxLength(200).IsRequired();
+            e.Property(g => g.Slug).HasMaxLength(200).IsRequired();
+            e.HasIndex(g => g.Slug).IsUnique();
+            e.HasOne(g => g.Category).WithMany().HasForeignKey(g => g.CategoryId).OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(g => g.Variants).WithOne(p => p.ProductGroup).HasForeignKey(p => p.ProductGroupId).OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(g => g.Images).WithOne(i => i.ProductGroup).HasForeignKey(i => i.ProductGroupId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ---------- ProductAttribute / Value ----------
+        builder.Entity<ProductAttribute>(e =>
+        {
+            e.Property(a => a.Name).HasMaxLength(100).IsRequired();
+            e.HasMany(a => a.Values).WithOne(v => v.ProductAttribute).HasForeignKey(v => v.ProductAttributeId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<ProductAttributeValue>(e =>
+        {
+            e.Property(v => v.Value).HasMaxLength(100).IsRequired();
+        });
+
+        // ---------- ProductVariantAttribute ----------
+        builder.Entity<ProductVariantAttribute>(e =>
+        {
+            e.HasOne(pva => pva.Product).WithMany().HasForeignKey(pva => pva.ProductId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(pva => pva.ProductAttributeValue).WithMany().HasForeignKey(pva => pva.ProductAttributeValueId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(pva => new { pva.ProductId, pva.ProductAttributeValueId }).IsUnique();
+        });
+
+        // ---------- ProductImage ----------
+        builder.Entity<ProductImage>(e =>
+        {
+            e.Property(i => i.Url).HasMaxLength(500).IsRequired();
         });
     }
 }

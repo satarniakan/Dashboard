@@ -55,7 +55,7 @@ public class OtpService : IOtpService
         }
 
         await _otpRepository.MarkAsUsedAsync(otp.Id);
-        await _unitOfWork.CompleteAsync();  
+        await _unitOfWork.CompleteAsync();
         return true;
     }
 }

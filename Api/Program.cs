@@ -4,7 +4,7 @@ using Dashboard.Application.Services;
 using Dashboard.Domain.Interfaces;
 using Dashboard.Infrastructure.Data;
 using Dashboard.Infrastructure.Repositories;
-
+using Dashboard.Infrastructure.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -16,7 +16,8 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-
+builder.Services.AddScoped<IFileStorageService>(sp =>
+    new LocalFileStorageService(builder.Environment.WebRootPath));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

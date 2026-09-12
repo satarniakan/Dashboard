@@ -1,0 +1,60 @@
+@page "/catalog/attributes"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.CatalogManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@inject ICatalogService CatalogService
+
+<PageTitle>ویژگی‌های محصول</PageTitle>
+
+<h3>ویژگی‌های محصول (رنگ، سایز و ...)</h3>
+
+<div class="card-panel mb-4" style="max-width: 480px;">
+    <div class="mb-3">
+        <label class="form-label">نام ویژگی (مثلاً: رنگ)</label>
+        <input class="form-control" @bind="newAttribute.Name" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">مقادیر (هرکدام در یک خط، مثلاً: قرمز، آبی، سبز)</label>
+        <textarea class="form-control" rows="4" @bind="valuesRaw"></textarea>
+    </div>
+    <button class="btn btn-primary" @onclick="HandleAdd">افزودن ویژگی</button>
+</div>
+
+<div class="card-panel">
+    @if (attributes is null || !attributes.Any())
+    {
+        <p class="text-muted text-center py-4">هنوز ویژگی‌ای ثبت نشده است.</p>
+    }
+    else
+    {
+        @foreach (var a in attributes)
+        {
+            <div class="mb-3">
+                <strong>@a.Name:</strong>
+                @string.Join("، ", a.Values.Select(v => v.Value))
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<AttributeDto>? attributes;
+    private CreateAttributeDto newAttribute = new();
+    private string valuesRaw = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        attributes = (await CatalogService.GetAttributesAsync()).ToList();
+    }
+
+    private async Task HandleAdd()
+    {
+        newAttribute.Values = valuesRaw.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        await CatalogService.CreateAttributeAsync(newAttribute);
+        attributes = (await CatalogService.GetAttributesAsync()).ToList();
+        newAttribute = new();
+        valuesRaw = string.Empty;
+    }
+}

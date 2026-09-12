@@ -139,7 +139,21 @@
                         </div>
                     </Authorized>
                 </AuthorizeView>
-
+<AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.CatalogManage" Context="catalogSectionCtx">
+    <Authorized>
+        <div class="nav-section">
+            <div class="nav-section-header" @onclick="() => Toggle(nameof(catalogOpen))">
+                <span>کاتالوگ فروشگاه</span>
+                <span class="nav-caret">@(catalogOpen ? "⌄" : "›")</span>
+            </div>
+            <div class="nav-section-body @(catalogOpen ? "" : "d-none")">
+                <div class="nav-item px-3"><NavLink class="nav-link" href="catalog/categories">دسته‌بندی‌ها</NavLink></div>
+                <div class="nav-item px-3"><NavLink class="nav-link" href="catalog/attributes">ویژگی‌ها</NavLink></div>
+                <div class="nav-item px-3"><NavLink class="nav-link" href="catalog/product-groups">گروه‌های محصول</NavLink></div>
+            </div>
+        </div>
+    </Authorized>
+</AuthorizeView>
                 <hr class="nav-divider" />
 
                 <div class="nav-item px-3">
@@ -169,7 +183,7 @@
     private bool salesOpen;
     private bool accountingOpen;
     private bool adminOpen;
-
+private bool catalogOpen;
     private void Toggle(string sectionName)
     {
         switch (sectionName)
@@ -178,6 +192,7 @@
             case nameof(salesOpen): salesOpen = !salesOpen; break;
             case nameof(accountingOpen): accountingOpen = !accountingOpen; break;
             case nameof(adminOpen): adminOpen = !adminOpen; break;
+            case nameof(catalogOpen): catalogOpen = !catalogOpen; break;
         }
     }
 }

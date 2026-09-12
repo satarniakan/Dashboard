@@ -47,7 +47,7 @@ public class StockService : IStockService
     private readonly ILogger<StockService> _logger;
     private readonly IJournalService _journalService;
     // ... تو Constructor:
-   
+
     public StockService(IUnitOfWork unitOfWork, ILogger<StockService> logger, IJournalService journalService)
     {
         _unitOfWork = unitOfWork;

@@ -36,6 +36,7 @@ public class UnitOfWork : IUnitOfWork
     public ICustomerReceiptRepository CustomerReceipts { get; private set; }
     public ISupplierPaymentRepository SupplierPayments { get; private set; }
     public IInstallmentPlanRepository InstallmentPlans { get; private set; }
+    public ICatalogRepository Catalog { get; private set; }
 
 
 
@@ -61,7 +62,10 @@ public class UnitOfWork : IUnitOfWork
         IFinancialAccountRepository financialAccounts,
         ICustomerReceiptRepository customerReceipts,
         ISupplierPaymentRepository supplierPayments,
-        IInstallmentPlanRepository installmentPlan)
+        IInstallmentPlanRepository installmentPlan,
+        ICatalogRepository catalog
+
+        )
     {
         _context = context;
         Products = products;
@@ -91,6 +95,7 @@ public class UnitOfWork : IUnitOfWork
         CustomerReceipts = customerReceipts;
         SupplierPayments = supplierPayments;
         InstallmentPlans = installmentPlan;
+        Catalog = catalog;
     }
 
     // این همان متد جادویی است که همه چیز را یک‌باره ذخیره می‌کند

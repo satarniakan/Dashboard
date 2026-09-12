@@ -30,6 +30,7 @@ public interface IUnitOfWork
     ICustomerReceiptRepository CustomerReceipts { get; }
     ISupplierPaymentRepository SupplierPayments { get; }
     IInstallmentPlanRepository InstallmentPlans { get; }
+    ICatalogRepository Catalog { get; }
 
     // این همان متد جادویی است که در پایان، همه تغییرات را یک‌باره ذخیره می‌کند
     Task<int> CompleteAsync();
