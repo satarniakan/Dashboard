@@ -1,9 +1,10 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Dashboard.Application.DTOs;
+using Dashboard.Application.Helpers;
 using Dashboard.Domain.Accounting;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
 using Dashboard.Domain.Interfaces;
-using Dashboard.Application.DTOs;
+using Microsoft.Extensions.Logging;
 
 namespace Dashboard.Application.Services;
 
@@ -59,7 +60,7 @@ public class SalesService : ISalesService
         {
             CustomerId = dto.CustomerId,
             WarehouseId = dto.WarehouseId,
-            InvoiceNumber = dto.InvoiceNumber,
+            InvoiceNumber = $"TEMP-{Guid.NewGuid():N}", // شماره موقت، فقط برای عبور از محدودیت Unique
             InvoiceDate = dto.InvoiceDate,
             DiscountAmount = dto.DiscountAmount,
             Notes = dto.Notes,
@@ -86,7 +87,11 @@ public class SalesService : ISalesService
         invoice.TotalAmount = total - dto.DiscountAmount;
 
         await _unitOfWork.SalesInvoices.AddAsync(invoice);
-        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesInvoiceDrafted", userId, $"فاکتور {dto.InvoiceNumber} به‌صورت پیش‌نویس ثبت شد."));
+        await _unitOfWork.CompleteAsync(); // اینجا Id واقعی ساخته می‌شود
+
+        invoice.InvoiceNumber = DocumentNumberGenerator.Generate(invoice.InvoiceDate, invoice.CustomerId, invoice.Id);
+        await _unitOfWork.SalesInvoices.UpdateAsync(invoice);
+        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesInvoiceDrafted", userId, $"فاکتور {invoice.InvoiceNumber} به‌صورت پیش‌نویس ثبت شد."));
         await _unitOfWork.CompleteAsync();
 
         return invoice.Id;

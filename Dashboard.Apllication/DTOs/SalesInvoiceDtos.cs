@@ -11,7 +11,6 @@ public class CreateSalesInvoiceDto
 {
     public int? CustomerId { get; set; }
     public int WarehouseId { get; set; }
-    public string InvoiceNumber { get; set; } = string.Empty;
     public DateTime InvoiceDate { get; set; } = DateTime.UtcNow;
     public decimal DiscountAmount { get; set; }
     public string? Notes { get; set; }
