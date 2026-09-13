@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
 @inject IStockService StockService
 
 <PageTitle>تاریخچه رویدادهای انبار</PageTitle>
@@ -52,7 +53,7 @@
                 @foreach (var t in history)
                 {
                     <tr>
-                        <td class="text-muted" style="white-space: nowrap;">@t.OccurredAt.ToString("yyyy/MM/dd HH:mm")</td>
+                        <td class="text-muted" style="white-space: nowrap;">@t.OccurredAt.ToPersianDateTime()</td>
                         <td><span class="badge bg-light text-dark">@TypeToPersian(t.Type)</span></td>
                         <td class="fw-medium">@t.ProductName</td>
                         <td>@t.WarehouseName</td>

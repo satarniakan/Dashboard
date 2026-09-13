@@ -41,7 +41,7 @@
                 {
                     <tr>
                         <td class="fw-medium">@p.PaymentNumber</td>
-                        <td class="text-muted">@p.PaymentDate.ToString("yyyy/MM/dd")</td>
+                        <td class="text-muted">@p.PaymentDate.ToPersianDate()</td>
                         <td>@p.SupplierName</td>
                         <td>@p.FinancialAccountName</td>
                         <td>@MethodLabel(p.Method)</td>

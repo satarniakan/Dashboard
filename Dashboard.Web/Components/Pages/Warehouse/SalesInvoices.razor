@@ -46,7 +46,7 @@
                 {
                     <tr>
                         <td class="fw-medium">@inv.InvoiceNumber</td>
-                        <td class="text-muted">@inv.InvoiceDate.ToString("yyyy/MM/dd")</td>
+                        <td class="text-muted">@inv.InvoiceDate.ToPersianDate()</td>
                         <td>@(inv.CustomerName ?? "مشتری حضوری")</td>
                         <td>@inv.WarehouseName</td>
                         <td>@CurrencyFormatter.ToToman(inv.TotalAmount)</td>

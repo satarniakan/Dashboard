@@ -74,7 +74,7 @@
             </div>
             <div class="col-md-6 mb-3">
                 <label class="form-label">تاریخ</label>
-                <InputDate class="form-control" @bind-Value="model.ReceiptDate" />
+                <PersianDateTimePicker TValue="DateTime" @bind-Value="model.ReceiptDate" ShowTime="true" />
             </div>
         </div>
 
@@ -87,7 +87,7 @@
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">تاریخ سررسید چک</label>
-                    <InputDate class="form-control" @bind-Value="model.ChequeDueDate" />
+                    <PersianDateTimePicker TValue="DateTime?" @bind-Value="model.ChequeDueDate" ShowTime="false" />
                 </div>
             </div>
         }

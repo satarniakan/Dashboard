@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
 @inject IStockService StockService
 
 <PageTitle>حواله‌های مصرف داخلی</PageTitle>
@@ -43,7 +44,7 @@
                 {
                     <tr>
                         <td class="fw-medium">@i.IssueNumber</td>
-                        <td class="text-muted">@i.IssueDate.ToString("yyyy/MM/dd")</td>
+                        <td class="text-muted">@i.IssueDate.ToPersianDate()</td>
                         <td>@i.WarehouseName</td>
                         <td class="text-muted">@(i.Purpose ?? "-")</td>
                         <td>@i.ItemCount</td>

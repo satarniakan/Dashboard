@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
 @inject IStockService StockService
 
 <PageTitle>برگشت از فروش</PageTitle>
@@ -43,7 +44,7 @@
                 {
                     <tr>
                         <td class="fw-medium">@r.ReturnNumber</td>
-                        <td class="text-muted">@r.ReturnDate.ToString("yyyy/MM/dd")</td>
+                        <td class="text-muted">@r.ReturnDate.ToPersianDate()</td>
                         <td>@r.WarehouseName</td>
                         <td class="text-muted">@(r.CustomerReference ?? "-")</td>
                         <td>@r.ItemCount</td>

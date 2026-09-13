@@ -3,6 +3,7 @@
 @attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.AuditLogsView)]
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
 @inject IAuditService AuditService
 
 <PageTitle>گزارش رویدادها</PageTitle>
@@ -33,7 +34,7 @@
                 @foreach (var log in logs)
                 {
                     <tr>
-                        <td class="text-muted" style="white-space: nowrap;">@log.OccurredAt.ToString("yyyy/MM/dd HH:mm")</td>
+                        <td class="text-muted" style="white-space: nowrap;">@log.OccurredAt.ToPersianDateTime()</td>
                         <td><span class="badge bg-light text-dark">@log.EventType</span></td>
                         <td>@(log.UserEmail ?? "-")</td>
                         <td class="text-muted">@log.Details</td>

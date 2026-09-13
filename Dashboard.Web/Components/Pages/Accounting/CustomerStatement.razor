@@ -54,7 +54,7 @@
                     @foreach (var row in rows)
                     {
                         <tr>
-                            <td class="text-muted">@row.Date.ToString("yyyy/MM/dd")</td>
+                            <td class="text-muted">@row.Date.ToPersianDate()</td>
                             <td>@row.EntryNumber</td>
                             <td>@row.Description</td>
                             <td>@(row.Debit > 0 ? CurrencyFormatter.ToToman(row.Debit) : "-")</td>

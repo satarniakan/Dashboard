@@ -5,6 +5,7 @@
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
 @using System.Security.Claims
+@using Dashboard.Web.Components.Shared
 @inject IStockService StockService
 @inject IProductService ProductService
 @inject NavigationManager NavigationManager
@@ -55,7 +56,7 @@
             </div>
             <div class="col-md-6 mb-3">
                 <label class="form-label">تاریخ</label>
-                <InputDate class="form-control" @bind-Value="model.ReceiptDate" />
+                <PersianDateTimePicker TValue="DateTime" @bind-Value="model.ReceiptDate" ShowTime="true" />
             </div>
         </div>
 

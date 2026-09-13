@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
 @inject IStockService StockService
 
 <PageTitle>ضایعات</PageTitle>
@@ -43,7 +44,7 @@
                 {
                     <tr>
                         <td class="fw-medium">@r.RecordNumber</td>
-                        <td class="text-muted">@r.RecordDate.ToString("yyyy/MM/dd")</td>
+                        <td class="text-muted">@r.RecordDate.@r.RecordDate.ToPersianDate()</td>
                         <td>@r.WarehouseName</td>
                         <td class="text-muted">@(r.Reason ?? "-")</td>
                         <td>@r.ItemCount</td>

@@ -15,7 +15,7 @@
 else
 {
     <h3>سند شماره @entry.EntryNumber</h3>
-    <p class="text-muted">@entry.EntryDate.ToString("yyyy/MM/dd HH:mm") — @entry.Description</p>
+    <p class="text-muted">@entry.EntryDate.ToPersianDateTime() — @entry.Description</p>
 
     <div class="card-panel">
         <table class="table mb-0">

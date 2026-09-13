@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
 @inject IStockService StockService
 
 <PageTitle>رسیدهای خرید</PageTitle>
@@ -43,7 +44,7 @@
                 {
                     <tr>
                         <td class="fw-medium">@r.ReceiptNumber</td>
-                        <td class="text-muted">@r.ReceiptDate.ToString("yyyy/MM/dd")</td>
+                        <td class="text-muted">@r.ReceiptDate.ToPersianDate()</td>
                         <td>@r.SupplierName</td>
                         <td>@r.WarehouseName</td>
                         <td>@r.ItemCount</td>

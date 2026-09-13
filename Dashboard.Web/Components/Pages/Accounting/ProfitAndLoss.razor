@@ -14,11 +14,11 @@
     <div class="row align-items-end">
         <div class="col-md-4">
             <label class="form-label">از تاریخ</label>
-            <input type="date" class="form-control" @bind="fromDate" />
+            <PersianDateTimePicker TValue="DateTime?" @bind-Value="fromDate" ShowTime="false" />
         </div>
         <div class="col-md-4">
             <label class="form-label">تا تاریخ</label>
-            <input type="date" class="form-control" @bind="toDate" />
+            <PersianDateTimePicker TValue="DateTime?" @bind-Value="toDate" ShowTime="false" />
         </div>
         <div class="col-md-4">
             <button class="btn btn-primary w-100" @onclick="LoadReport">نمایش گزارش</button>

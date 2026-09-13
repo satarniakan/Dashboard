@@ -1,0 +1,102 @@
+﻿@* Dashboard.Web/Components/Shared/PersianDateTimePicker.razor *@
+@* این کامپوننت هم با فیلدهای DateTime معمولی کار می‌کند، هم با DateTime؟ (قابل‌خالی) —
+   دقیقاً مثل InputDate خود بلیزر که با @typeparam این کار رو انجام می‌ده.
+   یعنی همه‌جایی که همین الان <PersianDateTimePicker @bind-Value="..." /> نوشتید،
+   بدون هیچ تغییری کار می‌کنه — چه فیلدش DateTime باشه چه DateTime؟. *@
+@typeparam TValue
+@using System.Globalization
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<input type="text" id="@_elementId" class="form-control" placeholder="@Placeholder" />
+
+@code {
+    [Parameter] public TValue Value { get; set; } = default!;
+    [Parameter] public EventCallback<TValue> ValueChanged { get; set; }
+    [Parameter] public bool ShowTime { get; set; } = true;
+    [Parameter] public string? Placeholder { get; set; }
+
+    private readonly string _elementId = $"pdp_{Guid.NewGuid():N}";
+    private DotNetObjectReference<PersianDateTimePicker<TValue>>? _dotNetRef;
+    private bool _initialized;
+
+    protected override void OnInitialized()
+    {
+        // این کامپوننت فقط برای دو نوع ساخته شده: DateTime و DateTime؟
+        // اگر یک روز کسی اشتباهی این را روی یک رشته یا عدد بست، همین‌جا با یک پیام
+        // واضح متوقف می‌شویم، نه با یک خطای گنگ وسط کار جاوااسکریپت.
+        var t = typeof(TValue);
+        if (t != typeof(DateTime) && t != typeof(DateTime?))
+        {
+            throw new InvalidOperationException(
+                $"PersianDateTimePicker فقط برای DateTime یا DateTime؟ ساخته شده، نه {t.Name}.");
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_initialized)
+        {
+            _initialized = true;
+            _dotNetRef = DotNetObjectReference.Create(this);
+            var mode = ShowTime ? "datetime" : "date";
+
+            string? initialDisplay = null;
+            var currentValue = ToNullableDateTime(Value);
+            if (currentValue.HasValue)
+            {
+                var pc = new PersianCalendar();
+                initialDisplay = ShowTime
+                    ? $"{pc.GetYear(currentValue.Value):0000}/{pc.GetMonth(currentValue.Value):00}/{pc.GetDayOfMonth(currentValue.Value):00} {currentValue.Value:HH:mm}"
+                    : $"{pc.GetYear(currentValue.Value):0000}/{pc.GetMonth(currentValue.Value):00}/{pc.GetDayOfMonth(currentValue.Value):00}";
+            }
+
+            await JS.InvokeVoidAsync("persianDatePickerInterop.init", _elementId, _dotNetRef, mode, initialDisplay);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnDateSelected(string isoUtc)
+    {
+        if (DateTime.TryParse(isoUtc, CultureInfo.InvariantCulture,
+                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var dt))
+        {
+            Value = FromDateTime(dt);
+            await ValueChanged.InvokeAsync(Value);
+        }
+    }
+
+    // یک TValue (که یا DateTime است یا DateTime؟) را به یک DateTime؟ ساده تبدیل می‌کند
+    // تا محاسبات تقویم فارسی روی یک نوع مشخص و ساده انجام شود
+    private static DateTime? ToNullableDateTime(TValue value)
+    {
+        if (value is null) return null;
+        return value switch
+        {
+            DateTime dt => dt,
+            _ => null
+        };
+    }
+
+    // برعکسِ متد بالا: یک DateTime واقعی را به همان نوعی که این نمونه از کامپوننت نیاز دارد
+    // (DateTime یا DateTime؟) تبدیل می‌کند
+    private static TValue FromDateTime(DateTime value)
+    {
+        if (typeof(TValue) == typeof(DateTime?))
+        {
+            DateTime? boxed = value;
+            return (TValue)(object)boxed;
+        }
+
+        return (TValue)(object)value;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_dotNetRef is not null)
+        {
+            try { await JS.InvokeVoidAsync("persianDatePickerInterop.destroy", _elementId); } catch { }
+            _dotNetRef.Dispose();
+        }
+    }
+}

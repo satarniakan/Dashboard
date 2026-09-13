@@ -39,7 +39,7 @@
                     <tr class="table-danger">
                         <td class="fw-medium">@o.InvoiceNumber</td>
                         <td>@o.CustomerName</td>
-                        <td>@o.DueDate.ToString("yyyy/MM/dd")</td>
+                        <td>@o.DueDate.ToPersianDate()</td>
                         <td class="fw-bold">@o.DaysOverdue روز</td>
                         <td>@CurrencyFormatter.ToToman(o.Amount - o.PaidAmount)</td>
                         <td>

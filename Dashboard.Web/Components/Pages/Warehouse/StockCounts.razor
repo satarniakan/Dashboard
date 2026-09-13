@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
 @inject IStockService StockService
 
 <PageTitle>انبارگردانی</PageTitle>
@@ -43,7 +44,7 @@
                 {
                     <tr>
                         <td class="fw-medium">@c.CountNumber</td>
-                        <td class="text-muted">@c.CountDate.ToString("yyyy/MM/dd")</td>
+                        <td class="text-muted">@c.CountDate.ToPersianDate()</td>
                         <td>@c.WarehouseName</td>
                         <td>
                             @if (c.Status == "Open")

@@ -41,7 +41,7 @@
                 {
                     <tr>
                         <td class="fw-medium">@r.ReceiptNumber</td>
-                        <td class="text-muted">@r.ReceiptDate.ToString("yyyy/MM/dd")</td>
+                        <td class="text-muted">@r.ReceiptDate.ToPersianDate()</td>
                         <td>@(r.CustomerName ?? "-")</td>
                         <td>@r.FinancialAccountName</td>
                         <td>@MethodLabel(r.Method)</td>

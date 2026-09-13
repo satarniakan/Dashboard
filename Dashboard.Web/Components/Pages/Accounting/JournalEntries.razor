@@ -37,7 +37,7 @@
                 {
                     <tr>
                         <td class="fw-medium">@e.EntryNumber</td>
-                        <td class="text-muted">@e.EntryDate.ToString("yyyy/MM/dd HH:mm")</td>
+                        <td class="text-muted">@e.EntryDate.ToPersianDateTime()</td>
                         <td>@e.Description</td>
                         <td>@CurrencyFormatter.ToToman(e.Lines.Sum(l => l.Debit))</td>
                         <td class="text-end">
