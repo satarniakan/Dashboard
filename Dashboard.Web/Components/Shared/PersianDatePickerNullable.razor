@@ -1,0 +1,88 @@
+@* Dashboard.Web/Components/Shared/PersianDatePickerNullable.razor *@
+@* دقیقاً مثل PersianDatePicker.razor ولی برای فیلدهایی که نوعشان DateTime? است (می‌توانند خالی باشند) *@
+@using System.Globalization
+
+<div class="d-flex gap-2">
+    <select class="form-select" @bind="dayValue" @bind:after="NotifyChangedAsync">
+        @for (var d = 1; d <= daysInMonth; d++)
+        {
+            <option value="@d">@d</option>
+        }
+    </select>
+
+    <select class="form-select" @bind="monthValue" @bind:after="OnMonthChangedAsync">
+        @for (var m = 1; m <= 12; m++)
+        {
+            <option value="@m">@monthNames[m - 1]</option>
+        }
+    </select>
+
+    <select class="form-select" @bind="yearValue" @bind:after="OnYearChangedAsync">
+        @for (var y = minYear; y <= maxYear; y++)
+        {
+            <option value="@y">@y</option>
+        }
+    </select>
+</div>
+
+@code {
+    private static readonly PersianCalendar persianCalendar = new();
+
+    private static readonly string[] monthNames =
+    {
+        "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
+        "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
+    };
+
+    [Parameter] public DateTime? Value { get; set; }
+    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
+
+    private int dayValue;
+    private int monthValue;
+    private int yearValue;
+    private int daysInMonth = 31;
+
+    private readonly int minYear = 1370;
+    private readonly int maxYear = persianCalendar.GetYear(DateTime.Now.AddYears(5));
+
+    protected override void OnParametersSet()
+    {
+        // اگر مقدار خالی بود (چون هنوز کاربر تاریخی انتخاب نکرده)، امروز را پیش‌فرض نشان می‌دهیم
+        var dateToShow = Value ?? DateTime.Now;
+
+        yearValue = persianCalendar.GetYear(dateToShow);
+        monthValue = persianCalendar.GetMonth(dateToShow);
+        dayValue = persianCalendar.GetDayOfMonth(dateToShow);
+
+        UpdateDaysInMonth();
+    }
+
+    private void UpdateDaysInMonth()
+    {
+        daysInMonth = persianCalendar.GetDaysInMonth(yearValue, monthValue);
+        if (dayValue > daysInMonth)
+        {
+            dayValue = daysInMonth;
+        }
+    }
+
+    private async Task OnMonthChangedAsync()
+    {
+        UpdateDaysInMonth();
+        await NotifyChangedAsync();
+    }
+
+    private async Task OnYearChangedAsync()
+    {
+        UpdateDaysInMonth();
+        await NotifyChangedAsync();
+    }
+
+    private async Task NotifyChangedAsync()
+    {
+        // به‌محض این‌که کاربر با هر کدام از سه لیست تعامل کند، یک تاریخ مشخص ثبت می‌شود
+        // (یعنی دیگر null نمی‌ماند — چون کاربر همین الان یک روز/ماه/سال انتخاب کرده)
+        DateTime? newDate = persianCalendar.ToDateTime(yearValue, monthValue, dayValue, 0, 0, 0, 0);
+        await ValueChanged.InvokeAsync(newDate);
+    }
+}
