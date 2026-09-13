@@ -1,5 +1,4 @@
 <Solution>
-  <Project Path="Api/Api.csproj" />
   <Project Path="Dashboard.Apllication/Dashboard.Apllication.csproj" />
   <Project Path="Dashboard.Domain/Dashboard.Domain.csproj" />
   <Project Path="Dashboard.Infrastructure/Dashboard.Infrastructure.csproj" />
