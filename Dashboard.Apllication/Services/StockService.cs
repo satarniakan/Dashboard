@@ -1,8 +1,9 @@
-using Microsoft.Extensions.Logging;
+using Dashboard.Application.DTOs;
+using Dashboard.Application.Helpers;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
 using Dashboard.Domain.Interfaces;
-using Dashboard.Application.DTOs;
+using Microsoft.Extensions.Logging;
 
 namespace Dashboard.Application.Services;
 
@@ -137,7 +138,7 @@ public class StockService : IStockService
         {
             SupplierId = dto.SupplierId,
             WarehouseId = dto.WarehouseId,
-            ReceiptNumber = dto.ReceiptNumber,
+            ReceiptNumber = $"TEMP-{Guid.NewGuid():N}",
             ReceiptDate = dto.ReceiptDate,
             Notes = dto.Notes,
             CreatedByUserId = userId
@@ -169,14 +170,19 @@ public class StockService : IStockService
         }
 
         await _unitOfWork.PurchaseReceipts.AddAsync(receipt);
-        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("PurchaseReceiptRegistered", userId, $"رسید خرید {dto.ReceiptNumber} ثبت شد."));
+        await _unitOfWork.CompleteAsync(); // اینجا Id واقعی ساخته می‌شود
+
+        receipt.ReceiptNumber = DocumentNumberGenerator.Generate(receipt.ReceiptDate, receipt.SupplierId, receipt.Id);
+        await _unitOfWork.PurchaseReceipts.UpdateAsync(receipt);
+        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("PurchaseReceiptRegistered", userId, $"رسید خرید {receipt.ReceiptNumber} ثبت شد."));
         await _unitOfWork.CompleteAsync();
+
         var totalAmount = receipt.Items.Sum(i => i.Quantity * i.UnitCost);
 
         if (totalAmount > 0)
         {
             await _journalService.PostEntryAsync(
-                description: $"خرید طبق رسید {dto.ReceiptNumber}",
+                description: $"خرید طبق رسید {receipt.ReceiptNumber}",
                 lines: new List<JournalLineInput>
                 {
             new("1300", totalAmount, 0, "افزایش موجودی کالا"),
@@ -186,7 +192,7 @@ public class StockService : IStockService
                 referenceId: receipt.Id,
                 userId: userId);
         }
-        _logger.LogInformation("Purchase receipt {ReceiptNumber} registered by {UserId}", dto.ReceiptNumber, userId);
+        _logger.LogInformation("Purchase receipt {ReceiptNumber} registered by {UserId}", receipt.ReceiptNumber, userId);
         return receipt.Id;
     }
 
@@ -209,7 +215,7 @@ public class StockService : IStockService
         var issue = new InternalIssue
         {
             WarehouseId = dto.WarehouseId,
-            IssueNumber = dto.IssueNumber,
+            IssueNumber = $"TEMP-{Guid.NewGuid():N}", // شماره موقت، فقط برای عبور از محدودیت Unique
             IssueDate = dto.IssueDate,
             Purpose = dto.Purpose,
             Notes = dto.Notes,
@@ -233,8 +239,18 @@ public class StockService : IStockService
             await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, dto.WarehouseId, -item.Quantity);
         }
 
+        //await _unitOfWork.InternalIssues.AddAsync(issue);
+        //await _unitOfWork.AuditLogs.AddAsync(new AuditLog("InternalIssueRegistered", userId, $"حواله مصرف داخلی {dto.IssueNumber} ثبت شد."));
+        //await _unitOfWork.CompleteAsync();
+
+        //return issue.Id;
+
         await _unitOfWork.InternalIssues.AddAsync(issue);
-        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("InternalIssueRegistered", userId, $"حواله مصرف داخلی {dto.IssueNumber} ثبت شد."));
+        await _unitOfWork.CompleteAsync(); // اینجا Id واقعی ساخته می‌شود
+
+        issue.IssueNumber = DocumentNumberGenerator.Generate(issue.IssueDate, issue.WarehouseId, issue.Id);
+        await _unitOfWork.InternalIssues.UpdateAsync(issue);
+        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("InternalIssueRegistered", userId, $"حواله مصرف داخلی {issue.IssueNumber} ثبت شد."));
         await _unitOfWork.CompleteAsync();
 
         return issue.Id;
@@ -256,7 +272,7 @@ public class StockService : IStockService
         var salesReturn = new SalesReturn
         {
             WarehouseId = dto.WarehouseId,
-            ReturnNumber = dto.ReturnNumber,
+            ReturnNumber = $"TEMP-{Guid.NewGuid():N}", // شماره موقت، فقط برای عبور از محدودیت Unique
             ReturnDate = dto.ReturnDate,
             CustomerReference = dto.CustomerReference,
             Notes = dto.Notes,
@@ -280,8 +296,17 @@ public class StockService : IStockService
             await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, dto.WarehouseId, item.Quantity);
         }
 
+        //await _unitOfWork.SalesReturns.AddAsync(salesReturn);
+        //await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesReturnRegistered", userId, $"برگشت از فروش {dto.ReturnNumber} ثبت شد."));
+        //await _unitOfWork.CompleteAsync();
+
+        //return salesReturn.Id;
         await _unitOfWork.SalesReturns.AddAsync(salesReturn);
-        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesReturnRegistered", userId, $"برگشت از فروش {dto.ReturnNumber} ثبت شد."));
+        await _unitOfWork.CompleteAsync(); // اینجا Id واقعی ساخته می‌شود
+
+        salesReturn.ReturnNumber = DocumentNumberGenerator.Generate(salesReturn.ReturnDate, salesReturn.WarehouseId, salesReturn.Id);
+        await _unitOfWork.SalesReturns.UpdateAsync(salesReturn);
+        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesReturnRegistered", userId, $"برگشت از فروش {salesReturn.ReturnNumber} ثبت شد."));
         await _unitOfWork.CompleteAsync();
 
         return salesReturn.Id;
@@ -305,7 +330,7 @@ public class StockService : IStockService
         var scrap = new ScrapRecord
         {
             WarehouseId = dto.WarehouseId,
-            RecordNumber = dto.RecordNumber,
+            RecordNumber = $"TEMP-{Guid.NewGuid():N}", // شماره موقت، فقط برای عبور از محدودیت Unique
             RecordDate = dto.RecordDate,
             Reason = dto.Reason,
             Notes = dto.Notes,
@@ -329,8 +354,19 @@ public class StockService : IStockService
             await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, dto.WarehouseId, -item.Quantity);
         }
 
+        //await _unitOfWork.ScrapRecords.AddAsync(scrap);
+        //await _unitOfWork.AuditLogs.AddAsync(new AuditLog("ScrapRegistered", userId, $"ضایعات {dto.RecordNumber} ثبت شد."));
+        //await _unitOfWork.CompleteAsync();
+
+        //return scrap.Id;
+
+
         await _unitOfWork.ScrapRecords.AddAsync(scrap);
-        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("ScrapRegistered", userId, $"ضایعات {dto.RecordNumber} ثبت شد."));
+        await _unitOfWork.CompleteAsync(); // اینجا Id واقعی ساخته می‌شود
+
+        scrap.RecordNumber = DocumentNumberGenerator.Generate(scrap.RecordDate, scrap.WarehouseId, scrap.Id);
+        await _unitOfWork.ScrapRecords.UpdateAsync(scrap);
+        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("ScrapRegistered", userId, $"ضایعات {scrap.RecordNumber} ثبت شد."));
         await _unitOfWork.CompleteAsync();
 
         return scrap.Id;
@@ -357,7 +393,7 @@ public class StockService : IStockService
         {
             SourceWarehouseId = dto.SourceWarehouseId,
             DestinationWarehouseId = dto.DestinationWarehouseId,
-            TransferNumber = dto.TransferNumber,
+            TransferNumber = $"TEMP-{Guid.NewGuid():N}", // شماره موقت، فقط برای عبور از محدودیت Unique
             TransferDate = dto.TransferDate,
             Notes = dto.Notes,
             Status = StockTransferStatus.Completed,
@@ -391,8 +427,19 @@ public class StockService : IStockService
             await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, dto.DestinationWarehouseId, item.Quantity);
         }
 
+        //await _unitOfWork.StockTransfers.AddAsync(transfer);
+        //await _unitOfWork.AuditLogs.AddAsync(new AuditLog("StockTransferRegistered", userId, $"انتقال {dto.TransferNumber} ثبت شد."));
+        //await _unitOfWork.CompleteAsync();
+
+        //return transfer.Id;
+
+
         await _unitOfWork.StockTransfers.AddAsync(transfer);
-        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("StockTransferRegistered", userId, $"انتقال {dto.TransferNumber} ثبت شد."));
+        await _unitOfWork.CompleteAsync(); // اینجا Id واقعی ساخته می‌شود
+
+        transfer.TransferNumber = DocumentNumberGenerator.Generate(transfer.TransferDate, transfer.DestinationWarehouseId, transfer.Id);
+        await _unitOfWork.StockTransfers.UpdateAsync(transfer);
+        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("StockTransferRegistered", userId, $"انتقال {transfer.TransferNumber} ثبت شد."));
         await _unitOfWork.CompleteAsync();
 
         return transfer.Id;

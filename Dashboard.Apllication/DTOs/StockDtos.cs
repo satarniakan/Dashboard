@@ -37,7 +37,6 @@ public class CreatePurchaseReceiptDto
 {
     public int SupplierId { get; set; }
     public int WarehouseId { get; set; }
-    public string ReceiptNumber { get; set; } = string.Empty;
     public DateTime ReceiptDate { get; set; } = DateTime.UtcNow;
     public string? Notes { get; set; }
     public List<PurchaseReceiptItemInput> Items { get; set; } = new();
@@ -46,7 +45,6 @@ public class CreatePurchaseReceiptDto
 public class CreateInternalIssueDto
 {
     public int WarehouseId { get; set; }
-    public string IssueNumber { get; set; } = string.Empty;
     public DateTime IssueDate { get; set; } = DateTime.UtcNow;
     public string? Purpose { get; set; }
     public string? Notes { get; set; }
@@ -56,7 +54,6 @@ public class CreateInternalIssueDto
 public class CreateSalesReturnDto
 {
     public int WarehouseId { get; set; }
-    public string ReturnNumber { get; set; } = string.Empty;
     public DateTime ReturnDate { get; set; } = DateTime.UtcNow;
     public string? CustomerReference { get; set; }
     public string? Notes { get; set; }
@@ -66,7 +63,6 @@ public class CreateSalesReturnDto
 public class CreateScrapRecordDto
 {
     public int WarehouseId { get; set; }
-    public string RecordNumber { get; set; } = string.Empty;
     public DateTime RecordDate { get; set; } = DateTime.UtcNow;
     public string? Reason { get; set; }
     public string? Notes { get; set; }
@@ -77,7 +73,6 @@ public class CreateStockTransferDto
 {
     public int SourceWarehouseId { get; set; }
     public int DestinationWarehouseId { get; set; }
-    public string TransferNumber { get; set; } = string.Empty;
     public DateTime TransferDate { get; set; } = DateTime.UtcNow;
     public string? Notes { get; set; }
     public List<StockItemInput> Items { get; set; } = new();

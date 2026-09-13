@@ -21,7 +21,7 @@ public interface IUnitOfWork
 
     // --- ماژول فروش ---
     ICustomerRepository Customers { get; }
-    ISalesInvoiceRepository SalesInvoices { get; }
+    ISalesInvoiceRepository StockTransfersSalesInvoices { get; }
 
     // --- ماژول حسابداری و خزانه‌داری ---
     IAccountRepository Accounts { get; }
