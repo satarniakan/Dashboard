@@ -6,7 +6,7 @@
 @using Dashboard.Application.Services
 @inject ISalesService SalesService
 @inject NavigationManager NavigationManager
-
+@inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddCustomer> Logger
 <PageTitle>افزودن مشتری</PageTitle>
 
 <h3>افزودن مشتری</h3>
@@ -63,7 +63,8 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"ذخیره مشتری ناموفق بود: {ex.Message}";
+            Logger.LogError(ex, "خطا در ذخیره مشتری");
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
         }
         finally
         {

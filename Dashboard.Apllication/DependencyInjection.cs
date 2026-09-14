@@ -29,6 +29,9 @@ public static class DependencyInjection
         services.AddScoped<IInstallmentService, InstallmentService>();
         services.AddScoped<ICatalogService, CatalogService>();
         services.AddScoped<IDashboardService, DashboardService>();
+
+        // --- ابزار توسعه: تولید دیتای تستی برای دیتابیس خالی ---
+        services.AddScoped<ITestDataSeederService, TestDataSeederService>();
         return services;
     }
 }

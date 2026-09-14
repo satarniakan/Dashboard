@@ -9,7 +9,7 @@
 @inject IProductService ProductService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
-
+@inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddStockTransfer> Logger
 <PageTitle>ثبت انتقال بین انبار</PageTitle>
 
 <h3>ثبت انتقال بین انبار</h3>
@@ -101,6 +101,7 @@
     {
         isSaving = true;
         errorMessage = null;
+        string? userId = null;
         try
         {
             if (model.SourceWarehouseId == 0 || model.DestinationWarehouseId == 0)
@@ -110,14 +111,15 @@
             }
 
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+            userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
             await StockService.RegisterStockTransferAsync(model, userId);
             NavigationManager.NavigateTo("/warehouse/transfers");
         }
         catch (Exception ex)
         {
-            errorMessage = $"ثبت انتقال ناموفق بود: {ex.Message}";
+            Logger.LogError(ex, "خطا در ثبت انتقال بین انبار توسط {UserId}", userId);
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
         }
         finally
         {

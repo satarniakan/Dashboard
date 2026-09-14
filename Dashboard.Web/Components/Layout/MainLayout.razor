@@ -13,10 +13,24 @@
                 </Authorized>
             </AuthorizeView>
         </div>
-
         <article class="content px-4 py-4">
-            @Body
+            <ErrorBoundary @ref="errorBoundary">
+                <ChildContent>
+                    @Body
+                </ChildContent>
+                <ErrorContent Context="ex">
+                    <div class="alert alert-danger m-3">
+                        مشکلی در نمایش این صفحه پیش اومد.
+                        <button class="btn btn-sm btn-outline-danger ms-2" @onclick="Recover">تلاش دوباره</button>
+                    </div>
+                </ErrorContent>
+            </ErrorBoundary>
         </article>
+
+@code {
+    private ErrorBoundary? errorBoundary;
+    private void Recover() => errorBoundary?.Recover();
+}
     </main>
 </div>
 

@@ -6,7 +6,7 @@
 @using Dashboard.Application.Services
 @inject ITreasuryService TreasuryService
 @inject NavigationManager NavigationManager
-
+@inject ILogger<Dashboard.Web.Components.Pages.Accounting.AddFinancialAccount> Logger
 <PageTitle>افزودن صندوق/بانک</PageTitle>
 
 <h3>افزودن صندوق یا حساب بانکی</h3>
@@ -77,7 +77,8 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"ذخیره ناموفق بود: {ex.Message}";
+            Logger.LogError(ex, "خطا در ذخیره صندوق/بانک");
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
         }
         finally
         {

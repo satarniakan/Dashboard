@@ -80,7 +80,8 @@ public class ProductService : IProductService
 
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("ProductDeleted", userEmail, $"Product {id} deleted."));
 
-        // ذخیره نهایی
+        // ذخیره نهایی — اگر این محصول به رکورد دیگری وابسته باشد،
+        // CompleteAsync خودش BusinessRuleException با پیام فارسی پرتاب می‌کند
         await _unitOfWork.CompleteAsync();
 
         return true;

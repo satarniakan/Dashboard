@@ -8,7 +8,7 @@
 @inject IStockService StockService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
-
+@inject ILogger<Dashboard.Web.Components.Pages.Warehouse.OpenStockCount> Logger
 <PageTitle>شروع انبارگردانی جدید</PageTitle>
 
 <h3>شروع انبارگردانی جدید</h3>
@@ -77,6 +77,7 @@
     {
         isSaving = true;
         errorMessage = null;
+        string? userId = null;
         try
         {
             if (model.WarehouseId == 0)
@@ -86,14 +87,15 @@
             }
 
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+            userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
             var stockCount = await StockService.OpenStockCountAsync(model.WarehouseId, userId);
             NavigationManager.NavigateTo($"/warehouse/stock-counts/{stockCount.Id}");
         }
         catch (Exception ex)
         {
-            errorMessage = $"شروع انبارگردانی ناموفق بود: {ex.Message}";
+            Logger.LogError(ex, "خطا در شروع انبارگردانی توسط {UserId}", userId);
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
         }
         finally
         {

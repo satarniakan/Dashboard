@@ -11,6 +11,8 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
 @inject IInstallmentService InstallmentService
+@inject ILogger<Dashboard.Web.Components.Pages.Warehouse.SalesInvoiceDetail> Logger
+
 <PageTitle>فاکتور @invoice?.InvoiceNumber</PageTitle>
 
 @if (invoice is null)
@@ -246,7 +248,8 @@ else
         }
         catch (Exception ex)
         {
-            errorMessage = ex.Message;
+            Logger.LogError(ex, "خطا در تأیید فاکتور {InvoiceId}", Id);
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
         }
         finally
         {
@@ -266,7 +269,8 @@ else
         }
         catch (Exception ex)
         {
-            errorMessage = ex.Message;
+            Logger.LogError(ex, "خطا در لغو فاکتور {InvoiceId}", Id);
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
         }
         finally
         {
@@ -317,7 +321,8 @@ else
         }
         catch (Exception ex)
         {
-            planError = ex.Message;
+            Logger.LogError(ex, "خطا در ذخیره طرح اقساط برای فاکتور {InvoiceId}", Id);
+            planError = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
         }
         finally
         {

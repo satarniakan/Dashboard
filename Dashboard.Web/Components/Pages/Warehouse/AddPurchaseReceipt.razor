@@ -10,7 +10,7 @@
 @inject IProductService ProductService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
-
+@inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddPurchaseReceipt> Logger
 <PageTitle>ثبت رسید خرید</PageTitle>
 
 <h3>ثبت رسید خرید</h3>
@@ -146,6 +146,7 @@
     {
         isSaving = true;
         errorMessage = null;
+        string? userId = null;
         try
         {
             if (model.SupplierId == 0 || model.WarehouseId == 0)
@@ -155,14 +156,15 @@
             }
 
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+            userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
             await StockService.RegisterPurchaseReceiptAsync(model, userId);
             NavigationManager.NavigateTo("/warehouse/purchase-receipts");
         }
         catch (Exception ex)
         {
-            errorMessage = $"ثبت رسید ناموفق بود: {ex.Message}";
+            Logger.LogError(ex, "خطا در ثبت رسید خرید توسط {UserId}", userId);
+            errorMessage = ErrorMessageHelper.ToUserMessage(ex);
         }
         finally
         {

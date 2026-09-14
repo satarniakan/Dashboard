@@ -6,6 +6,7 @@
 @using Dashboard.Application.Services
 @using Dashboard.Domain.Interfaces
 @inject ICatalogService CatalogService
+@inject ILogger<Dashboard.Web.Components.Pages.Catalog.ProductGroupDetail> Logger
 
 <PageTitle>@group?.Name</PageTitle>
 
@@ -163,7 +164,8 @@ else
         }
         catch (Exception ex)
         {
-            variantError = ex.Message;
+            Logger.LogError(ex, "خطا در افزودن تنوع محصول برای گروه {ProductGroupId}", Id);
+            variantError = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
         }
         finally
         {

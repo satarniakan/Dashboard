@@ -8,7 +8,7 @@
 
 @inject IUserAdminService UserAdminService
 @inject NavigationManager NavigationManager
-
+@inject ILogger<Dashboard.Web.Components.Pages.Admin.AddUser> Logger
 <PageTitle>افزودن کاربر جدید</PageTitle>
 
 <h3>افزودن کاربر جدید</h3>
@@ -106,7 +106,8 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"ذخیره کاربر ناموفق بود: {ex.Message}";
+            Logger.LogError(ex, "خطا در ذخیره کاربر جدید");
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
         }
         finally
         {

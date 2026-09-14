@@ -1,0 +1,90 @@
+@* Dashboard.Web/Components/Pages/Admin/SeedTestData.razor *@
+@page "/admin/seed-test-data"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = Dashboard.Domain.Identity.Roles.Admin)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.Services
+@using System.Security.Claims
+@inject ITestDataSeederService Seeder
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ILogger<Dashboard.Web.Components.Pages.Admin.SeedTestData> Logger
+<PageTitle>تولید دیتای تستی</PageTitle>
+
+<h3>تولید دیتای تستی</h3>
+
+<div class="card-panel" style="max-width: 640px;">
+    <p>
+        این ابزار در همه‌ی جدول‌های اصلی برنامه (انبار، فروش، حسابداری) هرکدام حدود
+        ۱۰ رکورد نمونه می‌سازد — دقیقاً از همون مسیر واقعی برنامه (رسید خرید، فاکتور فروش،
+        دریافت/پرداخت و ...)، نه با insert مستقیم توی دیتابیس. به همین خاطر موجودی انبار
+        و سندهای حسابداری هم از اول با هم هماهنگ می‌مانند.
+    </p>
+
+    @if (isChecking)
+    {
+        <p class="text-muted">در حال بررسی وضعیت دیتابیس...</p>
+    }
+    else if (!isEmpty)
+    {
+        <div class="alert alert-warning mb-0">
+            دیتابیس شما از قبل خالی نیست (حداقل یک کالا ثبت شده). برای جلوگیری از
+            دیتای تکراری، این ابزار فقط روی یک دیتابیس کاملاً خالی اجرا می‌شود.
+        </div>
+    }
+    else if (isDone)
+    {
+        <div class="alert alert-success mb-0">
+            ✅ دیتای تستی با موفقیت ساخته شد. حالا می‌تونید از منوی کناری بخش‌های
+            مختلف (انبار، فروش، حسابداری) رو ببینید.
+        </div>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <button class="btn btn-primary" disabled="@isRunning" @onclick="RunSeedAsync">
+            @(isRunning ? "در حال ساخت دیتای تستی... (چند ثانیه طول می‌کشد)" : "تولید دیتای تستی")
+        </button>
+    }
+</div>
+
+@code {
+    private bool isChecking = true;
+    private bool isEmpty;
+    private bool isRunning;
+    private bool isDone;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isEmpty = await Seeder.IsDatabaseEmptyAsync();
+        isChecking = false;
+    }
+
+    private async Task RunSeedAsync()
+    {
+        isRunning = true;
+        errorMessage = null;
+        string? userId = null;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+
+            await Seeder.SeedAsync(userId);
+            isDone = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در ساخت دیتای تستی توسط {UserId}", userId);
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+        }
+        finally
+        {
+            isRunning = false;
+        }
+    }
+}

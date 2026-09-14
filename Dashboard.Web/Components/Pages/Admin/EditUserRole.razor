@@ -7,7 +7,7 @@
 @using Dashboard.Application.Services
 @inject IUserAdminService UserAdminService
 @inject NavigationManager NavigationManager
-
+@inject ILogger<Dashboard.Web.Components.Pages.Admin.EditUserRole> Logger
 <PageTitle>تغییر نقش‌های کاربر</PageTitle>
 
 <h3>تغییر نقش‌های کاربر</h3>
@@ -35,7 +35,14 @@ else
             }
         </div>
 
-        <button class="btn btn-primary" @onclick="SaveRoles">ذخیره</button>
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <button class="btn btn-primary" @onclick="SaveRoles" disabled="@isSaving">
+            @(isSaving ? "در حال ذخیره..." : "ذخیره")
+        </button>
         <a href="/admin/users" class="btn btn-outline-secondary">انصراف</a>
     </div>
 }
@@ -46,6 +53,8 @@ else
     private UserListItemDto? user;
     private List<RoleDto> allRoles = new();
     private List<string> selectedRoles = new();
+    private string? errorMessage;
+    private bool isSaving;
 
     protected override async Task OnInitializedAsync()
     {
@@ -72,7 +81,21 @@ else
 
     private async Task SaveRoles()
     {
-        await UserAdminService.SetRolesAsync(UserId, selectedRoles);
-        NavigationManager.NavigateTo("/admin/users?success=1");
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            await UserAdminService.SetRolesAsync(UserId, selectedRoles);
+            NavigationManager.NavigateTo("/admin/users?success=1");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در تغییر نقش‌های کاربر {UserId}", UserId);
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+        }
+        finally
+        {
+            isSaving = false;
+        }
     }
 }

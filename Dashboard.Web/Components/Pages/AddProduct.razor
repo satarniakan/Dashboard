@@ -8,7 +8,7 @@
 @inject IProductService ProductService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
-
+@inject ILogger<Dashboard.Web.Components.Pages.AddProduct> Logger
 <PageTitle>افزودن محصول</PageTitle>
 
 <h3>افزودن محصول</h3>
@@ -58,19 +58,21 @@
     {
         isSaving = true;
         errorMessage = null;
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userEmail = authState.User.FindFirstValue(ClaimTypes.Email)
+                             ?? authState.User.Identity?.Name;
 
         try
         {
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var userEmail = authState.User.FindFirstValue(ClaimTypes.Email)
-                             ?? authState.User.Identity?.Name;
-
+           
+            
             await ProductService.CreateProductAsync(newProduct!, userEmail);
             NavigationManager.NavigateTo("/products");
         }
         catch (Exception ex)
         {
-            errorMessage = $"ذخیره محصول ناموفق بود: {ex.Message}";
+            Logger.LogError(ex, "خطا در ذخیره محصول توسط {UserEmail}", userEmail);
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
         }
         finally
         {

@@ -5,6 +5,7 @@
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
 @inject ICatalogService CatalogService
+@inject ILogger<Dashboard.Web.Components.Pages.Catalog.Attributes> Logger
 
 <PageTitle>ویژگی‌های محصول</PageTitle>
 
@@ -19,7 +20,13 @@
         <label class="form-label">مقادیر (هرکدام در یک خط، مثلاً: قرمز، آبی، سبز)</label>
         <textarea class="form-control" rows="4" @bind="valuesRaw"></textarea>
     </div>
-    <button class="btn btn-primary" @onclick="HandleAdd">افزودن ویژگی</button>
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+    <button class="btn btn-primary" @onclick="HandleAdd" disabled="@isSaving">
+        @(isSaving ? "در حال ذخیره..." : "افزودن ویژگی")
+    </button>
 </div>
 
 <div class="card-panel">
@@ -43,6 +50,8 @@
     private List<AttributeDto>? attributes;
     private CreateAttributeDto newAttribute = new();
     private string valuesRaw = string.Empty;
+    private bool isSaving;
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -51,10 +60,24 @@
 
     private async Task HandleAdd()
     {
-        newAttribute.Values = valuesRaw.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-        await CatalogService.CreateAttributeAsync(newAttribute);
-        attributes = (await CatalogService.GetAttributesAsync()).ToList();
-        newAttribute = new();
-        valuesRaw = string.Empty;
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            newAttribute.Values = valuesRaw.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+            await CatalogService.CreateAttributeAsync(newAttribute);
+            attributes = (await CatalogService.GetAttributesAsync()).ToList();
+            newAttribute = new();
+            valuesRaw = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در ذخیره ویژگی محصول");
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+        }
+        finally
+        {
+            isSaving = false;
+        }
     }
 }

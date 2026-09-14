@@ -5,7 +5,7 @@
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
 @inject ICatalogService CatalogService
-
+@inject ILogger<Dashboard.Web.Components.Pages.Catalog.Categories> Logger
 <PageTitle>دسته‌بندی‌ها</PageTitle>
 
 <h3>دسته‌بندی‌ها</h3>
@@ -33,7 +33,13 @@
                 }
             </select>
         </div>
-        <button type="submit" class="btn btn-primary">افزودن دسته</button>
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+            @(isSaving ? "در حال ذخیره..." : "افزودن دسته")
+        </button>
     </EditForm>
 </div>
 
@@ -63,6 +69,8 @@
 @code {
     private List<CategoryDto>? categories;
     private CreateCategoryDto newCategory = new();
+    private bool isSaving;
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -71,8 +79,22 @@
 
     private async Task HandleAdd()
     {
-        await CatalogService.CreateCategoryAsync(newCategory);
-        categories = (await CatalogService.GetCategoriesAsync()).ToList();
-        newCategory = new();
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            await CatalogService.CreateCategoryAsync(newCategory);
+            categories = (await CatalogService.GetCategoriesAsync()).ToList();
+            newCategory = new();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در ذخیره دسته‌بندی");
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+        }
+        finally
+        {
+            isSaving = false;
+        }
     }
 }

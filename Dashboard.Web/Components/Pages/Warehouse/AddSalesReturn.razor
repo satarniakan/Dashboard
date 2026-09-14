@@ -9,7 +9,7 @@
 @inject IProductService ProductService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
-
+@inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddSalesReturn> Logger
 <PageTitle>ثبت برگشت از فروش</PageTitle>
 
 <h3>ثبت برگشت از فروش</h3>
@@ -89,30 +89,33 @@
     }
 
     private async Task HandleValidSubmit()
+{
+    isSaving = true;
+    errorMessage = null;
+    string? userId = null;
+    try
     {
-        isSaving = true;
-        errorMessage = null;
-        try
+        if (model.WarehouseId == 0)
         {
-            if (model.WarehouseId == 0)
-            {
-                errorMessage = "انتخاب انبار الزامی است.";
-                return;
-            }
+            errorMessage = "انتخاب انبار الزامی است.";
+            return;
+        }
 
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
-            await StockService.RegisterSalesReturnAsync(model, userId);
-            NavigationManager.NavigateTo("/warehouse/sales-returns");
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"ثبت برگشت ناموفق بود: {ex.Message}";
-        }
-        finally
-        {
-            isSaving = false;
-        }
+        await StockService.RegisterSalesReturnAsync(model, userId);
+        NavigationManager.NavigateTo("/warehouse/sales-returns");
+    }
+    catch (Exception ex)
+    {
+        Logger.LogError(ex, "خطا در ثبت برگشت از فروش توسط {UserId}", userId);
+        errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+    }
+    finally
+    {
+        isSaving = false;
+    }
+}
     }
 }

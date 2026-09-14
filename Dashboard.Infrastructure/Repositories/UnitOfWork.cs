@@ -101,6 +101,14 @@ public class UnitOfWork : IUnitOfWork
     // این همان متد جادویی است که همه چیز را یک‌باره ذخیره می‌کند
     public async Task<int> CompleteAsync()
     {
-        return await _context.SaveChangesAsync();
+        try
+        {
+            return await _context.SaveChangesAsync();
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+        {
+            throw new Dashboard.Domain.Exceptions.BusinessRuleException(
+                "این عملیات با یک محدودیت داده‌ای برخورد کرد (مثلاً رکوردی که به این آیتم وابسته است). لطفاً وابستگی‌ها را بررسی کنید.");
+        }
     }
 }

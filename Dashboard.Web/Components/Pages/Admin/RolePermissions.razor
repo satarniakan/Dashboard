@@ -5,7 +5,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.Services
 @inject IPermissionService PermissionService
-
+@inject ILogger<Dashboard.Web.Components.Pages.Admin.RolePermissions> Logger
 <PageTitle>مدیریت مجوز نقش‌ها</PageTitle>
 
 <h3>مدیریت مجوز نقش‌ها</h3>
@@ -54,6 +54,7 @@
     private string? selectedRole = Dashboard.Domain.Identity.Roles.Admin;
     private List<string> currentPermissions = new();
     private bool Success;
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -83,10 +84,19 @@
 
     private async Task Save()
     {
-        if (selectedRole is not null)
+        errorMessage = null;
+        try
         {
-            await PermissionService.SetPermissionsForRoleAsync(selectedRole, currentPermissions);
-            Success = true;
+            if (selectedRole is not null)
+            {
+                await PermissionService.SetPermissionsForRoleAsync(selectedRole, currentPermissions);
+                Success = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در ذخیره مجوزهای نقش {RoleName}", selectedRole);
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
         }
     }
 }

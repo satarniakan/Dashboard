@@ -9,7 +9,7 @@
 @using System.Security.Claims
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
-
+@inject ILogger<Dashboard.Web.Components.Pages.Products> Logger
 <PageTitle>محصولات</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -22,6 +22,10 @@
 </div>
 
 <div class="card-panel">
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
     @if (products is null)
     {
         <p class="text-muted">در حال بارگذاری...</p>
@@ -83,7 +87,7 @@
 @code {
     private IEnumerable<ProductDto>? products;
     private (int Id, string Name)? productToDelete;
-
+    private string? errorMessage;
     protected override async Task OnInitializedAsync()
     {
         await LoadProducts();
@@ -108,12 +112,25 @@
     {
         if (productToDelete is null) return;
 
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var userEmail = authState.User.FindFirstValue(ClaimTypes.Email)
-                         ?? authState.User.Identity?.Name;
+        errorMessage = null;
 
-        await ProductService.DeleteProductAsync(productToDelete.Value.Id, userEmail);
-        productToDelete = null;
-        await LoadProducts();
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var userEmail = authState.User.FindFirstValue(ClaimTypes.Email)
+                             ?? authState.User.Identity?.Name;
+
+            await ProductService.DeleteProductAsync(productToDelete.Value.Id, userEmail);
+            await LoadProducts();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در حذف محصول {ProductId}", productToDelete.Value.Id);
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+        }
+        finally
+        {
+            productToDelete = null;
+        }
     }
 }

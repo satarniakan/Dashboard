@@ -6,7 +6,7 @@
 @using Dashboard.Application.Services
 @inject IStockService StockService
 @inject NavigationManager NavigationManager
-
+@inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddWarehouse> Logger
 <PageTitle>افزودن انبار</PageTitle>
 
 <h3>افزودن انبار</h3>
@@ -63,7 +63,8 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"ذخیره انبار ناموفق بود: {ex.Message}";
+            Logger.LogError(ex, "خطا در ذخیره انبار");
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
         }
         finally
         {

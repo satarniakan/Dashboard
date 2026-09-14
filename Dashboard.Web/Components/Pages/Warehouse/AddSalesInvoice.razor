@@ -10,7 +10,7 @@
 @inject IProductService ProductService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
-
+@inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddSalesInvoice> Logger
 <PageTitle>فاکتور فروش جدید</PageTitle>
 
 <h3>فاکتور فروش جدید</h3>
@@ -165,6 +165,7 @@
     {
         isSaving = true;
         errorMessage = null;
+        string? userId = null;
         try
         {
             if (model.WarehouseId == 0)
@@ -174,14 +175,15 @@
             }
 
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+            userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
             var invoiceId = await SalesService.CreateDraftInvoiceAsync(model, userId);
             NavigationManager.NavigateTo($"/warehouse/sales/{invoiceId}");
         }
         catch (Exception ex)
         {
-            errorMessage = $"ثبت فاکتور ناموفق بود: {ex.Message}";
+            Logger.LogError(ex, "خطا در ثبت فاکتور فروش توسط {UserId}", userId);
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
         }
         finally
         {

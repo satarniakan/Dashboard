@@ -6,7 +6,7 @@
 @using Dashboard.Application.Services
 @inject ICatalogService CatalogService
 @inject NavigationManager NavigationManager
-
+@inject ILogger<Dashboard.Web.Components.Pages.Catalog.AddProductGroup> Logger
 <PageTitle>گروه محصول جدید</PageTitle>
 
 <h3>گروه محصول جدید</h3>
@@ -38,7 +38,13 @@
             <label class="form-label">توضیحات</label>
             <InputTextArea class="form-control" @bind-Value="model.Description" />
         </div>
-        <button type="submit" class="btn btn-primary">ذخیره و ادامه</button>
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+            @(isSaving ? "در حال ذخیره..." : "ذخیره و ادامه")
+        </button>
     </EditForm>
 </div>
 
@@ -47,15 +53,32 @@
     private CreateProductGroupDto model { get; set; } = new();
 
     private List<CategoryDto>? categories;
+    private bool isSaving;
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
         categories = (await CatalogService.GetCategoriesAsync()).ToList();
     }
 
+
     private async Task HandleSubmit()
     {
-        var id = await CatalogService.CreateProductGroupAsync(model);
-        NavigationManager.NavigateTo($"/catalog/product-groups/{id}");
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            var id = await CatalogService.CreateProductGroupAsync(model);
+            NavigationManager.NavigateTo($"/catalog/product-groups/{id}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در ذخیره گروه محصول");
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+        }
+        finally
+        {
+            isSaving = false;
+        }
     }
 }
