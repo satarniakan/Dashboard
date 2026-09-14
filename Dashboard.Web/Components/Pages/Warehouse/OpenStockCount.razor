@@ -37,10 +37,7 @@
             </select>
         </div>
 
-        <div class="mb-4">
-            <label class="form-label">شماره سند</label>
-            <InputText class="form-control" @bind-Value="model.CountNumber" />
-        </div>
+       
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
@@ -60,7 +57,7 @@
     private class OpenStockCountFormModel
     {
         public int WarehouseId { get; set; }
-        public string CountNumber { get; set; } = string.Empty;
+       
     }
 
     [SupplyParameterFromForm]
@@ -91,7 +88,7 @@
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
-            var stockCount = await StockService.OpenStockCountAsync(model.WarehouseId, model.CountNumber, userId);
+            var stockCount = await StockService.OpenStockCountAsync(model.WarehouseId, userId);
             NavigationManager.NavigateTo($"/warehouse/stock-counts/{stockCount.Id}");
         }
         catch (Exception ex)

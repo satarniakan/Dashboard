@@ -25,4 +25,9 @@ public class SalesReturnRepository : ISalesReturnRepository
 
     public async Task AddAsync(SalesReturn salesReturn) =>
         await _context.SalesReturns.AddAsync(salesReturn);
+    public Task UpdateAsync(SalesReturn receipt)
+    {
+        _context.SalesReturns.Update(receipt);
+        return Task.CompletedTask;
+    }
 }

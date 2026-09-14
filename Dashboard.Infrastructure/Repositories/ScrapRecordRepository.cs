@@ -25,4 +25,10 @@ public class ScrapRecordRepository : IScrapRecordRepository
 
     public async Task AddAsync(ScrapRecord scrapRecord) =>
         await _context.ScrapRecords.AddAsync(scrapRecord);
+
+    public Task UpdateAsync(ScrapRecord scrapRecord)
+    {
+        _context.ScrapRecords.Update(scrapRecord);
+        return Task.CompletedTask;
+    }
 }

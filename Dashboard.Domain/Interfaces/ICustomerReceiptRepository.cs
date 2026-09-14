@@ -6,4 +6,5 @@ public interface ICustomerReceiptRepository
 {
     Task<IEnumerable<CustomerReceipt>> GetAllAsync();
     Task AddAsync(CustomerReceipt receipt);
+    Task UpdateAsync(CustomerReceipt receipt);
 }

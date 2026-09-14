@@ -36,7 +36,7 @@ public interface IStockService
     Task<IEnumerable<StockTransferSummaryDto>> GetStockTransfersAsync();
 
     // انبارگردانی (۲-۵)
-    Task<StockCountDto> OpenStockCountAsync(int warehouseId, string countNumber, string? userId);
+    Task<StockCountDto> OpenStockCountAsync(int warehouseId, string? userId);
     Task<StockCountDto?> GetStockCountAsync(int id);
     Task<IEnumerable<StockCountSummaryDto>> GetStockCountsAsync();
     Task CloseStockCountAsync(int stockCountId, Dictionary<int, decimal> countedQuantities, string? userId);
@@ -170,7 +170,7 @@ public class StockService : IStockService
         }
 
         await _unitOfWork.PurchaseReceipts.AddAsync(receipt);
-        await _unitOfWork.CompleteAsync(); // اینجا Id واقعی ساخته می‌شود
+        await _unitOfWork.CompleteAsync(); // اینجا receipt.Id واقعی ساخته می‌شود
 
         receipt.ReceiptNumber = DocumentNumberGenerator.Generate(receipt.ReceiptDate, receipt.SupplierId, receipt.Id);
         await _unitOfWork.PurchaseReceipts.UpdateAsync(receipt);
@@ -362,7 +362,7 @@ public class StockService : IStockService
 
 
         await _unitOfWork.ScrapRecords.AddAsync(scrap);
-        await _unitOfWork.CompleteAsync(); // اینجا Id واقعی ساخته می‌شود
+        await _unitOfWork.CompleteAsync();
 
         scrap.RecordNumber = DocumentNumberGenerator.Generate(scrap.RecordDate, scrap.WarehouseId, scrap.Id);
         await _unitOfWork.ScrapRecords.UpdateAsync(scrap);
@@ -435,9 +435,9 @@ public class StockService : IStockService
 
 
         await _unitOfWork.StockTransfers.AddAsync(transfer);
-        await _unitOfWork.CompleteAsync(); // اینجا Id واقعی ساخته می‌شود
+        await _unitOfWork.CompleteAsync();
 
-        transfer.TransferNumber = DocumentNumberGenerator.Generate(transfer.TransferDate, transfer.DestinationWarehouseId, transfer.Id);
+        transfer.TransferNumber = DocumentNumberGenerator.Generate(transfer.TransferDate, transfer.SourceWarehouseId, transfer.Id);
         await _unitOfWork.StockTransfers.UpdateAsync(transfer);
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("StockTransferRegistered", userId, $"انتقال {transfer.TransferNumber} ثبت شد."));
         await _unitOfWork.CompleteAsync();
@@ -456,7 +456,7 @@ public class StockService : IStockService
 
     // ---------------- انبارگردانی ----------------
 
-    public async Task<StockCountDto> OpenStockCountAsync(int warehouseId, string countNumber, string? userId)
+    public async Task<StockCountDto> OpenStockCountAsync(int warehouseId, string? userId)
     {
         var levels = await _unitOfWork.StockLevels.GetByWarehouseAsync(warehouseId);
         var warehouse = await _unitOfWork.Warehouses.GetByIdAsync(warehouseId)
@@ -465,7 +465,7 @@ public class StockService : IStockService
         var stockCount = new StockCount
         {
             WarehouseId = warehouseId,
-            CountNumber = countNumber,
+            CountNumber = $"TEMP-{Guid.NewGuid():N}",
             Status = StockCountStatus.Open,
             CreatedByUserId = userId
         };
@@ -476,16 +476,20 @@ public class StockService : IStockService
             {
                 ProductId = level.ProductId,
                 SystemQuantity = level.QuantityOnHand,
-                CountedQuantity = level.QuantityOnHand // پیش‌فرض؛ کاربر در فرم شمارش تغییرش می‌دهد
+                CountedQuantity = level.QuantityOnHand
             });
         }
 
         await _unitOfWork.StockCounts.AddAsync(stockCount);
         await _unitOfWork.CompleteAsync();
 
+        stockCount.CountNumber = DocumentNumberGenerator.Generate(stockCount.CountDate, stockCount.WarehouseId, stockCount.Id);
+        await _unitOfWork.StockCounts.UpdateAsync(stockCount);
+        await _unitOfWork.CompleteAsync();
+
         return new StockCountDto(
-            stockCount.Id, stockCount.CountNumber, warehouse.Name, stockCount.Status.ToString(), stockCount.CountDate,
-            stockCount.Items.Select(i => new StockCountItemDto(i.ProductId, i.Product?.Name ?? "-", i.SystemQuantity, i.CountedQuantity)).ToList());
+         stockCount.Id, stockCount.CountNumber, warehouse.Name, stockCount.Status.ToString(), stockCount.CountDate,
+         stockCount.Items.Select(i => new StockCountItemDto(i.ProductId, i.Product?.Name ?? "-", i.SystemQuantity, i.CountedQuantity)).ToList());
     }
 
     public async Task<StockCountDto?> GetStockCountAsync(int id)

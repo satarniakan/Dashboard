@@ -19,4 +19,12 @@ public class CustomerReceiptRepository : ICustomerReceiptRepository
 
     public async Task AddAsync(CustomerReceipt receipt) =>
         await _context.CustomerReceipts.AddAsync(receipt);
+
+  
+
+    public Task UpdateAsync(CustomerReceipt receipt)
+    {
+        _context.CustomerReceipts.Update(receipt);
+        return Task.CompletedTask;
+    }
 }

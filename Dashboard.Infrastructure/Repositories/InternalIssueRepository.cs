@@ -25,4 +25,10 @@ public class InternalIssueRepository : IInternalIssueRepository
 
     public async Task AddAsync(InternalIssue issue) =>
         await _context.InternalIssues.AddAsync(issue);
+
+    public Task UpdateAsync(InternalIssue receipt)
+    {
+        _context.InternalIssues.Update(receipt);
+        return Task.CompletedTask;
+    }
 }

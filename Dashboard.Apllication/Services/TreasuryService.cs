@@ -1,8 +1,9 @@
-﻿using Dashboard.Domain.Accounting;
+﻿using Dashboard.Application.DTOs;
+using Dashboard.Application.Helpers;
+using Dashboard.Domain.Accounting;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
 using Dashboard.Domain.Interfaces;
-using Dashboard.Application.DTOs;
 
 namespace Dashboard.Application.Services;
 
@@ -76,7 +77,6 @@ public class TreasuryService : ITreasuryService
     }
 
     // ---------------- دریافت از مشتری ----------------
-
     public async Task<int> RegisterCustomerReceiptAsync(CreateCustomerReceiptDto dto, string? userId)
     {
         if (dto.Amount <= 0) throw new InvalidOperationException("مبلغ باید بزرگتر از صفر باشد.");
@@ -88,7 +88,7 @@ public class TreasuryService : ITreasuryService
         {
             CustomerId = dto.CustomerId,
             FinancialAccountId = dto.FinancialAccountId,
-            ReceiptNumber = dto.ReceiptNumber,
+            ReceiptNumber = $"TEMP-{Guid.NewGuid():N}",
             Amount = dto.Amount,
             Method = Enum.Parse<PaymentMethod>(dto.Method),
             ReceiptDate = dto.ReceiptDate,
@@ -109,30 +109,20 @@ public class TreasuryService : ITreasuryService
             installment.PaidAmount += dto.Amount;
         }
 
-        await _unitOfWork.CustomerReceipts.AddAsync(receipt);
+        await _unitOfWork.CompleteAsync(); // اینجا receipt.Id واقعی ساخته می‌شود
 
-        if (dto.InstallmentId.HasValue)
-        {
-            var installment = await _unitOfWork.InstallmentPlans.GetInstallmentByIdAsync(dto.InstallmentId.Value)
-                ?? throw new InvalidOperationException("قسط انتخاب‌شده یافت نشد.");
-
-            installment.PaidAmount += dto.Amount;
-        }
-
-        await _unitOfWork.CustomerReceipts.AddAsync(receipt);
-        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("CustomerReceiptRegistered", userId, $"دریافت {dto.ReceiptNumber} به مبلغ {dto.Amount} ثبت شد."));
+        receipt.ReceiptNumber = DocumentNumberGenerator.Generate(receipt.ReceiptDate, receipt.CustomerId, receipt.Id);
+        await _unitOfWork.CustomerReceipts.UpdateAsync(receipt);
+        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("CustomerReceiptRegistered", userId, $"دریافت {receipt.ReceiptNumber} به مبلغ {dto.Amount} ثبت شد."));
         await _unitOfWork.CompleteAsync();
 
-        // دریافت پول: بدهکار صندوق/بانک، بستانکار حساب‌های دریافتنی (طلب از مشتری کم می‌شود).
-        // نکته‌ی مهم: سطر دوم را حتماً با SubsidiaryType="Customer" تگ می‌زنیم — قبلاً این
-        // تگ جا افتاده بود و در نتیجه این دریافت‌ها هیچ‌وقت در گزارش «گردش حساب مشتری»
-        // (GetCustomerStatementAsync) دیده نمی‌شدند، چون آن گزارش دقیقاً بر اساس همین دو فیلد فیلتر می‌کند.
+        // دریافت پول: بدهکار صندوق/بانک، بستانکار حساب‌های دریافتنی (طلب از مشتری کم می‌شود)
         await _journalService.PostEntryAsync(
-            description: $"دریافت وجه طبق رسید {dto.ReceiptNumber}",
+            description: $"دریافت وجه طبق رسید {receipt.ReceiptNumber}",
             lines: new List<JournalLineInput>
             {
-                new(financialAccount.Account!.Code, dto.Amount, 0, "افزایش موجودی صندوق/بانک"),
-                new(SystemAccountCodes.AccountsReceivable, 0, dto.Amount, "کاهش طلب از مشتری", "Customer", dto.CustomerId)
+            new(financialAccount.Account!.Code, dto.Amount, 0, "افزایش موجودی صندوق/بانک"),
+            new(SystemAccountCodes.AccountsReceivable, 0, dto.Amount, "کاهش طلب از مشتری", "Customer", dto.CustomerId)
             },
             referenceType: nameof(CustomerReceipt),
             referenceId: receipt.Id,
@@ -140,7 +130,6 @@ public class TreasuryService : ITreasuryService
 
         return receipt.Id;
     }
-
     public async Task<IEnumerable<CustomerReceiptDto>> GetCustomerReceiptsAsync()
     {
         var receipts = await _unitOfWork.CustomerReceipts.GetAllAsync();

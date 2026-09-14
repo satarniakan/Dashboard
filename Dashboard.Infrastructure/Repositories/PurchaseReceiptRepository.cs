@@ -27,4 +27,9 @@ public class PurchaseReceiptRepository : IPurchaseReceiptRepository
 
     public async Task AddAsync(PurchaseReceipt receipt) =>
         await _context.PurchaseReceipts.AddAsync(receipt);
+    public Task UpdateAsync(PurchaseReceipt receipt)
+    {
+        _context.PurchaseReceipts.Update(receipt);
+        return Task.CompletedTask;
+    }
 }
