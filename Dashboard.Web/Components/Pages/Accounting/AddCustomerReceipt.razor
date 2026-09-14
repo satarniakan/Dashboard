@@ -135,10 +135,10 @@
     }
 
     private async Task HandleValidSubmit()
-    
     {
         isSaving = true;
         errorMessage = null;
+        string? userId = null;
         try
         {
             if (model.FinancialAccountId == 0)
@@ -148,14 +148,15 @@
             }
 
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+            userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
             await TreasuryService.RegisterCustomerReceiptAsync(model, userId);
             NavigationManager.NavigateTo("/accounting/customer-receipts");
         }
         catch (Exception ex)
         {
-            errorMessage = $"ثبت ناموفق بود: {ex.Message}";
+            Logger.LogError(ex, "خطا در ثبت دریافت از مشتری توسط {UserId}", userId);
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
         }
         finally
         {

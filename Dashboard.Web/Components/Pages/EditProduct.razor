@@ -9,7 +9,7 @@
 @inject IProductService ProductService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
-
+@inject ILogger<Dashboard.Web.Components.Pages.EditProduct> Logger
 <PageTitle>ویرایش محصول</PageTitle>
 
 <h3>ویرایش محصول</h3>
@@ -78,16 +78,16 @@ else
             Price = product.Price
         };
     }
-
     private async Task HandleValidSubmit()
     {
         isSaving = true;
         errorMessage = null;
+        string? userEmail = null;
 
         try
         {
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var userEmail = authState.User.FindFirstValue(ClaimTypes.Email)
+            userEmail = authState.User.FindFirstValue(ClaimTypes.Email)
                              ?? authState.User.Identity?.Name;
 
             var result = await ProductService.UpdateProductAsync(Id, editModel!, userEmail);
@@ -103,7 +103,8 @@ else
         }
         catch (Exception ex)
         {
-            errorMessage = $"ذخیره تغییرات ناموفق بود: {ex.Message}";
+            Logger.LogError(ex, "خطا در ویرایش محصول {ProductId} توسط {UserEmail}", Id, userEmail);
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
         }
         finally
         {
