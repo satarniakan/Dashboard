@@ -150,7 +150,7 @@ public class TreasuryService : ITreasuryService
         {
             SupplierId = dto.SupplierId,
             FinancialAccountId = dto.FinancialAccountId,
-            PaymentNumber = dto.PaymentNumber,
+            PaymentNumber = $"TEMP-{Guid.NewGuid():N}", // شماره موقت، فقط برای عبور از محدودیت Unique
             Amount = dto.Amount,
             Method = Enum.Parse<PaymentMethod>(dto.Method),
             PaymentDate = dto.PaymentDate,
@@ -161,12 +161,16 @@ public class TreasuryService : ITreasuryService
         };
 
         await _unitOfWork.SupplierPayments.AddAsync(payment);
-        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SupplierPaymentRegistered", userId, $"پرداخت {dto.PaymentNumber} به مبلغ {dto.Amount} ثبت شد."));
+        await _unitOfWork.CompleteAsync(); // اینجا payment.Id واقعی ساخته می‌شود
+
+        payment.PaymentNumber = DocumentNumberGenerator.Generate(payment.PaymentDate, payment.SupplierId, payment.Id);
+        await _unitOfWork.SupplierPayments.UpdateAsync(payment);
+        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SupplierPaymentRegistered", userId, $"پرداخت {payment.PaymentNumber} به مبلغ {dto.Amount} ثبت شد."));
         await _unitOfWork.CompleteAsync();
 
         // پرداخت پول: بدهکار حساب‌های پرداختنی (بدهی کم می‌شود)، بستانکار صندوق/بانک
         await _journalService.PostEntryAsync(
-            description: $"پرداخت وجه طبق سند {dto.PaymentNumber}",
+            description: $"پرداخت وجه طبق سند {payment.PaymentNumber}",
             lines: new List<JournalLineInput>
             {
                 new(SystemAccountCodes.AccountsPayable, dto.Amount, 0, "کاهش بدهی به تأمین‌کننده", "Supplier", dto.SupplierId),

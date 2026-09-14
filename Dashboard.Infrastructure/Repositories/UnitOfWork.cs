@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore.Storage;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Interfaces;
 using Dashboard.Infrastructure.Data;
@@ -7,6 +8,7 @@ namespace Dashboard.Infrastructure.Repositories;
 public class UnitOfWork : IUnitOfWork
 {
     private readonly AppDbContext _context;
+    private IDbContextTransaction? _transaction;
 
     // در اینجا، مخازن (Repositoryها) را تعریف می‌کنیم
     public IProductRepository Products { get; private set; }
@@ -110,5 +112,26 @@ public class UnitOfWork : IUnitOfWork
             throw new Dashboard.Domain.Exceptions.BusinessRuleException(
                 "این عملیات با یک محدودیت داده‌ای برخورد کرد (مثلاً رکوردی که به این آیتم وابسته است). لطفاً وابستگی‌ها را بررسی کنید.");
         }
+    }
+
+    public async Task BeginTransactionAsync()
+    {
+        _transaction = await _context.Database.BeginTransactionAsync();
+    }
+
+    public async Task CommitTransactionAsync()
+    {
+        if (_transaction is null) return;
+        await _transaction.CommitAsync();
+        await _transaction.DisposeAsync();
+        _transaction = null;
+    }
+
+    public async Task RollbackTransactionAsync()
+    {
+        if (_transaction is null) return;
+        await _transaction.RollbackAsync();
+        await _transaction.DisposeAsync();
+        _transaction = null;
     }
 }

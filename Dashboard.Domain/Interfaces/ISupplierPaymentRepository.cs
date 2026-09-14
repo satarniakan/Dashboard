@@ -6,4 +6,5 @@ public interface ISupplierPaymentRepository
 {
     Task<IEnumerable<SupplierPayment>> GetAllAsync();
     Task AddAsync(SupplierPayment payment);
+    Task UpdateAsync(SupplierPayment payment);
 }

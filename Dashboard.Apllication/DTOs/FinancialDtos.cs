@@ -16,7 +16,6 @@ public class CreateCustomerReceiptDto
 {
     public int? CustomerId { get; set; }
     public int FinancialAccountId { get; set; }
-    public string ReceiptNumber { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public string Method { get; set; } = "Cash";
     public DateTime ReceiptDate { get; set; } = DateTime.UtcNow;

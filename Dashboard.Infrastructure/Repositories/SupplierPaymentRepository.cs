@@ -19,4 +19,10 @@ public class SupplierPaymentRepository : ISupplierPaymentRepository
 
     public async Task AddAsync(SupplierPayment payment) =>
         await _context.SupplierPayments.AddAsync(payment);
+
+    public Task UpdateAsync(SupplierPayment payment)
+    {
+        _context.SupplierPayments.Update(payment);
+        return Task.CompletedTask;
+    }
 }

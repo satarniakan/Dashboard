@@ -34,4 +34,10 @@ public interface IUnitOfWork
 
     // این همان متد جادویی است که در پایان، همه تغییرات را یک‌باره ذخیره می‌کند
     Task<int> CompleteAsync();
+
+    // برای عملیات‌های چندمرحله‌ای (مثل تولید دیتای تستی) که یا باید کامل انجام بشن یا اصلاً
+    // هیچی ثبت نشه — وگرنه یه شکست وسط‌کار، یه‌سری رکورد نصفه‌کاره تو دیتابیس جا می‌ذاره.
+    Task BeginTransactionAsync();
+    Task CommitTransactionAsync();
+    Task RollbackTransactionAsync();
 }
