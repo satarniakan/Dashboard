@@ -71,6 +71,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.Property(p => p.Barcode).HasMaxLength(50);
             e.HasIndex(p => p.Sku).IsUnique();
             e.HasIndex(p => p.Barcode).IsUnique().HasFilter("[Barcode] IS NOT NULL");
+
         });
 
         // ---------- Warehouse / Supplier ----------
@@ -326,6 +327,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<ProductImage>(e =>
         {
             e.Property(i => i.Url).HasMaxLength(500).IsRequired();
+        });
+        builder.Entity<Domain.Identity.ApplicationUser>(e =>
+        {
+            e.Property(u => u.FirstName).HasMaxLength(100);
+            e.Property(u => u.LastName).HasMaxLength(100);
+            e.Property(u => u.Province).HasMaxLength(100);
+            e.Property(u => u.City).HasMaxLength(100);
+            e.Property(u => u.Address).HasMaxLength(300);
         });
     }
 }
