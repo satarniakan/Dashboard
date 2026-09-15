@@ -90,7 +90,13 @@
                                     {
                                         var heightPercent = maxSale > 0 ? (double)(point.TotalAmount / maxSale) * 100 : 0;
                                         <div class="flex-fill text-center">
-                                            <div class="bg-primary rounded-top mx-auto" style="width: 70%; height: @(Math.Max(heightPercent, 2))%;" title="@CurrencyFormatter.ToToman(point.TotalAmount)"></div>
+                                            @* این div با ارتفاع ثابت ۱۶۰ پیکسل، همون کادر بیرونیه؛ فقط برای همین بار.
+                                               چون height:درصد روی خود بار فقط وقتی کار می‌کنه که والدش
+                                               ارتفاع "قطعی" (نه auto) داشته باشه — قبلاً این ارتفاع رو نداشت،
+                                               برای همین بار همیشه با ارتفاع صفر رندر می‌شد. *@
+                                            <div class="d-flex align-items-end justify-content-center" style="height: 160px;">
+                                                <div class="bg-primary rounded-top" style="width: 70%; height: @(Math.Max(heightPercent, 2))%;" title="@CurrencyFormatter.ToToman(point.TotalAmount)"></div>
+                                            </div>
                                             <div class="text-muted small mt-1">@point.Date.ToString("MM/dd")</div>
                                         </div>
                                     }

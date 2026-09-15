@@ -11,23 +11,26 @@ using System.Threading.RateLimiting;
 using Serilog;
 using System.Globalization;
 
-// Configure Serilog before the host is built
+// یک لاگر موقت («bootstrap logger») فقط برای ثبت خطاهای احتمالی هنگام بالا آمدن برنامه،
+// قبل از اینکه تنظیمات اصلی از appsettings خوانده شود.
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
-    .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
+
+var builder = WebApplication.CreateBuilder(args);
+
+// حالا لاگر نهایی از appsettings.json / appsettings.{Environment}.json خوانده می‌شود،
+// یعنی سطح لاگ‌ها بین Development و Production می‌تواند متفاوت باشد.
+builder.Host.UseSerilog((context, services, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration)
+    .ReadFrom.Services(services)
     .Enrich.FromLogContext()
     .WriteTo.Console()
     .WriteTo.File(
         path: "Logs/log-.txt",
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 14,
-        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-    .CreateLogger();
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Use Serilog instead of the default logger
-builder.Host.UseSerilog();
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
 // Razor Components (Blazor Server)
 builder.Services.AddRazorComponents()

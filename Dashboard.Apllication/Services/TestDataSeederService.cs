@@ -224,7 +224,7 @@ public class TestDataSeederService : ITestDataSeederService
             await _stockService.RegisterSalesReturnAsync(new CreateSalesReturnDto
             {
                 WarehouseId = warehouses[i].Id,
-                ReturnDate = DateTime.UtcNow.AddDays(-8 + i),
+                ReturnDate = DateTime.UtcNow.AddDays(-9 + i),
                 CustomerReference = customers[i].Name,
                 Items = new List<StockItemInput> { new() { ProductId = product.Id, Quantity = 1 } }
             }, userId);
@@ -238,7 +238,7 @@ public class TestDataSeederService : ITestDataSeederService
             {
                 SourceWarehouseId = warehouses[0].Id,
                 DestinationWarehouseId = warehouses[i].Id,
-                TransferDate = DateTime.UtcNow.AddDays(-7 + i),
+                TransferDate = DateTime.UtcNow.AddDays(-9 + i),
                 Items = new List<StockItemInput> { new() { ProductId = product.Id, Quantity = 10 } }
             }, userId);
         }
@@ -279,7 +279,7 @@ public class TestDataSeederService : ITestDataSeederService
             {
                 CustomerId = i % 4 == 0 ? null : customers[i].Id, // هر ۴ فاکتور یکی «مشتری حضوری» بدون مشتری مشخص
                 WarehouseId = warehouses[0].Id,
-                InvoiceDate = DateTime.UtcNow.AddDays(-6 + i),
+                InvoiceDate = DateTime.UtcNow.AddDays(-9 + i),
                 Items = new List<SalesInvoiceItemInput>
                 {
                     new() { ProductId = product.Id, Quantity = 2, UnitPrice = product.Price }
@@ -356,7 +356,7 @@ public class TestDataSeederService : ITestDataSeederService
                 FinancialAccountId = financialAccountIds[i % financialAccountIds.Count],
                 Amount = 1_000_000m + i * 50_000m,
                 Method = method,
-                ReceiptDate = DateTime.UtcNow.AddDays(-5 + i),
+                ReceiptDate = DateTime.UtcNow.AddDays(-9 + i),
                 ChequeNumber = method == "Cheque" ? $"CHQ-{i:0000}" : null,
                 ChequeDueDate = method == "Cheque" ? DateTime.UtcNow.AddDays(30) : null,
                 Notes = "دریافت نمونه"
@@ -373,7 +373,7 @@ public class TestDataSeederService : ITestDataSeederService
                 FinancialAccountId = financialAccountIds[(i + 1) % financialAccountIds.Count],
                 Amount = 800_000m + i * 40_000m,
                 Method = method,
-                PaymentDate = DateTime.UtcNow.AddDays(-4 + i),
+                PaymentDate = DateTime.UtcNow.AddDays(-9 + i),
                 ChequeNumber = method == "Cheque" ? $"CHQ-OUT-{i:0000}" : null,
                 ChequeDueDate = method == "Cheque" ? DateTime.UtcNow.AddDays(25) : null,
                 Notes = "پرداخت نمونه"
