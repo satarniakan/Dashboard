@@ -10,6 +10,7 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddInternalIssue> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>ثبت حواله مصرف داخلی</PageTitle>
 
 <h3>ثبت حواله مصرف داخلی</h3>
@@ -110,12 +111,14 @@
             userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
             await StockService.RegisterInternalIssueAsync(model, userId);
+            ToastService.ShowSuccess("حواله مصرف داخلی ثبت شد.");
             NavigationManager.NavigateTo("/warehouse/internal-issues");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "خطا در ثبت حواله مصرف داخلی توسط {UserId}", userId);
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
         }
         finally
         {

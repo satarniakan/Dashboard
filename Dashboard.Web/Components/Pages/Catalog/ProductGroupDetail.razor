@@ -7,7 +7,7 @@
 @using Dashboard.Domain.Interfaces
 @inject ICatalogService CatalogService
 @inject ILogger<Dashboard.Web.Components.Pages.Catalog.ProductGroupDetail> Logger
-
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>@group?.Name</PageTitle>
 
 @if (group is null)
@@ -159,6 +159,7 @@ else
         {
             newVariant.ProductGroupId = Id;
             await CatalogService.AddVariantAsync(newVariant);
+            ToastService.ShowSuccess("Variant با موفقیت اضافه شد.");
             await LoadGroup();
             newVariant = new();
         }
@@ -166,6 +167,7 @@ else
         {
             Logger.LogError(ex, "خطا در افزودن تنوع محصول برای گروه {ProductGroupId}", Id);
             variantError = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(variantError);
         }
         finally
         {

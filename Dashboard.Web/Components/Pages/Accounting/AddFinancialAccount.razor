@@ -7,6 +7,7 @@
 @inject ITreasuryService TreasuryService
 @inject NavigationManager NavigationManager
 @inject ILogger<Dashboard.Web.Components.Pages.Accounting.AddFinancialAccount> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>افزودن صندوق/بانک</PageTitle>
 
 <h3>افزودن صندوق یا حساب بانکی</h3>
@@ -73,12 +74,14 @@
         try
         {
             await TreasuryService.CreateFinancialAccountAsync(model);
+            ToastService.ShowSuccess("صندوق/بانک با موفقیت ثبت شد.");
             NavigationManager.NavigateTo("/accounting/financial-accounts");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "خطا در ذخیره صندوق/بانک");
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            @inject Dashboard.Web.Services.ToastService ToastService
         }
         finally
         {

@@ -9,6 +9,7 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<Dashboard.Web.Components.Pages.Warehouse.StockCountDetail> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>انبارگردانی @stockCount?.CountNumber</PageTitle>
 
 @if (stockCount is null)
@@ -128,12 +129,14 @@ else
             userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
             await StockService.CloseStockCountAsync(stockCount.Id, countedByProductId, userId);
+            ToastService.ShowSuccess("انبارگردانی با موفقیت بسته شد.");
             NavigationManager.NavigateTo("/warehouse/stock-counts");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "خطا در بستن انبارگردانی {StockCountId} توسط {UserId}", stockCount.Id, userId);
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
         }
         finally
         {

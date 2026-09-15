@@ -10,6 +10,7 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddScrapRecord> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>ثبت ضایعات</PageTitle>
 
 <h3>ثبت ضایعات</h3>
@@ -105,12 +106,14 @@
             userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
             await StockService.RegisterScrapAsync(model, userId);
+            ToastService.ShowSuccess("ضایعات ثبت شد.");
             NavigationManager.NavigateTo("/warehouse/scrap");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "خطا در ثبت ضایعات توسط {UserId}", userId);
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
         }
         finally
         {

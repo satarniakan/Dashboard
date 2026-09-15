@@ -1,0 +1,48 @@
+﻿@using Dashboard.Web.Services
+@inject ToastService ToastService
+@implements IDisposable
+
+<div class="toast-container">
+    @foreach (var toast in _activeToasts)
+    {
+        <div class="toast-item toast-@toast.Type.ToString().ToLower()" @key="toast">
+            @if (toast.Type == ToastType.Success)
+            {
+                <i class="bi bi-check-circle-fill"></i>
+            }
+            else if (toast.Type == ToastType.Error)
+            {
+                <i class="bi bi-x-circle-fill"></i>
+            }
+            else
+            {
+                <i class="bi bi-info-circle-fill"></i>
+            }
+            <span>@toast.Text</span>
+        </div>
+    }
+</div>
+
+@code {
+    private List<ToastMessage> _activeToasts = new();
+
+    protected override void OnInitialized()
+    {
+        ToastService.OnShow += HandleShow;
+    }
+
+    private async void HandleShow(ToastMessage toast)
+    {
+        _activeToasts.Add(toast);
+        await InvokeAsync(StateHasChanged);
+
+        await Task.Delay(3500);
+        _activeToasts.Remove(toast);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ToastService.OnShow -= HandleShow;
+    }
+}

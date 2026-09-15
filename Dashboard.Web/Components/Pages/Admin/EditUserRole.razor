@@ -8,6 +8,7 @@
 @inject IUserAdminService UserAdminService
 @inject NavigationManager NavigationManager
 @inject ILogger<Dashboard.Web.Components.Pages.Admin.EditUserRole> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>تغییر نقش‌های کاربر</PageTitle>
 
 <h3>تغییر نقش‌های کاربر</h3>
@@ -86,6 +87,7 @@ else
         try
         {
             await UserAdminService.SetRolesAsync(UserId, selectedRoles);
+            ToastService.ShowSuccess("نقش‌های کاربر به‌روزرسانی شد.");
             NavigationManager.NavigateTo("/admin/users?success=1");
         }
         catch (Exception ex)

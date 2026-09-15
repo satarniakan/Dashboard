@@ -10,6 +10,7 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<Dashboard.Web.Components.Pages.Products> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>محصولات</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -121,6 +122,7 @@
                              ?? authState.User.Identity?.Name;
 
             await ProductService.DeleteProductAsync(productToDelete.Value.Id, userEmail);
+            ToastService.ShowSuccess("محصول با موفقیت حذف شد.");
             await LoadProducts();
         }
         catch (Exception ex)

@@ -7,6 +7,7 @@
 @inject ISalesService SalesService
 @inject NavigationManager NavigationManager
 @inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddCustomer> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>افزودن مشتری</PageTitle>
 
 <h3>افزودن مشتری</h3>
@@ -59,12 +60,14 @@
         try
         {
             await SalesService.CreateCustomerAsync(model);
+            ToastService.ShowSuccess("مشتری با موفقیت ذخیره شد.");
             NavigationManager.NavigateTo("/warehouse/customers");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "خطا در ذخیره مشتری");
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
         }
         finally
         {

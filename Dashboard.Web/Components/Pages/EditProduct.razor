@@ -10,6 +10,7 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<Dashboard.Web.Components.Pages.EditProduct> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>ویرایش محصول</PageTitle>
 
 <h3>ویرایش محصول</h3>
@@ -98,6 +99,7 @@ else
             }
             else
             {
+                ToastService.ShowSuccess("تغییرات محصول ذخیره شد.");
                 NavigationManager.NavigateTo("/products");
             }
         }
@@ -105,6 +107,7 @@ else
         {
             Logger.LogError(ex, "خطا در ویرایش محصول {ProductId} توسط {UserEmail}", Id, userEmail);
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
         }
         finally
         {

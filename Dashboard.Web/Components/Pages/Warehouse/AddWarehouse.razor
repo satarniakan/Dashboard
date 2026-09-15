@@ -7,6 +7,7 @@
 @inject IStockService StockService
 @inject NavigationManager NavigationManager
 @inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddWarehouse> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>افزودن انبار</PageTitle>
 
 <h3>افزودن انبار</h3>
@@ -59,12 +60,14 @@
         try
         {
             await StockService.CreateWarehouseAsync(model);
+            ToastService.ShowSuccess("انبار با موفقیت ثبت شد.");
             NavigationManager.NavigateTo("/warehouse/warehouses");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "خطا در ذخیره انبار");
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
         }
         finally
         {

@@ -11,6 +11,7 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddPurchaseReceipt> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>ثبت رسید خرید</PageTitle>
 
 <h3>ثبت رسید خرید</h3>
@@ -159,12 +160,14 @@
             userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
             await StockService.RegisterPurchaseReceiptAsync(model, userId);
+            ToastService.ShowSuccess("رسید خرید با موفقیت ثبت شد.");
             NavigationManager.NavigateTo("/warehouse/purchase-receipts");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "خطا در ثبت رسید خرید توسط {UserId}", userId);
             errorMessage = ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
         }
         finally
         {

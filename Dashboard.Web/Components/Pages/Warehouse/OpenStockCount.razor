@@ -9,6 +9,7 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<Dashboard.Web.Components.Pages.Warehouse.OpenStockCount> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>شروع انبارگردانی جدید</PageTitle>
 
 <h3>شروع انبارگردانی جدید</h3>
@@ -90,12 +91,14 @@
             userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
             var stockCount = await StockService.OpenStockCountAsync(model.WarehouseId, userId);
+            ToastService.ShowSuccess("انبارگردانی باز شد.");
             NavigationManager.NavigateTo($"/warehouse/stock-counts/{stockCount.Id}");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "خطا در شروع انبارگردانی توسط {UserId}", userId);
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
         }
         finally
         {

@@ -166,6 +166,7 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0
             }));
 });
+builder.Services.AddScoped<Dashboard.Web.Services.ToastService>();
 var app = builder.Build();
 await Dashboard.Infrastructure.RoleSeeder.SeedRolesAsync(app.Services);
 app.UseSerilogRequestLogging();

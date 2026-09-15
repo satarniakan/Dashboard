@@ -11,7 +11,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IInstallmentService InstallmentService
 @inject ILogger<Dashboard.Web.Components.Pages.Accounting.AddCustomerReceipt> Logger
-
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>ثبت دریافت از مشتری</PageTitle>
 
 <h3>ثبت دریافت از مشتری</h3>
@@ -151,12 +151,14 @@
             userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
             await TreasuryService.RegisterCustomerReceiptAsync(model, userId);
+            ToastService.ShowSuccess("دریافت با موفقیت ثبت شد.");
             NavigationManager.NavigateTo("/accounting/customer-receipts");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "خطا در ثبت دریافت از مشتری توسط {UserId}", userId);
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
         }
         finally
         {

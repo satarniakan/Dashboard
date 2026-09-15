@@ -11,6 +11,7 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddSalesInvoice> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>فاکتور فروش جدید</PageTitle>
 
 <h3>فاکتور فروش جدید</h3>
@@ -178,12 +179,14 @@
             userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
             var invoiceId = await SalesService.CreateDraftInvoiceAsync(model, userId);
+            ToastService.ShowSuccess("فاکتور فروش ثبت شد.");
             NavigationManager.NavigateTo($"/warehouse/sales/{invoiceId}");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "خطا در ثبت فاکتور فروش توسط {UserId}", userId);
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
         }
         finally
         {

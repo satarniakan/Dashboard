@@ -12,7 +12,7 @@
 @inject IJSRuntime JS
 @inject IInstallmentService InstallmentService
 @inject ILogger<Dashboard.Web.Components.Pages.Warehouse.SalesInvoiceDetail> Logger
-
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>فاکتور @invoice?.InvoiceNumber</PageTitle>
 
 @if (invoice is null)
@@ -250,6 +250,7 @@ else
         {
             Logger.LogError(ex, "خطا در تأیید فاکتور {InvoiceId}", Id);
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
         }
         finally
         {
@@ -271,6 +272,7 @@ else
         {
             Logger.LogError(ex, "خطا در لغو فاکتور {InvoiceId}", Id);
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
         }
         finally
         {

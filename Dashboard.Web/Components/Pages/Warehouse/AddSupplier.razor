@@ -7,6 +7,7 @@
 @inject IStockService StockService
 @inject NavigationManager NavigationManager
 @inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddSupplier> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>افزودن تأمین‌کننده</PageTitle>
 
 <h3>افزودن تأمین‌کننده</h3>
@@ -64,12 +65,14 @@
         try
         {
             await StockService.CreateSupplierAsync(model);
+            ToastService.ShowSuccess("تأمین‌کننده با موفقیت ثبت شد.");
             NavigationManager.NavigateTo("/warehouse/suppliers");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "خطا در ذخیره تأمین‌کننده");
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
         }
         finally
         {

@@ -1,14 +1,13 @@
 ﻿@page "/admin/users/add"
 @attribute [Authorize(Roles = Dashboard.Domain.Identity.Roles.Admin)]
 @rendermode InteractiveServer
-
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
-
 @inject IUserAdminService UserAdminService
 @inject NavigationManager NavigationManager
 @inject ILogger<Dashboard.Web.Components.Pages.Admin.AddUser> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>افزودن کاربر جدید</PageTitle>
 
 <h3>افزودن کاربر جدید</h3>
@@ -97,6 +96,7 @@
             var result = await UserAdminService.CreateUserAsync(newUser!);
             if (result.Succeeded)
             {
+                ToastService.ShowSuccess("کاربر جدید ایجاد شد.");
                 NavigationManager.NavigateTo("/admin/users?success=کاربر+با+موفقیت+ایجاد+شد");
             }
             else
@@ -108,6 +108,7 @@
         {
             Logger.LogError(ex, "خطا در ذخیره کاربر جدید");
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
         }
         finally
         {

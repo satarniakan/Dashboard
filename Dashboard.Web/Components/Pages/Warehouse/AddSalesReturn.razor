@@ -10,6 +10,7 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddSalesReturn> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>ثبت برگشت از فروش</PageTitle>
 
 <h3>ثبت برگشت از فروش</h3>
@@ -105,12 +106,14 @@
         userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
         await StockService.RegisterSalesReturnAsync(model, userId);
+            ToastService.ShowSuccess("برگشت از فروش ثبت شد.");
         NavigationManager.NavigateTo("/warehouse/sales-returns");
     }
     catch (Exception ex)
     {
         Logger.LogError(ex, "خطا در ثبت برگشت از فروش توسط {UserId}", userId);
         errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+        ToastService.ShowError(errorMessage);
     }
     finally
     {

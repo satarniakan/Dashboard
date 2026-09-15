@@ -7,6 +7,7 @@
 @inject ICatalogService CatalogService
 @inject NavigationManager NavigationManager
 @inject ILogger<Dashboard.Web.Components.Pages.Catalog.AddProductGroup> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>گروه محصول جدید</PageTitle>
 
 <h3>گروه محصول جدید</h3>
@@ -69,6 +70,7 @@
         try
         {
             var id = await CatalogService.CreateProductGroupAsync(model);
+            ToastService.ShowSuccess("گروه محصول ایجاد شد.");
             NavigationManager.NavigateTo($"/catalog/product-groups/{id}");
         }
         catch (Exception ex)

@@ -1,5 +1,5 @@
 ﻿@inherits LayoutComponentBase
-
+@using Dashboard.Web.Components.Shared
 <div class="page">
     <div class="sidebar">
         <NavMenu @rendermode="InteractiveServer" />
@@ -26,12 +26,12 @@
                 </ErrorContent>
             </ErrorBoundary>
         </article>
-
+<ToastContainer />
 @code {
     private ErrorBoundary? errorBoundary;
     private void Recover() => errorBoundary?.Recover();
 }
-    </main>
+</main>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>

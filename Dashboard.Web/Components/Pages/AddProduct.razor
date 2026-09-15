@@ -9,6 +9,7 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<Dashboard.Web.Components.Pages.AddProduct> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>افزودن محصول</PageTitle>
 
 <h3>افزودن محصول</h3>
@@ -67,12 +68,14 @@
            
             
             await ProductService.CreateProductAsync(newProduct!, userEmail);
+            ToastService.ShowSuccess("محصول با موفقیت ذخیره شد.");
             NavigationManager.NavigateTo("/products");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "خطا در ذخیره محصول توسط {UserEmail}", userEmail);
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
         }
         finally
         {

@@ -10,6 +10,7 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddStockTransfer> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>ثبت انتقال بین انبار</PageTitle>
 
 <h3>ثبت انتقال بین انبار</h3>
@@ -114,12 +115,14 @@
             userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
             await StockService.RegisterStockTransferAsync(model, userId);
+            ToastService.ShowSuccess("انتقال بین انبار ثبت شد.");
             NavigationManager.NavigateTo("/warehouse/transfers");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "خطا در ثبت انتقال بین انبار توسط {UserId}", userId);
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
         }
         finally
         {
