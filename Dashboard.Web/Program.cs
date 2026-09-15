@@ -6,6 +6,8 @@ using Dashboard.Infrastructure;
 using Dashboard.Web.Components;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 using Serilog;
 using System.Globalization;
 
@@ -120,6 +122,47 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LoginPath = "/login";
     options.AccessDeniedPath = "/login";
 });
+
+// محدود کردن تعداد درخواست‌ها برای جلوگیری از سوءاستفاده: هرکس نتواند با اسکریپت
+// هزاران پیامک OTP بگیرد یا کدهای ورود را حدس بزند. کلید هر محدودیت آدرس IP کاربر است،
+// یعنی هر کاربر جدا محدود می‌شود، نه همه با هم.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // حداکثر ۳ درخواست کد پیامکی در هر ۵ دقیقه از هر IP
+    options.AddPolicy("otp-request", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 3,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0
+            }));
+
+    // حداکثر ۸ تلاش برای وارد کردن کد در هر ۵ دقیقه (برای جلوگیری از حدس زدن کد)
+    options.AddPolicy("otp-verify", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 8,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0
+            }));
+
+    // حداکثر ۱۰ تلاش ورود با رمز عبور در هر ۱۵ دقیقه (برای جلوگیری از حدس زدن رمز)
+    options.AddPolicy("login", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0
+            }));
+});
 var app = builder.Build();
 await Dashboard.Infrastructure.RoleSeeder.SeedRolesAsync(app.Services);
 app.UseSerilogRequestLogging();
@@ -141,14 +184,17 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
 // درخواست‌هایی که با هیچ صفحه‌ای مطابقت ندارند (مثلاً آدرس تایپ‌شده در نوار مرورگر)
 // به‌جای ۴۰۴ خام، به صفحه‌ی طراحی‌شده‌ی not-found هدایت می‌شوند.
 // مسیر اصلی در کوئری "from" فرستاده می‌شود تا در آن صفحه نمایش داده شود.
 app.UseStatusCodePagesWithReExecute("/not-found", "?from={0}");
+
 // Antiforgery به هویت کاربر نیاز دارد، پس باید بعد از Authentication/Authorization بیاید
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
+app.UseRateLimiter();
 
 // ===== Auth endpoints — هر کدام فقط IAuthService را صدا می‌زنند، بدون منطق تجاری =====
 
@@ -162,7 +208,7 @@ app.MapPost("/Account/Login", async (
     return result.Succeeded
         ? Results.Redirect("/")
         : Results.Redirect("/login-password?error=1");
-});
+}).RequireRateLimiting("login");
 
 app.MapPost("/Account/RequestOtp", async (
     IAuthService authService,
@@ -170,7 +216,7 @@ app.MapPost("/Account/RequestOtp", async (
 {
     await authService.RequestOtpAsync(phoneNumber);
     return Results.Redirect($"/verify-otp?phone={phoneNumber}");
-});
+}).RequireRateLimiting("otp-request");
 
 app.MapPost("/Account/VerifyOtp", async (
     IAuthService authService,
@@ -187,7 +233,7 @@ app.MapPost("/Account/VerifyOtp", async (
     return result.IsNewUser
         ? Results.Redirect("/profile?welcome=1")
         : Results.Redirect("/");
-});
+}).RequireRateLimiting("otp-verify");
 
 app.MapPost("/Account/CompleteProfile", async (
     HttpContext httpContext,
