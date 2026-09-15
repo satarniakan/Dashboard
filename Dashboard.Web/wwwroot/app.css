@@ -151,3 +151,54 @@ a {
         border: none !important;
     }
 }
+/* احترام به کاربرهایی که ترجیح می‌دن حرکت کمتری ببینن */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* دکمه‌ها: واکنش نرم به هاور و کلیک */
+.btn {
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease;
+}
+
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }
+
+    .btn:active {
+        transform: translateY(0);
+        box-shadow: none;
+    }
+
+/* کارت‌ها: کمی عمق موقع هاور، فقط جایی که واقعاً کلیک‌پذیرن */
+.card-panel {
+    transition: box-shadow 0.15s ease;
+}
+
+    a .card-panel:hover, .card-panel.clickable:hover {
+        box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+    }
+
+/* ورودی‌ها: فوکوس نرم‌تر */
+.form-control, .form-select {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* محو‌شدن ملایم محتوای هر صفحه هنگام بارگذاری اولیه */
+.content {
+    animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}

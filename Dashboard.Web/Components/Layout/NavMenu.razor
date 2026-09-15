@@ -19,7 +19,7 @@
                 <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.ProductsView" Context="productsCtx">
                     <Authorized>
                         <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="products">محصولات</NavLink>
+                            <NavLink class="nav-link" href="products"><i class="bi bi-box-seam"></i>محصولات</NavLink>
                         </div>
                     </Authorized>
                 </AuthorizeView>
@@ -29,8 +29,8 @@
                     <Authorized>
                         <div class="nav-section">
                             <div class="nav-section-header" @onclick="() => Toggle(nameof(warehouseOpen))">
-                                <span>انبار</span>
-                                <span class="nav-caret">@(warehouseOpen ? "⌄" : "›")</span>
+                                <span><i class="bi bi-building me-2"></i>انبار</span>
+                                <span class="nav-caret" style="transform: rotate(@(warehouseOpen ? "90deg" : "0deg"));">›</span>
                             </div>
                             <div class="nav-section-body @(warehouseOpen ? "" : "d-none")">
                                 <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.WarehousesManage" Context="c1">
@@ -70,8 +70,8 @@
                     <Authorized>
                         <div class="nav-section">
                             <div class="nav-section-header" @onclick="() => Toggle(nameof(salesOpen))">
-                                <span>فروش</span>
-                                <span class="nav-caret">@(salesOpen ? "⌄" : "›")</span>
+                                <span><i class="bi bi-cart3 me-2"></i>فروش</span>
+                                <span class="nav-caret" style="transform: rotate(@(salesOpen ? "90deg" : "0deg"));">›</span>
                             </div>
                             <div class="nav-section-body @(salesOpen ? "" : "d-none")">
                                 <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.CustomersManage" Context="c10">
@@ -90,8 +90,8 @@
                     <Authorized>
                         <div class="nav-section">
                             <div class="nav-section-header" @onclick="() => Toggle(nameof(accountingOpen))">
-                                <span>حسابداری</span>
-                                <span class="nav-caret">@(accountingOpen ? "⌄" : "›")</span>
+                                <span>حسابداری<i class="bi bi-calculator me-2"></i></span>
+                                <span class="nav-caret" style="transform: rotate(@(accountingOpen ? "90deg" : "0deg"));">›</span>
                             </div>
                             <div class="nav-section-body @(accountingOpen ? "" : "d-none")">
                                 <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.AccountingView" Context="c12">
@@ -129,8 +129,8 @@
                     <Authorized>
                         <div class="nav-section">
                             <div class="nav-section-header" @onclick="() => Toggle(nameof(adminOpen))">
-                                <span>مدیریت</span>
-                                <span class="nav-caret">@(adminOpen ? "⌄" : "›")</span>
+                                <span><i class="bi bi-shield-lock me-2"></i>مدیریت</span>
+                                <span class="nav-caret" style="transform: rotate(@(adminOpen ? "90deg" : "0deg"));">›</span>
                             </div>
                             <div class="nav-section-body @(adminOpen ? "" : "d-none")">
                                 <div class="nav-item px-3"><NavLink class="nav-link" href="admin/users">کاربران</NavLink></div>
@@ -144,8 +144,8 @@
                     <Authorized>
                         <div class="nav-section">
                             <div class="nav-section-header" @onclick="() => Toggle(nameof(catalogOpen))">
-                                <span>کاتالوگ فروشگاه</span>
-                                <span class="nav-caret">@(catalogOpen ? "⌄" : "›")</span>
+                                <span><i class="bi bi-shop me-2"></i>کاتالوگ فروشگاه</span>
+                                <span class="nav-caret" style="transform: rotate(@(catalogOpen ? "90deg" : "0deg"));">›</span>
                             </div>
                             <div class="nav-section-body @(catalogOpen ? "" : "d-none")">
                                 <div class="nav-item px-3"><NavLink class="nav-link" href="catalog/categories">دسته‌بندی‌ها</NavLink></div>
@@ -158,18 +158,18 @@
                 <hr class="nav-divider" />
 
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="profile">پروفایل من</NavLink>
+                    <NavLink class="nav-link" href="profile"><i class="bi bi-person-circle me-2"></i>پروفایل من</NavLink>
                 </div>
                 <div class="nav-item px-3">
                     <form action="/logout" method="post" data-enhance="false">
                         <AntiforgeryToken />
-                        <button type="submit" class="nav-link btn btn-link">خروج</button>
+                        <button type="submit" class="nav-link btn btn-link"><i class="bi bi-box-arrow-right me-2"></i>خروج</button>
                     </form>
                 </div>
             </Authorized>
             <NotAuthorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">خانه</NavLink>
+                    <NavLink class="nav-link" href=""><i class="bi bi-house-door me-2"></i>خانه</NavLink>
                 </div>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="login">ورود / ثبت‌نام</NavLink>

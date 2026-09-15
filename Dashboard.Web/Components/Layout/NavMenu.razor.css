@@ -141,3 +141,20 @@
     border-color: rgba(255,255,255,0.15);
     margin: 0.75rem 1rem;
 }
+.nav-section-body {
+    overflow: hidden;
+    max-height: 500px;
+    transition: max-height 0.25s ease, opacity 0.2s ease;
+    opacity: 1;
+}
+
+    .nav-section-body.d-none {
+        max-height: 0;
+        opacity: 0;
+        display: block !important; /* برای این‌که transition اجرا بشه، خودمون display رو مدیریت می‌کنیم */
+    }
+
+.nav-caret {
+    transition: transform 0.2s ease;
+    display: inline-block;
+}

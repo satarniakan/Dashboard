@@ -111,7 +111,15 @@ builder.Services.AddDataProtection()
 // هر لایه تنظیمات سرویس‌های خودش را رجیستر می‌کند
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
-
+// AddIdentity به‌صورت پیش‌فرض مسیر "/Account/Login" را برای صفحه‌ی ورود در نظر می‌گیرد،
+// در حالی که صفحه‌ی واقعی ورود در این پروژه "/login" است. بدون این تنظیم، وقتی کاربر
+// لاگ‌اوت شده باشد و بخواهد به صفحه‌ای محافظت‌شده برود، به مسیر اشتباه ریدایرکت می‌شود
+// و پیام "صفحه یافت نشد" می‌بیند.
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/login";
+    options.AccessDeniedPath = "/login";
+});
 var app = builder.Build();
 await Dashboard.Infrastructure.RoleSeeder.SeedRolesAsync(app.Services);
 app.UseSerilogRequestLogging();
