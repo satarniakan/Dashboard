@@ -1,5 +1,84 @@
 ﻿@page "/not-found"
 @layout MainLayout
+@inject NavigationManager NavigationManager
 
-<h3>Not Found</h3>
-<p>Sorry, the content you are looking for does not exist.</p>
+<PageTitle>صفحه یافت نشد</PageTitle>
+
+<div class="notfound-wrap">
+    <div class="notfound-code">404</div>
+
+    <h3 class="notfound-title">این صفحه پیدا نشد</h3>
+
+    <p class="notfound-text">
+        آدرسی که دنبالش بودید وجود ندارد یا جابه‌جا شده است.
+    </p>
+
+    @if (!string.IsNullOrEmpty(attemptedPath))
+    {
+        <p class="notfound-path">@attemptedPath</p>
+    }
+
+    <a href="/" class="btn btn-primary">بازگشت به داشبورد</a>
+</div>
+
+<style>
+    .notfound-wrap {
+        max-width: 480px;
+        margin: 4rem auto;
+        text-align: center;
+        padding: 2.5rem 1.5rem;
+        background: var(--brand-surface);
+        border: 1px solid var(--brand-border);
+        border-radius: var(--radius);
+    }
+
+    .notfound-code {
+        font-size: 4.5rem;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--brand-primary);
+        opacity: 0.25;
+        margin-bottom: 0.5rem;
+    }
+
+    .notfound-title {
+        color: var(--brand-text);
+        margin-bottom: 0.75rem;
+    }
+
+    .notfound-text {
+        color: var(--brand-text-muted);
+        font-size: 0.95rem;
+        margin-bottom: 1rem;
+    }
+
+    .notfound-path {
+        direction: ltr;
+        font-family: monospace;
+        font-size: 0.8rem;
+        color: var(--brand-text-muted);
+        background: var(--brand-bg);
+        border: 1px solid var(--brand-border);
+        border-radius: 6px;
+        padding: 0.4rem 0.6rem;
+        word-break: break-all;
+        margin-bottom: 1.5rem;
+    }
+</style>
+
+@code {
+    private string? attemptedPath;
+
+    protected override void OnInitialized()
+    {
+        // وقتی UseStatusCodePagesWithReExecute صفحه را دوباره اجرا می‌کند، مسیر اصلی
+        // در کوئری‌استرینگ قرار می‌گیرد تا بتوانیم به کاربر نشان دهیم چه آدرسی را خواسته بود.
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("from", out var from) && !string.IsNullOrWhiteSpace(from))
+        {
+            attemptedPath = from.ToString();
+        }
+    }
+}

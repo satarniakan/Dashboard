@@ -26,14 +26,20 @@
     color: #fff;
 }
 
+/* آیکون‌های فونتی Bootstrap Icons: یک «جای ثابت» می‌گیرند تا همه‌ی آیکون‌ها
+   و به‌دنبالش ابتدای همه‌ی متن‌ها دقیقاً در یک ستون قرار بگیرند. */
 .bi {
-    display: inline-block;
-    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 1.25rem;
     width: 1.25rem;
-    height: 1.25rem;
-    margin-inline-end: 0.75rem;
-    top: -1px;
-    background-size: cover;
+    height: auto;
+    top: 0;
+    font-size: 1rem;
+    line-height: 1;
+    margin-inline-end: 0.7rem;
+    background: none;
 }
 
 .nav-item {
@@ -111,7 +117,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.6rem 1.5rem;
+    padding: 0.6rem 0.9rem;
     margin: 0.2rem 0.75rem;
     color: #cbd5e1;
     font-size: 0.9rem;
@@ -119,6 +125,13 @@
     cursor: pointer;
     border-radius: 6px;
     user-select: none;
+}
+
+/* عنوان بخش هم مثل لینک‌ها یک ردیف flex است تا آیکونش در همان ستون بیفتد */
+.nav-section-title {
+    display: flex;
+    align-items: center;
+    min-width: 0;
 }
 
     .nav-section-header:hover {
@@ -131,10 +144,16 @@
     opacity: 0.7;
 }
 
+/* تورفتگی زیرمنوها حذف شده تا آیکون‌های همه‌ی سطوح در یک ستون قرار بگیرند.
+   سلسله‌مراتب از طریق اندازه‌ی فونت و شفافیت نشان داده می‌شود. */
 .nav-section-body .nav-item ::deep .nav-link {
-    padding-inline-start: 2.2rem;
     font-size: 0.85rem;
-    opacity: 0.9;
+    opacity: 0.85;
+}
+
+.nav-section-body .nav-item ::deep .nav-link:hover,
+.nav-section-body .nav-item ::deep a.active {
+    opacity: 1;
 }
 
 .nav-divider {

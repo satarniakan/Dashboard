@@ -141,7 +141,10 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
+// درخواست‌هایی که با هیچ صفحه‌ای مطابقت ندارند (مثلاً آدرس تایپ‌شده در نوار مرورگر)
+// به‌جای ۴۰۴ خام، به صفحه‌ی طراحی‌شده‌ی not-found هدایت می‌شوند.
+// مسیر اصلی در کوئری "from" فرستاده می‌شود تا در آن صفحه نمایش داده شود.
+app.UseStatusCodePagesWithReExecute("/not-found", "?from={0}");
 // Antiforgery به هویت کاربر نیاز دارد، پس باید بعد از Authentication/Authorization بیاید
 app.UseAuthentication();
 app.UseAuthorization();
