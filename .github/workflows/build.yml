@@ -1,0 +1,30 @@
+name: Build and Test
+
+# هر بار push به main یا هر Pull Request که به main باز می‌شود، این workflow اجرا می‌شود
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout کد
+        uses: actions/checkout@v4
+
+      - name: نصب .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore پکیج‌ها
+        run: dotnet restore Dashboard.slnx
+
+      - name: Build
+        run: dotnet build Dashboard.slnx --no-restore --configuration Release
+
+      - name: اجرای تست‌ها
+        run: dotnet test Dashboard.slnx --no-build --configuration Release --verbosity normal
