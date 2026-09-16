@@ -20,6 +20,7 @@ public interface ISalesService
 
     Task ConfirmInvoiceAsync(int invoiceId, string? userId);
     Task CancelInvoiceAsync(int invoiceId, string? userId);
+    Task<SalesInvoiceDto?> GetInvoiceByNumberAsync(string invoiceNumber);
 }
 
 public class SalesService : ISalesService
@@ -242,5 +243,36 @@ public class SalesService : ISalesService
         return invoices.Select(i => new SalesInvoiceSummaryDto(
             i.Id, i.InvoiceNumber, i.InvoiceDate, i.Customer?.Name, i.Warehouse?.Name ?? "-",
             i.Status.ToString(), i.TotalAmount));
+    }
+
+    public async Task<SalesInvoiceDto?> GetInvoiceByNumberAsync(string invoiceNumber)
+    {
+        var invoices = await _unitOfWork.SalesInvoices.GetAllAsync();
+
+        var invoice = invoices.FirstOrDefault(x =>
+            x.InvoiceNumber == invoiceNumber &&
+            x.Status == SalesInvoiceStatus.Confirmed);
+
+        if (invoice is null)
+            return null;
+
+        return new SalesInvoiceDto(
+            invoice.Id,
+            invoice.InvoiceNumber,
+            invoice.InvoiceDate,
+            invoice.Customer?.Name,
+            invoice.Warehouse?.Name ?? "-",
+            invoice.Status.ToString(),
+            invoice.DiscountAmount,
+            invoice.TotalAmount,
+            invoice.Notes,
+            invoice.Items.Select(i => new SalesInvoiceItemDto(
+                i.ProductId,
+                i.Product?.Name ?? "-",
+                i.Quantity,
+                i.UnitPrice,
+                i.LineTotal
+            )).ToList()
+        );
     }
 }
