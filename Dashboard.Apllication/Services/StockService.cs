@@ -2,6 +2,7 @@ using Dashboard.Application.DTOs;
 using Dashboard.Application.Helpers;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
+using Dashboard.Domain.Exceptions;
 using Dashboard.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -132,7 +133,7 @@ public class StockService : IStockService
 
     public async Task<int> RegisterPurchaseReceiptAsync(CreatePurchaseReceiptDto dto, string? userId)
     {
-        if (dto.Items.Count == 0) throw new InvalidOperationException("حداقل یک قلم کالا لازم است.");
+        if (dto.Items.Count == 0) throw new BusinessRuleException("حداقل یک قلم کالا لازم است.");
 
         var receipt = new PurchaseReceipt
         {
@@ -146,7 +147,7 @@ public class StockService : IStockService
 
         foreach (var item in dto.Items)
         {
-            if (item.Quantity <= 0) throw new InvalidOperationException("مقدار باید بزرگتر از صفر باشد.");
+            if (item.Quantity <= 0) throw new BusinessRuleException("مقدار باید بزرگتر از صفر باشد.");
 
             receipt.Items.Add(new PurchaseReceiptItem
             {
@@ -208,7 +209,7 @@ public class StockService : IStockService
 
     public async Task<int> RegisterInternalIssueAsync(CreateInternalIssueDto dto, string? userId)
     {
-        if (dto.Items.Count == 0) throw new InvalidOperationException("حداقل یک قلم کالا لازم است.");
+        if (dto.Items.Count == 0) throw new BusinessRuleException("حداقل یک قلم کالا لازم است.");
 
         await EnsureSufficientStockAsync(dto.WarehouseId, dto.Items);
 
@@ -267,7 +268,7 @@ public class StockService : IStockService
 
     public async Task<int> RegisterSalesReturnAsync(CreateSalesReturnDto dto, string? userId)
     {
-        if (dto.Items.Count == 0) throw new InvalidOperationException("حداقل یک قلم کالا لازم است.");
+        if (dto.Items.Count == 0) throw new BusinessRuleException("حداقل یک قلم کالا لازم است.");
 
         var salesReturn = new SalesReturn
         {
@@ -323,7 +324,7 @@ public class StockService : IStockService
 
     public async Task<int> RegisterScrapAsync(CreateScrapRecordDto dto, string? userId)
     {
-        if (dto.Items.Count == 0) throw new InvalidOperationException("حداقل یک قلم کالا لازم است.");
+        if (dto.Items.Count == 0) throw new BusinessRuleException("حداقل یک قلم کالا لازم است.");
 
         await EnsureSufficientStockAsync(dto.WarehouseId, dto.Items);
 
@@ -383,9 +384,9 @@ public class StockService : IStockService
 
     public async Task<int> RegisterStockTransferAsync(CreateStockTransferDto dto, string? userId)
     {
-        if (dto.Items.Count == 0) throw new InvalidOperationException("حداقل یک قلم کالا لازم است.");
+        if (dto.Items.Count == 0) throw new BusinessRuleException("حداقل یک قلم کالا لازم است.");
         if (dto.SourceWarehouseId == dto.DestinationWarehouseId)
-            throw new InvalidOperationException("انبار مبدا و مقصد نمی‌توانند یکسان باشند.");
+            throw new BusinessRuleException("انبار مبدا و مقصد نمی‌توانند یکسان باشند.");
 
         await EnsureSufficientStockAsync(dto.SourceWarehouseId, dto.Items);
 
@@ -460,7 +461,7 @@ public class StockService : IStockService
     {
         var levels = await _unitOfWork.StockLevels.GetByWarehouseAsync(warehouseId);
         var warehouse = await _unitOfWork.Warehouses.GetByIdAsync(warehouseId)
-            ?? throw new InvalidOperationException("انبار یافت نشد.");
+            ?? throw new NotFoundException("انبار", warehouseId);
 
         var stockCount = new StockCount
         {
@@ -514,10 +515,10 @@ public class StockService : IStockService
     public async Task CloseStockCountAsync(int stockCountId, Dictionary<int, decimal> countedQuantities, string? userId)
     {
         var stockCount = await _unitOfWork.StockCounts.GetByIdAsync(stockCountId)
-            ?? throw new InvalidOperationException("سند انبارگردانی یافت نشد.");
+            ?? throw new NotFoundException("سند انبارگردانی", stockCountId);
 
         if (stockCount.Status == StockCountStatus.Closed)
-            throw new InvalidOperationException("این انبارگردانی قبلاً بسته شده است.");
+            throw new BusinessRuleException("این انبارگردانی قبلاً بسته شده است.");
 
         foreach (var item in stockCount.Items)
         {
@@ -556,13 +557,13 @@ public class StockService : IStockService
     {
         foreach (var item in items)
         {
-            if (item.Quantity <= 0) throw new InvalidOperationException("مقدار باید بزرگتر از صفر باشد.");
+            if (item.Quantity <= 0) throw new BusinessRuleException("مقدار باید بزرگتر از صفر باشد.");
 
             var level = await _unitOfWork.StockLevels.GetAsync(item.ProductId, warehouseId);
             var available = level?.QuantityOnHand ?? 0;
 
             if (available < item.Quantity)
-                throw new InvalidOperationException(
+                throw new BusinessRuleException(
                     $"موجودی کافی نیست (کالای شماره {item.ProductId}: موجود {available}, درخواستی {item.Quantity}).");
         }
     }

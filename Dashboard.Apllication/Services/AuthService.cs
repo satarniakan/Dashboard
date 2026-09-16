@@ -12,7 +12,10 @@ public interface IAuthService
     Task<OtpVerificationResult> VerifyOtpAsync(string phoneNumber, string code);
     Task LogoutAsync();
     Task<UserProfileDto?> GetProfileAsync(string userId);
-    Task<ProfileUpdateResult> CompleteProfileAsync(string userId, string fullName, string? email, string? password, string? confirmPassword);
+    Task<ProfileUpdateResult> CompleteProfileAsync(
+    string userId, string firstName, string lastName, string? email,
+    string? province, string? city, string? address,
+    string? password, string? confirmPassword);
 }
 
 public class AuthService : IAuthService
@@ -115,11 +118,15 @@ public class AuthService : IAuthService
 
         var hasPassword = await _userManager.HasPasswordAsync(user);
 
-        return new UserProfileDto(user.PhoneNumber, user.FullName, user.Email, hasPassword);
+        return new UserProfileDto(
+    user.PhoneNumber, user.FirstName, user.LastName, user.Email,
+    user.Province, user.City, user.Address, hasPassword);
     }
 
     public async Task<ProfileUpdateResult> CompleteProfileAsync(
-        string userId, string fullName, string? email, string? password, string? confirmPassword)
+      string userId, string firstName, string lastName, string? email,
+      string? province, string? city, string? address,
+      string? password, string? confirmPassword)
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null)
@@ -127,7 +134,12 @@ public class AuthService : IAuthService
             return new ProfileUpdateResult(ProfileUpdateStatus.UserNotFound);
         }
 
-        user.FullName = fullName;
+        user.FirstName = firstName;
+        user.LastName = lastName;
+        user.FullName = $"{firstName} {lastName}".Trim();
+        user.Province = province;
+        user.City = city;
+        user.Address = address;
 
         if (!string.IsNullOrWhiteSpace(email))
         {

@@ -3,6 +3,7 @@ using Dashboard.Application.Helpers;
 using Dashboard.Domain.Accounting;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
+using Dashboard.Domain.Exceptions;
 using Dashboard.Domain.Interfaces;
 
 namespace Dashboard.Application.Services;
@@ -79,10 +80,10 @@ public class TreasuryService : ITreasuryService
     // ---------------- دریافت از مشتری ----------------
     public async Task<int> RegisterCustomerReceiptAsync(CreateCustomerReceiptDto dto, string? userId)
     {
-        if (dto.Amount <= 0) throw new InvalidOperationException("مبلغ باید بزرگتر از صفر باشد.");
+        if (dto.Amount <= 0) throw new BusinessRuleException("مبلغ باید بزرگتر از صفر باشد.");
 
         var financialAccount = await _unitOfWork.FinancialAccounts.GetByIdAsync(dto.FinancialAccountId)
-            ?? throw new InvalidOperationException("صندوق/بانک انتخاب‌شده یافت نشد.");
+            ?? throw new NotFoundException("صندوق/بانک", dto.FinancialAccountId);
 
         var receipt = new CustomerReceipt
         {
@@ -104,7 +105,7 @@ public class TreasuryService : ITreasuryService
         if (dto.InstallmentId.HasValue)
         {
             var installment = await _unitOfWork.InstallmentPlans.GetInstallmentByIdAsync(dto.InstallmentId.Value)
-                ?? throw new InvalidOperationException("قسط انتخاب‌شده یافت نشد.");
+                ?? throw new NotFoundException("قسط", dto.InstallmentId!.Value);
 
             installment.PaidAmount += dto.Amount;
         }
@@ -141,10 +142,10 @@ public class TreasuryService : ITreasuryService
 
     public async Task<int> RegisterSupplierPaymentAsync(CreateSupplierPaymentDto dto, string? userId)
     {
-        if (dto.Amount <= 0) throw new InvalidOperationException("مبلغ باید بزرگتر از صفر باشد.");
+        if (dto.Amount <= 0) throw new BusinessRuleException("مبلغ باید بزرگتر از صفر باشد.");
 
         var financialAccount = await _unitOfWork.FinancialAccounts.GetByIdAsync(dto.FinancialAccountId)
-            ?? throw new InvalidOperationException("صندوق/بانک انتخاب‌شده یافت نشد.");
+            ?? throw new NotFoundException("صندوق/بانک", dto.FinancialAccountId);
 
         var payment = new SupplierPayment
         {

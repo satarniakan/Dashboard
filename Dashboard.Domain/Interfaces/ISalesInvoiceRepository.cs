@@ -8,4 +8,5 @@ public interface ISalesInvoiceRepository
     Task<IEnumerable<SalesInvoice>> GetAllAsync();
     Task AddAsync(SalesInvoice invoice);
     Task UpdateAsync(SalesInvoice invoice);
+    Task<SalesInvoice?> GetByInvoiceNumberAsync(string invoiceNumber);
 }

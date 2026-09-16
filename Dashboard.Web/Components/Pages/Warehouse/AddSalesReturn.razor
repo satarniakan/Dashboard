@@ -11,6 +11,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddSalesReturn> Logger
 @inject Dashboard.Web.Services.ToastService ToastService
+@inject ISalesService SalesService
 <PageTitle>ثبت برگشت از فروش</PageTitle>
 
 <h3>ثبت برگشت از فروش</h3>
@@ -34,9 +35,34 @@
                     }
                 </select>
             </div>
-           
-        </div>
 
+        </div>
+        <div class="mb-3">
+            <label class="form-label">شماره فاکتور فروش</label>
+
+            <div class="input-group">
+                <input class="form-control"
+                       @bind="invoiceNumber"
+                       placeholder="شماره فاکتور را وارد کنید" />
+
+                <button type="button"
+                        class="btn btn-primary"
+                        @onclick="SearchInvoice"
+                        disabled="@searchingInvoice">
+                    @(searchingInvoice ? "در حال جستجو..." : "جستجو")
+                </button>
+            </div>
+        </div>
+        @if (selectedInvoice is not null)
+        {
+            <div class="alert alert-info">
+                <strong>فاکتور:</strong> @selectedInvoice.InvoiceNumber
+                <br />
+                <strong>مشتری:</strong> @selectedInvoice.CustomerName
+                <br />
+                <strong>مبلغ:</strong> @selectedInvoice.TotalAmount
+            </div>
+        }
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label class="form-label">تاریخ</label>
@@ -81,7 +107,9 @@
 
     private bool isSaving;
     private string? errorMessage;
-
+    private string invoiceNumber = string.Empty;
+    private SalesInvoiceDto? selectedInvoice;
+    private bool searchingInvoice;
     protected override async Task OnInitializedAsync()
     {
         model.Items.Add(new StockItemInput());
@@ -90,35 +118,74 @@
     }
 
     private async Task HandleValidSubmit()
-{
-    isSaving = true;
-    errorMessage = null;
-    string? userId = null;
-    try
     {
-        if (model.WarehouseId == 0)
+        isSaving = true;
+        errorMessage = null;
+        string? userId = null;
+        try
         {
-            errorMessage = "انتخاب انبار الزامی است.";
+            if (model.WarehouseId == 0)
+            {
+                errorMessage = "انتخاب انبار الزامی است.";
+                return;
+            }
+
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+
+            await StockService.RegisterSalesReturnAsync(model, userId);
+            ToastService.ShowSuccess("برگشت از فروش ثبت شد.");
+            NavigationManager.NavigateTo("/warehouse/sales-returns");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در ثبت برگشت از فروش توسط {UserId}", userId);
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+    private async Task SearchInvoice()
+    {
+        if (string.IsNullOrWhiteSpace(invoiceNumber))
+        {
+
+            ToastService.ShowError("شماره فاکتور را وارد کنید.");
             return;
         }
 
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+        searchingInvoice = true;
 
-        await StockService.RegisterSalesReturnAsync(model, userId);
-            ToastService.ShowSuccess("برگشت از فروش ثبت شد.");
-        NavigationManager.NavigateTo("/warehouse/sales-returns");
-    }
-    catch (Exception ex)
-    {
-        Logger.LogError(ex, "خطا در ثبت برگشت از فروش توسط {UserId}", userId);
-        errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
-        ToastService.ShowError(errorMessage);
-    }
-    finally
-    {
-        isSaving = false;
+        try
+        {
+            selectedInvoice = await SalesService
+                .GetInvoiceByNumberAsync(invoiceNumber.Trim());
+
+            if (selectedInvoice is null)
+            {
+                ToastService.ShowError(
+                    "فاکتور تأیید شده‌ای با این شماره پیدا نشد.");
+                return;
+            }
+
+            model.SalesInvoiceId = selectedInvoice.Id;
+
+            // کالاهای فاکتور را به اقلام برگشت منتقل می‌کنیم
+            model.Items = selectedInvoice.Items
+                .Select(x => new StockItemInput
+                {
+                    ProductId = x.ProductId,
+                    Quantity = 0
+                })
+                .ToList();
+        }
+        finally
+        {
+            searchingInvoice = false;
+        }
     }
 }
-    }
 }

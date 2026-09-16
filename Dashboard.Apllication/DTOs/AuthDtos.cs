@@ -18,6 +18,10 @@ public record ProfileUpdateResult(ProfileUpdateStatus Status);
 
 public record UserProfileDto(
     string? PhoneNumber,
-    string? FullName,
+    string? FirstName,
+    string? LastName,
     string? Email,
+    string? Province,
+    string? City,
+    string? Address,
     bool HasPassword);

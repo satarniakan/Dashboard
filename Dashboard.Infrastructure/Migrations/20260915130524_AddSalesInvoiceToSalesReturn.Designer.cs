@@ -4,6 +4,7 @@ using Dashboard.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Dashboard.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260915130524_AddSalesInvoiceToSalesReturn")]
+    partial class AddSalesInvoiceToSalesReturn
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -869,15 +872,10 @@ namespace Dashboard.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("SalesInvoiceId")
-                        .HasColumnType("int");
-
                     b.Property<int>("WarehouseId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("SalesInvoiceId");
 
                     b.HasIndex("WarehouseId");
 
@@ -1801,17 +1799,11 @@ namespace Dashboard.Infrastructure.Migrations
 
             modelBuilder.Entity("Dashboard.Domain.Entities.SalesReturn", b =>
                 {
-                    b.HasOne("Dashboard.Domain.Entities.SalesInvoice", "SalesInvoice")
-                        .WithMany()
-                        .HasForeignKey("SalesInvoiceId");
-
                     b.HasOne("Dashboard.Domain.Entities.Warehouse", "Warehouse")
                         .WithMany()
                         .HasForeignKey("WarehouseId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("SalesInvoice");
 
                     b.Navigation("Warehouse");
                 });

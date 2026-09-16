@@ -1,7 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Dashboard.Domain.Entities;
+﻿using Dashboard.Domain.Entities;
+using Dashboard.Domain.Enums;
 using Dashboard.Domain.Interfaces;
 using Dashboard.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Dashboard.Infrastructure.Repositories;
 
@@ -32,5 +33,17 @@ public class SalesInvoiceRepository : ISalesInvoiceRepository
     {
         _context.SalesInvoices.Update(invoice);
         return Task.CompletedTask;
+    }
+
+    public async Task<SalesInvoice?> GetByInvoiceNumberAsync(string invoiceNumber)
+    {
+        return await _context.SalesInvoices
+            .Include(x => x.Customer)
+            .Include(x => x.Warehouse)
+            .Include(x => x.Items)
+                .ThenInclude(x => x.Product)
+            .FirstOrDefaultAsync(x =>
+                x.InvoiceNumber == invoiceNumber &&
+                x.Status == SalesInvoiceStatus.Confirmed);
     }
 }

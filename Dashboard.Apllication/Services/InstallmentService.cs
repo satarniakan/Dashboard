@@ -1,4 +1,5 @@
 ﻿using Dashboard.Domain.Entities;
+using Dashboard.Domain.Exceptions;
 using Dashboard.Domain.Interfaces;
 using Dashboard.Application.DTOs;
 
@@ -24,21 +25,21 @@ public class InstallmentService : IInstallmentService
     public async Task CreateInstallmentPlanAsync(CreateInstallmentPlanDto dto, string? userId)
     {
         if (dto.Installments.Count == 0)
-            throw new InvalidOperationException("حداقل یک قسط لازم است.");
+            throw new BusinessRuleException("حداقل یک قسط لازم است.");
 
         var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(dto.SalesInvoiceId)
-            ?? throw new InvalidOperationException("فاکتور یافت نشد.");
+            ?? throw new NotFoundException("فاکتور", dto.SalesInvoiceId);
 
         if (invoice.Status != Domain.Enums.SalesInvoiceStatus.Confirmed)
-            throw new InvalidOperationException("فقط برای فاکتور تأییدشده می‌توان طرح اقساط تعریف کرد.");
+            throw new BusinessRuleException("فقط برای فاکتور تأییدشده می‌توان طرح اقساط تعریف کرد.");
 
         var existing = await _unitOfWork.InstallmentPlans.GetBySalesInvoiceIdAsync(dto.SalesInvoiceId);
         if (existing is not null)
-            throw new InvalidOperationException("برای این فاکتور قبلاً طرح اقساط تعریف شده است.");
+            throw new BusinessRuleException("برای این فاکتور قبلاً طرح اقساط تعریف شده است.");
 
         var sumInstallments = dto.Installments.Sum(i => i.Amount);
         if (sumInstallments != invoice.TotalAmount)
-            throw new InvalidOperationException(
+            throw new BusinessRuleException(
                 $"جمع اقساط ({sumInstallments}) باید دقیقاً برابر مبلغ فاکتور ({invoice.TotalAmount}) باشد.");
 
         var plan = new InstallmentPlan

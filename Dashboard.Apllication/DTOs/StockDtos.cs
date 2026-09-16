@@ -57,6 +57,7 @@ public class CreateSalesReturnDto
     public DateTime ReturnDate { get; set; } = DateTime.UtcNow;
     public string? CustomerReference { get; set; }
     public string? Notes { get; set; }
+    public int? SalesInvoiceId { get; set; }
     public List<StockItemInput> Items { get; set; } = new();
 }
 

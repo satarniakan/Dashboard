@@ -14,7 +14,7 @@
             </AuthorizeView>
         </div>
         <article class="content px-4 py-4">
-            <ErrorBoundary @ref="errorBoundary">
+            <AppErrorBoundary @ref="errorBoundary">
                 <ChildContent>
                     @Body
                 </ChildContent>
@@ -24,11 +24,11 @@
                         <button class="btn btn-sm btn-outline-danger ms-2" @onclick="Recover">تلاش دوباره</button>
                     </div>
                 </ErrorContent>
-            </ErrorBoundary>
+            </AppErrorBoundary>
         </article>
 <ToastContainer />
 @code {
-    private ErrorBoundary? errorBoundary;
+    private AppErrorBoundary? errorBoundary;
     private void Recover() => errorBoundary?.Recover();
 }
 </main>

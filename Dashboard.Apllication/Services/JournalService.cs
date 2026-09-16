@@ -1,4 +1,5 @@
 ﻿using Dashboard.Domain.Entities;
+using Dashboard.Domain.Exceptions;
 using Dashboard.Domain.Interfaces;
 using Dashboard.Application.DTOs;
 
@@ -38,14 +39,14 @@ public class JournalService : IJournalService
         string? userId = null)
     {
         if (lines.Count < 2)
-            throw new InvalidOperationException("سند حسابداری باید حداقل دو سطر داشته باشد.");
+            throw new BusinessRuleException("سند حسابداری باید حداقل دو سطر داشته باشد.");
 
         var totalDebit = lines.Sum(l => l.Debit);
         var totalCredit = lines.Sum(l => l.Credit);
 
         // قانون طلایی حسابداری دوطرفه — اگر این‌جا نگه ندارید، هیچ گزارش مالی قابل اعتماد نخواهد بود
         if (totalDebit != totalCredit)
-            throw new InvalidOperationException(
+            throw new BusinessRuleException(
                 $"سند نامتوازن است: جمع بدهکار ({totalDebit}) با جمع بستانکار ({totalCredit}) برابر نیست.");
 
         var entry = new JournalEntry
@@ -61,7 +62,7 @@ public class JournalService : IJournalService
         foreach (var line in lines)
         {
             var account = await _unitOfWork.Accounts.GetByCodeAsync(line.AccountCode)
-                ?? throw new InvalidOperationException($"حساب با کد '{line.AccountCode}' یافت نشد.");
+                ?? throw new NotFoundException("حساب", line.AccountCode);
 
             entry.Lines.Add(new JournalEntryLine
             {

@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
 @using System.Security.Claims
 @inject ISalesService SalesService
 @inject IStockService StockService
@@ -11,7 +12,6 @@
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddSalesInvoice> Logger
-@inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>فاکتور فروش جدید</PageTitle>
 
 <h3>فاکتور فروش جدید</h3>
@@ -103,7 +103,7 @@
                         <td>
                             <input type="number" class="form-control" step="0.01" min="0" @bind="row.UnitPrice" />
                         </td>
-                        <td class="text-muted">@((row.Quantity * row.UnitPrice).ToString("N0"))</td>
+                        <td class="text-muted">@CurrencyFormatter.ToToman(row.Quantity * row.UnitPrice)</td>
                         <td>
                             <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => model.Items.Remove(row)">حذف</button>
                         </td>
@@ -179,14 +179,12 @@
             userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
             var invoiceId = await SalesService.CreateDraftInvoiceAsync(model, userId);
-            ToastService.ShowSuccess("فاکتور فروش ثبت شد.");
             NavigationManager.NavigateTo($"/warehouse/sales/{invoiceId}");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "خطا در ثبت فاکتور فروش توسط {UserId}", userId);
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
-            ToastService.ShowError(errorMessage);
         }
         finally
         {

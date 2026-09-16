@@ -30,4 +30,11 @@ public class SalesReturnRepository : ISalesReturnRepository
         _context.SalesReturns.Update(receipt);
         return Task.CompletedTask;
     }
+    public async Task<List<SalesReturn>> GetBySalesInvoiceIdAsync(int salesInvoiceId)
+    {
+        return await _context.SalesReturns
+            .Include(x => x.Items)
+            .Where(x => x.SalesInvoiceId == salesInvoiceId)
+            .ToListAsync();
+    }
 }

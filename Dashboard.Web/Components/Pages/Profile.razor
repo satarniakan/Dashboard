@@ -45,16 +45,36 @@ else
                 <input type="text" class="form-control" value="@profile.PhoneNumber" disabled />
             </div>
 
-            <div class="mb-3">
-                <label class="form-label">نام کامل</label>
-                <input type="text" name="fullName" class="form-control" value="@profile.FullName" />
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <label class="form-label">نام</label>
+                    <input type="text" name="firstName" class="form-control" value="@profile.FirstName" />
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label">نام خانوادگی</label>
+                    <input type="text" name="lastName" class="form-control" value="@profile.LastName" />
+                </div>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">ایمیل</label>
                 <input type="email" name="email" class="form-control" value="@profile.Email" placeholder="ایمیل خود را وارد کنید" />
             </div>
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <label class="form-label">استان</label>
+                    <input type="text" name="province" class="form-control" value="@profile.Province" />
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label">شهر</label>
+                    <input type="text" name="city" class="form-control" value="@profile.City" />
+                </div>
+            </div>
 
+            <div class="mb-3">
+                <label class="form-label">آدرس</label>
+                <textarea name="address" class="form-control" rows="2">@profile.Address</textarea>
+            </div>
             @if (!profile.HasPassword)
             {
                 <div class="mb-3">

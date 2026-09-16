@@ -3,6 +3,7 @@ using Dashboard.Application.Helpers;
 using Dashboard.Domain.Accounting;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
+using Dashboard.Domain.Exceptions;
 using Dashboard.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -54,7 +55,7 @@ public class SalesService : ISalesService
 
     public async Task<int> CreateDraftInvoiceAsync(CreateSalesInvoiceDto dto, string? userId)
     {
-        if (dto.Items.Count == 0) throw new InvalidOperationException("حداقل یک قلم کالا لازم است.");
+        if (dto.Items.Count == 0) throw new BusinessRuleException("حداقل یک قلم کالا لازم است.");
 
         var invoice = new SalesInvoice
         {
@@ -71,8 +72,8 @@ public class SalesService : ISalesService
         decimal total = 0;
         foreach (var item in dto.Items)
         {
-            if (item.Quantity <= 0) throw new InvalidOperationException("مقدار باید بزرگتر از صفر باشد.");
-            if (item.UnitPrice < 0) throw new InvalidOperationException("قیمت واحد نمی‌تواند منفی باشد.");
+            if (item.Quantity <= 0) throw new BusinessRuleException("مقدار باید بزرگتر از صفر باشد.");
+            if (item.UnitPrice < 0) throw new BusinessRuleException("قیمت واحد نمی‌تواند منفی باشد.");
 
             invoice.Items.Add(new SalesInvoiceItem
             {
@@ -102,10 +103,10 @@ public class SalesService : ISalesService
     public async Task ConfirmInvoiceAsync(int invoiceId, string? userId)
     {
         var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
-            ?? throw new InvalidOperationException("فاکتور یافت نشد.");
+            ?? throw new NotFoundException("فاکتور", invoiceId);
 
         if (invoice.Status != SalesInvoiceStatus.Draft)
-            throw new InvalidOperationException("فقط فاکتور پیش‌نویس قابل تأیید است.");
+            throw new BusinessRuleException("فقط فاکتور پیش‌نویس قابل تأیید است.");
 
         // اول همه اقلام را چک می‌کنیم؛ اگر یکی کم بود، هیچ‌کدام کسر نمی‌شود
         foreach (var item in invoice.Items)
@@ -114,7 +115,7 @@ public class SalesService : ISalesService
             var available = level?.QuantityOnHand ?? 0;
 
             if (available < item.Quantity)
-                throw new InvalidOperationException(
+                throw new BusinessRuleException(
                     $"موجودی کافی نیست (کالای «{item.Product?.Name}»: موجود {available}, درخواستی {item.Quantity}).");
         }
 
@@ -168,10 +169,10 @@ public class SalesService : ISalesService
     public async Task CancelInvoiceAsync(int invoiceId, string? userId)
     {
         var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
-            ?? throw new InvalidOperationException("فاکتور یافت نشد.");
+            ?? throw new NotFoundException("فاکتور", invoiceId);
 
         if (invoice.Status == SalesInvoiceStatus.Canceled)
-            throw new InvalidOperationException("این فاکتور قبلاً لغو شده است.");
+            throw new BusinessRuleException("این فاکتور قبلاً لغو شده است.");
 
         var wasConfirmed = invoice.Status == SalesInvoiceStatus.Confirmed;
 

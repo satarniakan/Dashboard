@@ -8,4 +8,5 @@ public interface ISalesReturnRepository
     Task<IEnumerable<SalesReturn>> GetAllAsync();
     Task AddAsync(SalesReturn salesReturn);
     Task UpdateAsync(SalesReturn salesReturn);
+    Task<List<SalesReturn>> GetBySalesInvoiceIdAsync(int salesInvoiceId);
 }

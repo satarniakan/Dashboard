@@ -12,7 +12,8 @@ public class SalesReturn
     public string? Notes { get; set; }
     public string? CreatedByUserId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
+    public int? SalesInvoiceId { get; set; }
+    public SalesInvoice? SalesInvoice { get; set; }
     public List<SalesReturnItem> Items { get; set; } = new();
 }
 
