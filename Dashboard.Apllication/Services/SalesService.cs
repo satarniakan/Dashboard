@@ -17,6 +17,7 @@ public interface ISalesService
     Task<int> CreateDraftInvoiceAsync(CreateSalesInvoiceDto dto, string? userId);
     Task<SalesInvoiceDto?> GetInvoiceAsync(int id);
     Task<IEnumerable<SalesInvoiceSummaryDto>> GetInvoicesAsync();
+    Task<PagedResult<SalesInvoiceSummaryDto>> GetInvoicesPagedAsync(int page, int pageSize, string? search = null);
 
     Task ConfirmInvoiceAsync(int invoiceId, string? userId);
     Task CancelInvoiceAsync(int invoiceId, string? userId);
@@ -244,7 +245,6 @@ public class SalesService : ISalesService
             i.Id, i.InvoiceNumber, i.InvoiceDate, i.Customer?.Name, i.Warehouse?.Name ?? "-",
             i.Status.ToString(), i.TotalAmount));
     }
-
     public async Task<SalesInvoiceDto?> GetInvoiceByNumberAsync(string invoiceNumber)
     {
         var invoices = await _unitOfWork.SalesInvoices.GetAllAsync();
@@ -275,5 +275,22 @@ public class SalesService : ISalesService
                 i.LineTotal
             )).ToList()
         );
+    }
+    public async Task<PagedResult<SalesInvoiceSummaryDto>> GetInvoicesPagedAsync(int page, int pageSize, string? search = null)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 10;
+
+        var (items, totalCount) = await _unitOfWork.SalesInvoices.GetPagedAsync(page, pageSize, search);
+
+        return new PagedResult<SalesInvoiceSummaryDto>
+        {
+            Items = items.Select(i => new SalesInvoiceSummaryDto(
+                i.Id, i.InvoiceNumber, i.InvoiceDate, i.Customer?.Name, i.Warehouse?.Name ?? "-",
+                i.Status.ToString(), i.TotalAmount)).ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
     }
 }

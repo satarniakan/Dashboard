@@ -19,6 +19,10 @@
 </div>
 
 <div class="card-panel">
+    <div class="mb-3">
+        <input type="search" class="form-control" style="max-width: 320px;" placeholder="جست‌وجو بر اساس شماره فاکتور یا نام مشتری..."
+               value="@searchTerm" @oninput="OnSearchChanged" />
+    </div>
     @if (invoices is null)
     {
         <p class="text-muted">در حال بارگذاری...</p>
@@ -59,14 +63,44 @@
             </tbody>
         </table>
     }
+
+    <Dashboard.Web.Components.Shared.Pager CurrentPage="currentPage" TotalPages="totalPages"
+                                            TotalCount="totalCount" OnPageChanged="OnPageChanged" />
 </div>
 
 @code {
     private IEnumerable<SalesInvoiceSummaryDto>? invoices;
 
+    private string searchTerm = string.Empty;
+    private int currentPage = 1;
+    private int totalPages;
+    private int totalCount;
+    private const int PageSize = 10;
+
     protected override async Task OnInitializedAsync()
     {
-        invoices = await SalesService.GetInvoicesAsync();
+        await LoadInvoices();
+    }
+
+    private async Task LoadInvoices()
+    {
+        var result = await SalesService.GetInvoicesPagedAsync(currentPage, PageSize, searchTerm);
+        invoices = result.Items;
+        totalPages = result.TotalPages;
+        totalCount = result.TotalCount;
+    }
+
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? string.Empty;
+        currentPage = 1;
+        await LoadInvoices();
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        currentPage = page;
+        await LoadInvoices();
     }
 
     private RenderFragment StatusBadge(string status) => builder =>

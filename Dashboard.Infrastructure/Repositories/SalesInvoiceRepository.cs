@@ -26,6 +26,30 @@ public class SalesInvoiceRepository : ISalesInvoiceRepository
             .OrderByDescending(i => i.InvoiceDate)
             .ToListAsync();
 
+    public async Task<(IEnumerable<SalesInvoice> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? search = null)
+    {
+        var query = _context.SalesInvoices
+            .Include(i => i.Customer)
+            .Include(i => i.Warehouse)
+            .Include(i => i.Items)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(i =>
+                i.InvoiceNumber.Contains(search) ||
+                (i.Customer != null && i.Customer.Name.Contains(search)));
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .OrderByDescending(i => i.InvoiceDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, totalCount);
+    }
+
     public async Task AddAsync(SalesInvoice invoice) =>
         await _context.SalesInvoices.AddAsync(invoice);
 
