@@ -32,6 +32,7 @@ public static class DependencyInjection
 
         // --- ابزار توسعه: تولید دیتای تستی برای دیتابیس خالی ---
         services.AddScoped<ITestDataSeederService, TestDataSeederService>();
+        services.AddScoped<ILocationService, LocationService>();
         return services;
     }
 }

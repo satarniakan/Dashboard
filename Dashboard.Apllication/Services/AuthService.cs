@@ -1,7 +1,8 @@
+using Dashboard.Application.DTOs;
+using Dashboard.Domain.Entities;
+using Dashboard.Domain.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
-using Dashboard.Application.DTOs;
-using Dashboard.Domain.Identity;
 
 namespace Dashboard.Application.Services;
 
@@ -14,7 +15,7 @@ public interface IAuthService
     Task<UserProfileDto?> GetProfileAsync(string userId);
     Task<ProfileUpdateResult> CompleteProfileAsync(
     string userId, string firstName, string lastName, string? email,
-    string? province, string? city, string? address,
+    int? provinceId, int? cityId, string? address,
     string? password, string? confirmPassword);
 }
 
@@ -117,15 +118,14 @@ public class AuthService : IAuthService
         }
 
         var hasPassword = await _userManager.HasPasswordAsync(user);
-
         return new UserProfileDto(
-    user.PhoneNumber, user.FirstName, user.LastName, user.Email,
-    user.Province, user.City, user.Address, hasPassword);
+            user.PhoneNumber, user.FirstName, user.LastName, user.Email,
+            user.ProvinceId, user.CityId, user.Address, hasPassword);
     }
 
     public async Task<ProfileUpdateResult> CompleteProfileAsync(
       string userId, string firstName, string lastName, string? email,
-      string? province, string? city, string? address,
+      int? provinceId, int? cityId, string? address,
       string? password, string? confirmPassword)
     {
         var user = await _userManager.FindByIdAsync(userId);
@@ -137,8 +137,8 @@ public class AuthService : IAuthService
         user.FirstName = firstName;
         user.LastName = lastName;
         user.FullName = $"{firstName} {lastName}".Trim();
-        user.Province = province;
-        user.City = city;
+        user.ProvinceId = provinceId;
+        user.CityId = cityId;
         user.Address = address;
 
         if (!string.IsNullOrWhiteSpace(email))

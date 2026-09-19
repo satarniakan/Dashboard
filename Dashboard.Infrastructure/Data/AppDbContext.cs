@@ -330,13 +330,17 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             e.Property(i => i.Url).HasMaxLength(500).IsRequired();
         });
+
+
         builder.Entity<Domain.Identity.ApplicationUser>(e =>
         {
             e.Property(u => u.FirstName).HasMaxLength(100);
             e.Property(u => u.LastName).HasMaxLength(100);
-            e.Property(u => u.Province).HasMaxLength(100);
-            e.Property(u => u.City).HasMaxLength(100);
+            //e.Property(u => u.Province).HasMaxLength(100);
+            //e.Property(u => u.City).HasMaxLength(100);
             e.Property(u => u.Address).HasMaxLength(300);
+            e.HasOne(u => u.Province).WithMany().HasForeignKey(u => u.ProvinceId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(u => u.City).WithMany().HasForeignKey(u => u.CityId).OnDelete(DeleteBehavior.Restrict);
         });
         builder.Entity<Province>(e =>
         {
@@ -348,5 +352,6 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.HasOne(c => c.Province).WithMany(p => p.Cities).HasForeignKey(c => c.ProvinceId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(c => c.ProvinceId);
         });
+  
     }
 }

@@ -21,7 +21,7 @@ public record UserProfileDto(
     string? FirstName,
     string? LastName,
     string? Email,
-    string? Province,
-    string? City,
+    int? ProvinceId,
+    int? CityId,
     string? Address,
     bool HasPassword);

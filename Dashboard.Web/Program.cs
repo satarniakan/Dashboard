@@ -246,8 +246,8 @@ app.MapPost("/Account/CompleteProfile", async (
     [FromForm] string firstName,
     [FromForm] string lastName,
     [FromForm] string? email,
-    [FromForm] string? province,
-    [FromForm] string? city,
+    [FromForm] int? provinceId,
+    [FromForm] int? cityId,
     [FromForm] string? address,
     [FromForm] string? password,
     [FromForm] string? confirmPassword) =>
@@ -258,7 +258,7 @@ app.MapPost("/Account/CompleteProfile", async (
         return Results.Redirect("/login");
     }
 
-    var result = await authService.CompleteProfileAsync(userId, firstName, lastName, email, province, city, address, password, confirmPassword);
+    var result = await authService.CompleteProfileAsync(userId, firstName, lastName, email, provinceId, cityId, address, password, confirmPassword);
 
     return result.Status switch
     {

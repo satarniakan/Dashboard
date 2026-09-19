@@ -8,7 +8,7 @@
 @using System.Security.Claims
 @inject IAuthService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
-
+@inject Dashboard.Application.Services.ILocationService LocationService
 <PageTitle>پروفایل کاربری</PageTitle>
 
 <h3>پروفایل کاربری</h3>
@@ -63,11 +63,23 @@ else
             <div class="row">
                 <div class="col-6 mb-3">
                     <label class="form-label">استان</label>
-                    <input type="text" name="province" class="form-control" value="@profile.Province" />
+                    <select name="provinceId" class="form-select">
+                        <option value="">-- انتخاب کنید --</option>
+                        @foreach (var p in provinces)
+                        {
+                            <option value="@p.Id" selected="@(p.Id == profile.ProvinceId)">@p.Name</option>
+                        }
+                    </select>
                 </div>
                 <div class="col-6 mb-3">
                     <label class="form-label">شهر</label>
-                    <input type="text" name="city" class="form-control" value="@profile.City" />
+                    <select name="cityId" class="form-select">
+                        <option value="">-- انتخاب کنید --</option>
+                        @foreach (var c in allCities)
+                        {
+                            <option value="@c.Id" selected="@(c.Id == profile.CityId)">@c.Name</option>
+                        }
+                    </select>
                 </div>
             </div>
 
@@ -110,7 +122,8 @@ else
     private string? Error { get; set; }
 
     private UserProfileDto? profile;
-
+    private List<Dashboard.Application.DTOs.ProvinceDto> provinces = new();
+    private List<Dashboard.Application.DTOs.CityDto> allCities = new();
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -119,6 +132,8 @@ else
         if (userId is not null)
         {
             profile = await AuthService.GetProfileAsync(userId);
+            provinces = await LocationService.GetProvincesAsync();
+            allCities = await LocationService.GetAllCitiesAsync();
         }
     }
 

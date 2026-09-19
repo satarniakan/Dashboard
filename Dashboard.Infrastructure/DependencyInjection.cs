@@ -58,6 +58,7 @@ public static class DependencyInjection
         services.AddScoped<IInstallmentPlanRepository, InstallmentPlanRepository>();
         services.AddScoped<IElectronicInvoiceProvider, PendingElectronicInvoiceProvider>();
         services.AddScoped<ICatalogRepository, CatalogRepository>();
+        services.AddScoped<ILocationRepository, LocationRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }
