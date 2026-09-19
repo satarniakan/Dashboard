@@ -15,7 +15,9 @@
             var row = Items[i];
             <tr>
                 <td>
-                    <select class="form-select" @bind="row.ProductId">
+                    <select class="form-select"
+                            @bind="row.ProductId"
+                            disabled="@ReadOnlyProducts">
                         <option value="0">-- انتخاب کالا --</option>
                         @foreach (var product in Products)
                         {
@@ -41,6 +43,7 @@
     [Parameter] public List<StockItemInput> Items { get; set; } = new();
     [Parameter] public IEnumerable<ProductDto> Products { get; set; } = Enumerable.Empty<ProductDto>();
     [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public bool ReadOnlyProducts { get; set; }
 
     private async Task AddRow()
     {

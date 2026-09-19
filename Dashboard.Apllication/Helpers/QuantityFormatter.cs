@@ -15,16 +15,17 @@ public static class QuantityFormatter
 {
     // همون دلیل CurrencyFormatter: به‌جای CultureInfo("fa-IR")، جداکننده‌ها رو صریح مشخص می‌کنیم
     // تا همیشه «,» و «.» باشن، نه جداکننده‌های عربی «٬»/«٫» که بسته به نسخه‌ی دات‌نت ممکنه برگرده.
-    private static readonly NumberFormatInfo Format = new()
+    // نکته: اسم این فیلد نباید «Format» باشه، چون با متد پایین (که اونم Format نام داره) تداخل پیدا می‌کنه.
+    private static readonly NumberFormatInfo NumberFormat = new()
     {
         NumberGroupSeparator = ",",
         NumberDecimalSeparator = "."
     };
 
-    public static string Seperator(decimal quantity)
+    public static string Format(decimal quantity)
     {
         // "#,0.###" یعنی: جداکننده‌ی هزارگان بذار، تا ۳ رقم اعشار نشون بده ولی صفرهای
         // اضافه‌ی انتهایی رو (اگه لازم نبودن) حذف کن.
-        return quantity.ToString("#,0.###", Format);
+        return quantity.ToString("#,0.###", NumberFormat);
     }
 }

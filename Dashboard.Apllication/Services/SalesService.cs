@@ -231,7 +231,7 @@ public class SalesService : ISalesService
 
         return new SalesInvoiceDto(
             invoice.Id, invoice.InvoiceNumber, invoice.InvoiceDate,
-            invoice.Customer?.Name, invoice.Warehouse?.Name ?? "-", invoice.Status.ToString(),
+            invoice.Customer?.Name, invoice.Warehouse?.Name ?? "-", invoice.WarehouseId, invoice.Status.ToString(),
             invoice.DiscountAmount, invoice.TotalAmount, invoice.Notes,
             invoice.Items.Select(i => new SalesInvoiceItemDto(
                 i.ProductId, i.Product?.Name ?? "-", i.Quantity, i.UnitPrice, i.LineTotal)).ToList());
@@ -262,6 +262,7 @@ public class SalesService : ISalesService
             invoice.InvoiceDate,
             invoice.Customer?.Name,
             invoice.Warehouse?.Name ?? "-",
+            invoice.WarehouseId,
             invoice.Status.ToString(),
             invoice.DiscountAmount,
             invoice.TotalAmount,

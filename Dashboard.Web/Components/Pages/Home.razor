@@ -120,7 +120,7 @@
                                             {
                                                 <tr>
                                                     <td>@p.ProductName</td>
-                                                    <td class="text-muted">@p.TotalQuantitySold عدد</td>
+                                                    <td class="text-muted">@QuantityFormatter.Format(p.TotalQuantitySold) عدد</td>
                                                     <td class="text-end">@CurrencyFormatter.ToToman(p.TotalRevenue)</td>
                                                 </tr>
                                             }

@@ -26,6 +26,7 @@ public record SalesInvoiceDto(
     DateTime InvoiceDate,
     string? CustomerName,
     string WarehouseName,
+        int WarehouseId,
     string Status,
     decimal DiscountAmount,
     decimal TotalAmount,
