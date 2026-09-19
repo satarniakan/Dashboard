@@ -18,6 +18,25 @@ public class ProductRepository : IProductRepository
     public async Task<IEnumerable<Product>> GetAllAsync() =>
         await _context.Products.ToListAsync();
 
+    public async Task<(IEnumerable<Product> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? search = null)
+    {
+        var query = _context.Products.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(p => p.Name.Contains(search));
+
+        var totalCount = await query.CountAsync();
+
+        // ترتیب مشخص (OrderBy) لازم است چون بدون آن، نتیجه‌ی Skip/Take در SQL تضمین‌شده نیست
+        var items = await query
+            .OrderBy(p => p.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, totalCount);
+    }
+
     public async Task AddAsync(Product product)
     {
         await _context.Products.AddAsync(product);

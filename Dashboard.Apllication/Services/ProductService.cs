@@ -9,6 +9,7 @@ public interface IProductService
 {
     Task<ProductDto?> GetProductAsync(int id);
     Task<IEnumerable<ProductDto>> GetAllProductsAsync();
+    Task<PagedResult<ProductDto>> GetProductsPagedAsync(int page, int pageSize, string? search = null);
     Task<ProductDto> CreateProductAsync(CreateProductDto dto, string? userEmail);
     Task<ProductDto?> UpdateProductAsync(int id, UpdateProductDto dto, string? userEmail);
     Task<bool> DeleteProductAsync(int id, string? userEmail);
@@ -38,6 +39,22 @@ public class ProductService : IProductService
     {
         var products = await _unitOfWork.Products.GetAllAsync();
         return products.Select(p => new ProductDto(p.Id, p.Name, p.Price));
+    }
+
+    public async Task<PagedResult<ProductDto>> GetProductsPagedAsync(int page, int pageSize, string? search = null)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+
+        var (items, totalCount) = await _unitOfWork.Products.GetPagedAsync(page, pageSize, search);
+
+        return new PagedResult<ProductDto>
+        {
+            Items = items.Select(p => new ProductDto(p.Id, p.Name, p.Price)).ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
     }
 
     public async Task<ProductDto> CreateProductAsync(CreateProductDto dto, string? userEmail)

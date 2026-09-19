@@ -1,0 +1,50 @@
+@* یک صفحه‌بند عمومی: هر صفحه‌ای که لیست صفحه‌بندی‌شده دارد، فقط کافی است
+   CurrentPage / TotalPages را بدهد و به OnPageChanged گوش کند. *@
+
+@if (TotalPages > 1)
+{
+    <nav class="pager" aria-label="صفحه‌بندی">
+        <button class="btn btn-sm btn-outline-secondary" disabled="@(CurrentPage >= TotalPages)"
+                @onclick="() => GoTo(CurrentPage + 1)">
+            بعدی
+        </button>
+
+        <span class="pager-info">صفحه @CurrentPage از @TotalPages (@TotalCount مورد)</span>
+
+        <button class="btn btn-sm btn-outline-secondary" disabled="@(CurrentPage <= 1)"
+                @onclick="() => GoTo(CurrentPage - 1)">
+            قبلی
+        </button>
+    </nav>
+}
+
+<style>
+    /* راست‌به‌چپ: دکمه‌ی "بعدی" منطقاً سمت راست و "قبلی" سمت چپ قرار می‌گیرد */
+    .pager {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        margin-top: 1rem;
+        padding: 0.5rem 0;
+    }
+
+    .pager-info {
+        color: var(--brand-text-muted, #6b7280);
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+</style>
+
+@code {
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public int TotalPages { get; set; }
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+
+    private async Task GoTo(int page)
+    {
+        if (page < 1 || page > TotalPages || page == CurrentPage) return;
+        await OnPageChanged.InvokeAsync(page);
+    }
+}
