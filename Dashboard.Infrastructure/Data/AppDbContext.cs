@@ -54,6 +54,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ProductAttributeValue> ProductAttributeValues => Set<ProductAttributeValue>();
     public DbSet<ProductVariantAttribute> ProductVariantAttributes => Set<ProductVariantAttribute>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
+    public DbSet<Province> Provinces => Set<Province>();
+    public DbSet<City> Cities => Set<City>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder); // required — sets up Identity's tables
@@ -335,6 +337,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.Property(u => u.Province).HasMaxLength(100);
             e.Property(u => u.City).HasMaxLength(100);
             e.Property(u => u.Address).HasMaxLength(300);
+        });
+        builder.Entity<Province>(e =>
+        {
+            e.Property(p => p.Name).HasMaxLength(100).IsRequired();
+        });
+        builder.Entity<City>(e =>
+        {
+            e.Property(c => c.Name).HasMaxLength(100).IsRequired();
+            e.HasOne(c => c.Province).WithMany(p => p.Cities).HasForeignKey(c => c.ProvinceId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(c => c.ProvinceId);
         });
     }
 }

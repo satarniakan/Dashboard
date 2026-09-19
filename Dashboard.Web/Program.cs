@@ -171,6 +171,7 @@ var app = builder.Build();
 await Dashboard.Infrastructure.RoleSeeder.SeedRolesAsync(app.Services);
 app.UseSerilogRequestLogging();
 await Dashboard.Infrastructure.ChartOfAccountsSeeder.SeedAsync(app.Services);
+await Dashboard.Infrastructure.IranLocationSeeder.SeedAsync(app.Services, app.Environment.ContentRootPath);
 // Persian culture / RTL number formatting
 var supportedCultures = new[] { new CultureInfo("fa-IR") };
 app.UseRequestLocalization(new RequestLocalizationOptions
