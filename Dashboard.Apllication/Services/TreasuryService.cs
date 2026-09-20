@@ -1,4 +1,5 @@
 ﻿using Dashboard.Application.DTOs;
+using Dashboard.Application.Validators;
 using Dashboard.Application.Helpers;
 using Dashboard.Domain.Accounting;
 using Dashboard.Domain.Entities;
@@ -80,7 +81,7 @@ public class TreasuryService : ITreasuryService
     // ---------------- دریافت از مشتری ----------------
     public async Task<int> RegisterCustomerReceiptAsync(CreateCustomerReceiptDto dto, string? userId)
     {
-        if (dto.Amount <= 0) throw new BusinessRuleException("مبلغ باید بزرگتر از صفر باشد.");
+        CommonValidations.ValidateAmountPositive(dto.Amount);
 
         var financialAccount = await _unitOfWork.FinancialAccounts.GetByIdAsync(dto.FinancialAccountId)
             ?? throw new NotFoundException("صندوق/بانک", dto.FinancialAccountId);
@@ -142,7 +143,7 @@ public class TreasuryService : ITreasuryService
 
     public async Task<int> RegisterSupplierPaymentAsync(CreateSupplierPaymentDto dto, string? userId)
     {
-        if (dto.Amount <= 0) throw new BusinessRuleException("مبلغ باید بزرگتر از صفر باشد.");
+        CommonValidations.ValidateAmountPositive(dto.Amount);
 
         var financialAccount = await _unitOfWork.FinancialAccounts.GetByIdAsync(dto.FinancialAccountId)
             ?? throw new NotFoundException("صندوق/بانک", dto.FinancialAccountId);

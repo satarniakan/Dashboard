@@ -1,4 +1,4 @@
-using Dashboard.Application.DTOs;
+﻿using Dashboard.Application.DTOs;
 using Dashboard.Application.Services;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
@@ -23,7 +23,7 @@ public class StockServiceTests
         _unitOfWork.Setup(u => u.StockCounts).Returns(_stockCounts.Object);
         _unitOfWork.Setup(u => u.CompleteAsync()).ReturnsAsync(1);
 
-        _sut = new StockService(_unitOfWork.Object, Mock.Of<ILogger<StockService>>(), Mock.Of<IJournalService>());
+        _sut = new StockService(_unitOfWork.Object, Mock.Of<ILogger<StockService>>(), Mock.Of<IJournalService>(), Mock.Of<IStockValidator>());
     }
 
     [Fact]
@@ -40,7 +40,7 @@ public class StockServiceTests
         var dto = new CreateStockTransferDto
         {
             SourceWarehouseId = 1,
-            DestinationWarehouseId = 1, // همون انبار مبدا!
+            DestinationWarehouseId = 1, // Ù‡Ù…ÙˆÙ† Ø§Ù†Ø¨Ø§Ø± Ù…Ø¨Ø¯Ø§!
             Items = new() { new StockItemInput { ProductId = 1, Quantity = 5 } }
         };
 
@@ -56,7 +56,7 @@ public class StockServiceTests
             DestinationWarehouseId = 2,
             Items = new() { new StockItemInput { ProductId = 10, Quantity = 5 } }
         };
-        // فقط ۳ عدد تو انبار مبدا موجوده، درخواست ۵ تاست
+        // ÙÙ‚Ø· Û³ Ø¹Ø¯Ø¯ ØªÙˆ Ø§Ù†Ø¨Ø§Ø± Ù…Ø¨Ø¯Ø§ Ù…ÙˆØ¬ÙˆØ¯Ù‡ØŒ Ø¯Ø±Ø®ÙˆØ§Ø³Øª Ûµ ØªØ§Ø³Øª
         _stockLevels.Setup(r => r.GetAsync(10, 1)).ReturnsAsync(new StockLevel { QuantityOnHand = 3 });
 
         await Assert.ThrowsAsync<BusinessRuleException>(() => _sut.RegisterStockTransferAsync(dto, "user1"));
@@ -81,3 +81,4 @@ public class StockServiceTests
             () => _sut.CloseStockCountAsync(1, new Dictionary<int, decimal>(), "user1"));
     }
 }
+

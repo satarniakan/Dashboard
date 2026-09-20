@@ -1,4 +1,5 @@
 ﻿using Dashboard.Application.DTOs;
+using Dashboard.Application.Validators;
 using Dashboard.Application.Helpers;
 using Dashboard.Domain.Accounting;
 using Dashboard.Domain.Entities;
@@ -29,16 +30,23 @@ public class SalesService : ISalesService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IJournalService _journalService;
     private readonly ILogger<SalesService> _logger;
+    private readonly IStockValidator _stockValidator;
 
-    public SalesService(IUnitOfWork unitOfWork, IJournalService journalService, ILogger<SalesService> logger)
+    public SalesService(IUnitOfWork unitOfWork, IJournalService journalService, ILogger<SalesService> logger, IStockValidator stockValidator)
     {
         _unitOfWork = unitOfWork;
         _journalService = journalService;
         _logger = logger;
+        _stockValidator = stockValidator;
     }
 
     // ---------------- مشتریان ----------------
 
+    /// <summary>
+    /// ایجاد مشتری جدید در سیستم
+    /// </summary>
+    /// <param name="dto">اطلاعات مشتری شامل نام، تلفن و آدرس</param>
+    /// <returns>اطلاعات مشتری ایجاد شده با شناسه منحصربه‌فرد</returns>
     public async Task<CustomerDto> CreateCustomerAsync(CreateCustomerDto dto)
     {
         var customer = new Customer(dto.Name, dto.Phone, dto.Address);
@@ -47,6 +55,10 @@ public class SalesService : ISalesService
         return new CustomerDto(customer.Id, customer.Name, customer.Phone, customer.Address);
     }
 
+    /// <summary>
+    /// دریافت لیست تمام مشتریان
+    /// </summary>
+    /// <returns>لیست اطلاعات مشتریان</returns>
     public async Task<IEnumerable<CustomerDto>> GetCustomersAsync()
     {
         var customers = await _unitOfWork.Customers.GetAllAsync();
@@ -55,9 +67,16 @@ public class SalesService : ISalesService
 
     // ---------------- ساخت پیش‌نویس فاکتور ----------------
 
+    /// <summary>
+    /// ایجاد فاکتور فروش به صورت پیش‌نویس (بدون تأثیر بر موجودی)
+    /// </summary>
+    /// <param name="dto">اطلاعات فاکتور شامل مشتری، انبار، اقلام و تخفیف</param>
+    /// <param name="userId">شناسه کاربر ایجادکننده</param>
+    /// <returns>شناسه فاکتور ایجاد شده</returns>
+    /// <exception cref="BusinessRuleException">در صورت نبود اقلام یا مقادیر نامعتبر</exception>
     public async Task<int> CreateDraftInvoiceAsync(CreateSalesInvoiceDto dto, string? userId)
     {
-        if (dto.Items.Count == 0) throw new BusinessRuleException("حداقل یک قلم کالا لازم است.");
+        CommonValidations.ValidateItemsNotEmpty(dto.Items);
 
         var invoice = new SalesInvoice
         {
@@ -74,8 +93,8 @@ public class SalesService : ISalesService
         decimal total = 0;
         foreach (var item in dto.Items)
         {
-            if (item.Quantity <= 0) throw new BusinessRuleException("مقدار باید بزرگتر از صفر باشد.");
-            if (item.UnitPrice < 0) throw new BusinessRuleException("قیمت واحد نمی‌تواند منفی باشد.");
+            CommonValidations.ValidateQuantityPositive(item.Quantity);
+            CommonValidations.ValidatePriceNonNegative(item.UnitPrice);
 
             invoice.Items.Add(new SalesInvoiceItem
             {
@@ -102,24 +121,32 @@ public class SalesService : ISalesService
 
     // ---------------- تأیید فاکتور (اینجا موجودی واقعاً کسر می‌شود) ----------------
 
+    /// <summary>
+    /// تأیید فاکتور پیش‌نویس و کسر موجودی از انبار
+    /// این متد ابتدا موجودی تمام اقلام را بررسی و سپس تراکنش‌های موجودی و سند حسابداری را ثبت می‌کند
+    /// </summary>
+    /// <param name="invoiceId">شناسه فاکتور</param>
+    /// <param name="userId">شناسه کاربر تأییدکننده</param>
+    /// <exception cref="NotFoundException">در صورت نبود فاکتور</exception>
+    /// <exception cref="BusinessRuleException">در صورت عدم کفایت موجودی یا وضعیت نامعتبر فاکتور</exception>
     public async Task ConfirmInvoiceAsync(int invoiceId, string? userId)
     {
-        var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
             ?? throw new NotFoundException("فاکتور", invoiceId);
 
         if (invoice.Status != SalesInvoiceStatus.Draft)
             throw new BusinessRuleException("فقط فاکتور پیش‌نویس قابل تأیید است.");
 
         // اول همه اقلام را چک می‌کنیم؛ اگر یکی کم بود، هیچ‌کدام کسر نمی‌شود
-        foreach (var item in invoice.Items)
-        {
-            var level = await _unitOfWork.StockLevels.GetAsync(item.ProductId, invoice.WarehouseId);
-            var available = level?.QuantityOnHand ?? 0;
-
-            if (available < item.Quantity)
-                throw new BusinessRuleException(
-                    $"موجودی کافی نیست (کالای «{item.Product?.Name}»: موجود {available}, درخواستی {item.Quantity}).");
-        }
+        var items = invoice.Items.Select(i => new StockItemInput 
+        { 
+            ProductId = i.ProductId, 
+            Quantity = i.Quantity 
+        }).ToList();
+        await _stockValidator.ValidateSufficientStockAsync(invoice.WarehouseId, items);
 
         foreach (var item in invoice.Items)
         {
@@ -164,13 +191,32 @@ public class SalesService : ISalesService
             userId: userId);
 
         _logger.LogInformation("Sales invoice {InvoiceNumber} confirmed by {UserId}", invoice.InvoiceNumber, userId);
+            
+            await _unitOfWork.CommitTransactionAsync();
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw;
+        }
     }
 
     // ---------------- لغو فاکتور (برگشت موجودی) ----------------
 
+    /// <summary>
+    /// لغو فاکتور و برگشت موجودی به انبار (در صورت تأیید قبلی)
+    /// این متد سند حسابداری معکوس را نیز ثبت می‌کند تا اثر فاکتور خنثی شود
+    /// </summary>
+    /// <param name="invoiceId">شناسه فاکتور</param>
+    /// <param name="userId">شناسه کاربر لغوکننده</param>
+    /// <exception cref="NotFoundException">در صورت نبود فاکتور</exception>
+    /// <exception cref="BusinessRuleException">در صورت لغو قبلی فاکتور</exception>
     public async Task CancelInvoiceAsync(int invoiceId, string? userId)
     {
-        var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
             ?? throw new NotFoundException("فاکتور", invoiceId);
 
         if (invoice.Status == SalesInvoiceStatus.Canceled)
@@ -220,11 +266,24 @@ public class SalesService : ISalesService
                 referenceType: nameof(SalesInvoice),
                 referenceId: invoice.Id,
                 userId: userId);
+                }
+            
+            await _unitOfWork.CommitTransactionAsync();
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw;
         }
     }
 
     // ---------------- خواندن ----------------
 
+    /// <summary>
+    /// دریافت جزئیات یک فاکتور بر اساس شناسه
+    /// </summary>
+    /// <param name="id">شناسه فاکتور</param>
+    /// <returns>اطلاعات کامل فاکتور یا null در صورت عدم وجود</returns>
     public async Task<SalesInvoiceDto?> GetInvoiceAsync(int id)
     {
         var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(id);
@@ -232,12 +291,16 @@ public class SalesService : ISalesService
 
         return new SalesInvoiceDto(
             invoice.Id, invoice.InvoiceNumber, invoice.InvoiceDate,
-            invoice.Customer?.Name, invoice.Warehouse?.Name ?? "-", invoice.WarehouseId, invoice.Status.ToString(),
+            invoice.Customer?.Name, invoice.Warehouse?.Name ?? "-", invoice.WarehouseId,invoice.CustomerId, invoice.Status.ToString(),
             invoice.DiscountAmount, invoice.TotalAmount, invoice.Notes,
             invoice.Items.Select(i => new SalesInvoiceItemDto(
                 i.ProductId, i.Product?.Name ?? "-", i.Quantity, i.UnitPrice, i.LineTotal)).ToList());
     }
 
+    /// <summary>
+    /// دریافت لیست خلاصه تمام فاکتورهای فروش
+    /// </summary>
+    /// <returns>لیست خلاصه فاکتورها</returns>
     public async Task<IEnumerable<SalesInvoiceSummaryDto>> GetInvoicesAsync()
     {
         var invoices = await _unitOfWork.SalesInvoices.GetAllAsync();
@@ -245,13 +308,16 @@ public class SalesService : ISalesService
             i.Id, i.InvoiceNumber, i.InvoiceDate, i.Customer?.Name, i.Warehouse?.Name ?? "-",
             i.Status.ToString(), i.TotalAmount));
     }
+
+    /// <summary>
+    /// دریافت جزئیات فاکتور بر اساس شماره فاکتور
+    /// </summary>
+    /// <param name="invoiceNumber">شماره فاکتور</param>
+    /// <returns>اطلاعات کامل فاکتور یا null در صورت عدم وجود</returns>
     public async Task<SalesInvoiceDto?> GetInvoiceByNumberAsync(string invoiceNumber)
     {
-        var invoices = await _unitOfWork.SalesInvoices.GetAllAsync();
-
-        var invoice = invoices.FirstOrDefault(x =>
-            x.InvoiceNumber == invoiceNumber &&
-            x.Status == SalesInvoiceStatus.Confirmed);
+        var invoice = await _unitOfWork.SalesInvoices
+     .GetByInvoiceNumberAsync(invoiceNumber);
 
         if (invoice is null)
             return null;
@@ -263,6 +329,7 @@ public class SalesService : ISalesService
             invoice.Customer?.Name,
             invoice.Warehouse?.Name ?? "-",
             invoice.WarehouseId,
+            invoice.CustomerId,
             invoice.Status.ToString(),
             invoice.DiscountAmount,
             invoice.TotalAmount,
@@ -276,6 +343,14 @@ public class SalesService : ISalesService
             )).ToList()
         );
     }
+
+    /// <summary>
+    /// دریافت لیست صفحه‌بندی شده فاکتورهای فروش با قابلیت جستجو
+    /// </summary>
+    /// <param name="page">شماره صفحه (از 1 شروع می‌شود)</param>
+    /// <param name="pageSize">تعداد آیتم در هر صفحه</param>
+    /// <param name="search">عبارت جستجو (اختیاری)</param>
+    /// <returns>نتیجه صفحه‌بندی شده شامل لیست فاکتورها و اطلاعات صفحه</returns>
     public async Task<PagedResult<SalesInvoiceSummaryDto>> GetInvoicesPagedAsync(int page, int pageSize, string? search = null)
     {
         if (page < 1) page = 1;
@@ -294,3 +369,7 @@ public class SalesService : ISalesService
         };
     }
 }
+
+
+
+

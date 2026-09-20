@@ -24,18 +24,11 @@
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label class="form-label">انبار</label>
-                <select class="form-select" @bind="model.WarehouseId">
-                    <option value="0">-- انتخاب کنید --</option>
-                    @if (warehouses is not null)
-                    {
-                        @foreach (var w in warehouses)
-                        {
-                            <option value="@w.Id">@w.Name</option>
-                        }
-                    }
-                </select>
-            </div>
 
+                <input class="form-control"
+                       value="@(selectedInvoice?.WarehouseName ?? "")"
+                       disabled="@(selectedInvoice is not null)" />
+            </div>
         </div>
         <div class="mb-3">
             <label class="form-label">شماره فاکتور فروش</label>
@@ -53,6 +46,13 @@
                 </button>
             </div>
         </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">مشتری</label>
+
+            <input class="form-control"
+                   value="@(selectedInvoice?.CustomerName ?? "")"
+                   disabled="@(selectedInvoice is not null)" />
+        </div>
         @if (selectedInvoice is not null)
         {
             <div class="alert alert-info">
@@ -68,10 +68,7 @@
                 <label class="form-label">تاریخ</label>
                 <PersianDateTimePicker TValue="DateTime" @bind-Value="model.ReturnDate" ShowTime="true" />
             </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">ارجاع مشتری (اختیاری)</label>
-                <InputText class="form-control" @bind-Value="model.CustomerReference" placeholder="نام یا کد مشتری / شماره فاکتور" />
-            </div>
+           
         </div>
 
         <div class="mb-3">
@@ -174,6 +171,7 @@
             }
 
             model.SalesInvoiceId = selectedInvoice.Id;
+            model.WarehouseId = selectedInvoice.WarehouseId;
 
             // کالاهای فاکتور را به اقلام برگشت منتقل می‌کنیم
             model.Items = selectedInvoice.Items

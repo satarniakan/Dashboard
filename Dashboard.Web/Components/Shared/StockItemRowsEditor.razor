@@ -30,14 +30,28 @@
                            @bind="row.Quantity" @bind:event="oninput" />
                 </td>
                 <td>
-                    <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemoveRow(row)">حذف</button>
+                    @if (!ReadOnlyProducts)
+                    {
+                        <button type="button"
+                                class="btn btn-sm btn-outline-danger"
+                                @onclick="() => RemoveRow(row)">
+                            حذف
+                        </button>
+                    }
                 </td>
             </tr>
         }
     </tbody>
 </table>
 
-<button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddRow">+ افزودن ردیف</button>
+@if (!ReadOnlyProducts)
+{
+    <button type="button"
+            class="btn btn-sm btn-outline-primary"
+            @onclick="AddRow">
+        + افزودن ردیف
+    </button>
+}
 
 @code {
     [Parameter] public List<StockItemInput> Items { get; set; } = new();
