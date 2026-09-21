@@ -6,6 +6,7 @@ using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
 using Dashboard.Domain.Exceptions;
 using Dashboard.Domain.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Dashboard.Application.Services;
@@ -131,73 +132,81 @@ public class SalesService : ISalesService
     /// <exception cref="BusinessRuleException">در صورت عدم کفایت موجودی یا وضعیت نامعتبر فاکتور</exception>
     public async Task ConfirmInvoiceAsync(int invoiceId, string? userId)
     {
-        await _unitOfWork.BeginTransactionAsync();
-        try
+        // Race condition روی موجودی: چون بین خواندن و نوشتن موجودی، درخواست‌های همزمان می‌توانند
+        // همان رکورد را بخوانند، به‌جای Validate جداگانه از DecreaseWithCheckAsync (اتمیک) استفاده
+        // می‌کنیم و با تکیه بر RowVersion (همزمانی خوش‌بینانه) در صورت تصادم، عملیات را از نو تلاش می‌کنیم.
+        const int maxRetries = 3;
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
         {
-            var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
-            ?? throw new NotFoundException("فاکتور", invoiceId);
-
-        if (invoice.Status != SalesInvoiceStatus.Draft)
-            throw new BusinessRuleException("فقط فاکتور پیش‌نویس قابل تأیید است.");
-
-        // اول همه اقلام را چک می‌کنیم؛ اگر یکی کم بود، هیچ‌کدام کسر نمی‌شود
-        var items = invoice.Items.Select(i => new StockItemInput 
-        { 
-            ProductId = i.ProductId, 
-            Quantity = i.Quantity 
-        }).ToList();
-        await _stockValidator.ValidateSufficientStockAsync(invoice.WarehouseId, items);
-
-        foreach (var item in invoice.Items)
-        {
-            await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
+            await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                ProductId = item.ProductId,
-                WarehouseId = invoice.WarehouseId,
-                Type = StockTransactionType.Sale,
-                QuantityChange = -item.Quantity,
-                ReferenceType = nameof(SalesInvoice),
-                ReferenceId = invoice.Id,
-                CreatedByUserId = userId
-            });
+                var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
+                ?? throw new NotFoundException("فاکتور", invoiceId);
 
-            await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, invoice.WarehouseId, -item.Quantity);
-        }
+                if (invoice.Status != SalesInvoiceStatus.Draft)
+                    throw new BusinessRuleException("فقط فاکتور پیش‌نویس قابل تأیید است.");
 
-        invoice.Status = SalesInvoiceStatus.Confirmed;
-        invoice.ConfirmedAt = DateTime.UtcNow;
+                // کسر اتمیک موجودی برای هر قلم؛ اگر کافی نباشد استثنا پرتاب می‌شود
+                // و کل تراکنش رول‌بک می‌شود (بنابراین اگر یکی کم بود، هیچ‌کدام کسر نمی‌شود)
+                foreach (var item in invoice.Items)
+                {
+                    await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
+                    {
+                        ProductId = item.ProductId,
+                        WarehouseId = invoice.WarehouseId,
+                        Type = StockTransactionType.Sale,
+                        QuantityChange = -item.Quantity,
+                        ReferenceType = nameof(SalesInvoice),
+                        ReferenceId = invoice.Id,
+                        CreatedByUserId = userId
+                    });
 
-        await _unitOfWork.SalesInvoices.UpdateAsync(invoice);
-        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesInvoiceConfirmed", userId, $"فاکتور {invoice.InvoiceNumber} تأیید و موجودی کسر شد."));
-        await _unitOfWork.CompleteAsync();
+                    await _unitOfWork.StockLevels.DecreaseWithCheckAsync(item.ProductId, invoice.WarehouseId, item.Quantity);
+                }
 
-        // بهای تمام‌شده از روی CostPrice لحظه‌ای کالا محاسبه می‌شود (نه میانگین موزون واقعی)؛
-        // برای فاز اول کافی است، اما اگر کنترل دقیق‌تر سود ناخالص لازم شد باید این را
-        // به یک روش هزینه‌یابی واقعی (FIFO/میانگین موزون) ارتقا داد.
-        var totalCost = invoice.Items.Sum(i => i.Quantity * (i.Product?.CostPrice ?? 0));
+                invoice.Status = SalesInvoiceStatus.Confirmed;
+                invoice.ConfirmedAt = DateTime.UtcNow;
 
-        // سند فروش: بدهکار مشتری (طلب) و بدهکار COGS، بستانکار درآمد فروش و بستانکار موجودی کالا
-        await _journalService.PostEntryAsync(
-            description: $"فروش طبق فاکتور {invoice.InvoiceNumber}",
-            lines: new List<JournalLineInput>
+                await _unitOfWork.SalesInvoices.UpdateAsync(invoice);
+                await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesInvoiceConfirmed", userId, $"فاکتور {invoice.InvoiceNumber} تأیید و موجودی کسر شد."));
+                await _unitOfWork.CompleteAsync();
+
+                // بهای تمام‌شده از روی CostPrice لحظه‌ای کالا محاسبه می‌شود (نه میانگین موزون واقعی)؛
+                // برای فاز اول کافی است، اما اگر کنترل دقیق‌تر سود ناخالص لازم شد باید این را
+                // به یک روش هزینه‌یابی واقعی (FIFO/میانگین موزون) ارتقا داد.
+                var totalCost = invoice.Items.Sum(i => i.Quantity * (i.Product?.CostPrice ?? 0));
+
+                // سند فروش: بدهکار مشتری (طلب) و بدهکار COGS، بستانکار درآمد فروش و بستانکار موجودی کالا
+                await _journalService.PostEntryAsync(
+                    description: $"فروش طبق فاکتور {invoice.InvoiceNumber}",
+                    lines: new List<JournalLineInput>
+                    {
+                        new(SystemAccountCodes.AccountsReceivable, invoice.TotalAmount, 0, "بدهکار شدن حساب مشتری", "Customer", invoice.CustomerId),
+                        new(SystemAccountCodes.SalesRevenue, 0, invoice.TotalAmount, "شناسایی درآمد فروش"),
+                        new(SystemAccountCodes.CostOfGoodsSold, totalCost, 0, "بهای تمام‌شده کالای فروش‌رفته"),
+                        new(SystemAccountCodes.Inventory, 0, totalCost, "کاهش موجودی کالا")
+                    },
+                    referenceType: nameof(SalesInvoice),
+                    referenceId: invoice.Id,
+                    userId: userId);
+
+                _logger.LogInformation("Sales invoice {InvoiceNumber} confirmed by {UserId}", invoice.InvoiceNumber, userId);
+
+                await _unitOfWork.CommitTransactionAsync();
+                return;
+            }
+            catch (DbUpdateConcurrencyException) when (attempt < maxRetries)
             {
-                new(SystemAccountCodes.AccountsReceivable, invoice.TotalAmount, 0, "بدهکار شدن حساب مشتری", "Customer", invoice.CustomerId),
-                new(SystemAccountCodes.SalesRevenue, 0, invoice.TotalAmount, "شناسایی درآمد فروش"),
-                new(SystemAccountCodes.CostOfGoodsSold, totalCost, 0, "بهای تمام‌شده کالای فروش‌رفته"),
-                new(SystemAccountCodes.Inventory, 0, totalCost, "کاهش موجودی کالا")
-            },
-            referenceType: nameof(SalesInvoice),
-            referenceId: invoice.Id,
-            userId: userId);
-
-        _logger.LogInformation("Sales invoice {InvoiceNumber} confirmed by {UserId}", invoice.InvoiceNumber, userId);
-            
-            await _unitOfWork.CommitTransactionAsync();
-        }
-        catch
-        {
-            await _unitOfWork.RollbackTransactionAsync();
-            throw;
+                // رکورد موجودی توسط یک درخواست همزمان دیگر تغییر کرده است؛ رول‌بک و تلاش دوباره از ابتدا
+                await _unitOfWork.RollbackTransactionAsync();
+                _logger.LogWarning("Concurrency conflict while confirming invoice {InvoiceId}, retrying (attempt {Attempt})", invoiceId, attempt);
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
         }
     }
 
@@ -213,67 +222,79 @@ public class SalesService : ISalesService
     /// <exception cref="BusinessRuleException">در صورت لغو قبلی فاکتور</exception>
     public async Task CancelInvoiceAsync(int invoiceId, string? userId)
     {
-        await _unitOfWork.BeginTransactionAsync();
-        try
+        // مانند ConfirmInvoiceAsync، برگشت موجودی هم روی رکورد StockLevel با RowVersion محافظت می‌شود؛
+        // در صورت تصادم همزمانی، تراکنش رول‌بک و از نو تلاش می‌شود.
+        const int maxRetries = 3;
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
         {
-            var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
-            ?? throw new NotFoundException("فاکتور", invoiceId);
-
-        if (invoice.Status == SalesInvoiceStatus.Canceled)
-            throw new BusinessRuleException("این فاکتور قبلاً لغو شده است.");
-
-        var wasConfirmed = invoice.Status == SalesInvoiceStatus.Confirmed;
-
-        if (wasConfirmed)
-        {
-            foreach (var item in invoice.Items)
+            await _unitOfWork.BeginTransactionAsync();
+            try
             {
-                await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
+                var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
+                ?? throw new NotFoundException("فاکتور", invoiceId);
+
+                if (invoice.Status == SalesInvoiceStatus.Canceled)
+                    throw new BusinessRuleException("این فاکتور قبلاً لغو شده است.");
+
+                var wasConfirmed = invoice.Status == SalesInvoiceStatus.Confirmed;
+
+                if (wasConfirmed)
                 {
-                    ProductId = item.ProductId,
-                    WarehouseId = invoice.WarehouseId,
-                    Type = StockTransactionType.SaleCancellation,
-                    QuantityChange = item.Quantity,
-                    ReferenceType = nameof(SalesInvoice),
-                    ReferenceId = invoice.Id,
-                    CreatedByUserId = userId
-                });
+                    foreach (var item in invoice.Items)
+                    {
+                        await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
+                        {
+                            ProductId = item.ProductId,
+                            WarehouseId = invoice.WarehouseId,
+                            Type = StockTransactionType.SaleCancellation,
+                            QuantityChange = item.Quantity,
+                            ReferenceType = nameof(SalesInvoice),
+                            ReferenceId = invoice.Id,
+                            CreatedByUserId = userId
+                        });
 
-                await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, invoice.WarehouseId, item.Quantity);
-            }
-        }
-
-        invoice.Status = SalesInvoiceStatus.Canceled;
-        invoice.CanceledAt = DateTime.UtcNow;
-
-        await _unitOfWork.SalesInvoices.UpdateAsync(invoice);
-        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesInvoiceCanceled", userId, $"فاکتور {invoice.InvoiceNumber} لغو شد."));
-        await _unitOfWork.CompleteAsync();
-        if (wasConfirmed)
-        {
-            var totalCost = invoice.Items.Sum(i => i.Quantity * (i.Product?.CostPrice ?? 0));
-
-            // سند برگشت، دقیقاً برعکس سند فروش اصلی است تا اثر آن به‌طور کامل خنثی شود
-            await _journalService.PostEntryAsync(
-                description: $"برگشت از فروش طبق لغو فاکتور {invoice.InvoiceNumber}",
-                lines: new List<JournalLineInput>
-                {
-                    new(SystemAccountCodes.SalesRevenue, invoice.TotalAmount, 0, "برگشت درآمد فروش"),
-                    new(SystemAccountCodes.AccountsReceivable, 0, invoice.TotalAmount, "بستانکار شدن حساب مشتری", "Customer", invoice.CustomerId),
-                    new(SystemAccountCodes.Inventory, totalCost, 0, "برگشت موجودی کالا"),
-                    new(SystemAccountCodes.CostOfGoodsSold, 0, totalCost, "برگشت بهای تمام‌شده")
-                },
-                referenceType: nameof(SalesInvoice),
-                referenceId: invoice.Id,
-                userId: userId);
+                        await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, invoice.WarehouseId, item.Quantity);
+                    }
                 }
-            
-            await _unitOfWork.CommitTransactionAsync();
-        }
-        catch
-        {
-            await _unitOfWork.RollbackTransactionAsync();
-            throw;
+
+                invoice.Status = SalesInvoiceStatus.Canceled;
+                invoice.CanceledAt = DateTime.UtcNow;
+
+                await _unitOfWork.SalesInvoices.UpdateAsync(invoice);
+                await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesInvoiceCanceled", userId, $"فاکتور {invoice.InvoiceNumber} لغو شد."));
+                await _unitOfWork.CompleteAsync();
+                if (wasConfirmed)
+                {
+                    var totalCost = invoice.Items.Sum(i => i.Quantity * (i.Product?.CostPrice ?? 0));
+
+                    // سند برگشت، دقیقاً برعکس سند فروش اصلی است تا اثر آن به‌طور کامل خنثی شود
+                    await _journalService.PostEntryAsync(
+                        description: $"برگشت از فروش طبق لغو فاکتور {invoice.InvoiceNumber}",
+                        lines: new List<JournalLineInput>
+                        {
+                            new(SystemAccountCodes.SalesRevenue, invoice.TotalAmount, 0, "برگشت درآمد فروش"),
+                            new(SystemAccountCodes.AccountsReceivable, 0, invoice.TotalAmount, "بستانکار شدن حساب مشتری", "Customer", invoice.CustomerId),
+                            new(SystemAccountCodes.Inventory, totalCost, 0, "برگشت موجودی کالا"),
+                            new(SystemAccountCodes.CostOfGoodsSold, 0, totalCost, "برگشت بهای تمام‌شده")
+                        },
+                        referenceType: nameof(SalesInvoice),
+                        referenceId: invoice.Id,
+                        userId: userId);
+                }
+
+                await _unitOfWork.CommitTransactionAsync();
+                return;
+            }
+            catch (DbUpdateConcurrencyException) when (attempt < maxRetries)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                _logger.LogWarning("Concurrency conflict while canceling invoice {InvoiceId}, retrying (attempt {Attempt})", invoiceId, attempt);
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
         }
     }
 

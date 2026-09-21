@@ -13,4 +13,11 @@ public class StockLevel
     public Warehouse? Warehouse { get; set; }
     public decimal QuantityOnHand { get; set; }
     public DateTime LastUpdatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// توکن همزمانی خوش‌بینانه (Optimistic Concurrency) — برای جلوگیری از race condition
+    /// در کسر/افزایش موجودی هنگام درخواست‌های همزمان
+    /// </summary>
+    [System.ComponentModel.DataAnnotations.Timestamp]
+    public byte[] RowVersion { get; set; } = null!;
 }

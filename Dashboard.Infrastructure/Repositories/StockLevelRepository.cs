@@ -61,4 +61,25 @@ public class StockLevelRepository : IStockLevelRepository
             level.LastUpdatedAt = DateTime.UtcNow;
         }
     }
+
+    /// <summary>
+    /// کاهش موجودی با بررسی کفایت — اگر موجودی کافی نباشد استثنا پرتاب می‌شود
+    /// </summary>
+    public async Task DecreaseWithCheckAsync(int productId, int warehouseId, decimal quantity)
+    {
+        var level = await _context.StockLevels
+            .Include(s => s.Product)
+            .FirstOrDefaultAsync(s => s.ProductId == productId && s.WarehouseId == warehouseId);
+
+        if (level is null || level.QuantityOnHand < quantity)
+        {
+            var productName = level?.Product?.Name ?? $"شماره {productId}";
+            var available = level?.QuantityOnHand ?? 0;
+            throw new Dashboard.Domain.Exceptions.BusinessRuleException(
+                $"موجودی کافی نیست (کالای «{productName}»: موجود {available}, درخواستی {quantity}).");
+        }
+
+        level.QuantityOnHand -= quantity;
+        level.LastUpdatedAt = DateTime.UtcNow;
+    }
 }
