@@ -1,0 +1,108 @@
+@* Dashboard.Web/Components/Shared/CustomerSearchSelect.razor *@
+@* یک دروپ‌داون انتخاب مشتری که با کلیک، به یک تکست‌باکس جستجوپذیر تبدیل می‌شه.
+   بدون هیچ کتابخانه‌ی جاوااسکریپتی — فقط از قابلیت‌های خود بلیزر (ElementReference.FocusAsync). *@
+@using Dashboard.Application.DTOs
+
+<div class="position-relative">
+    @if (!isSearching)
+    {
+        <div class="form-select d-flex justify-content-between align-items-center" style="cursor: pointer;" @onclick="EnterSearchMode">
+            <span class="@(SelectedCustomer is null ? "text-muted" : "")">
+                @(SelectedCustomer?.Name ?? Placeholder)
+            </span>
+            @if (SelectedCustomer is not null && AllowNone)
+            {
+                <button type="button" class="btn btn-sm btn-link text-muted p-0" title="پاک کردن"
+                        @onclick="() => SelectCustomer(null)" @onclick:stopPropagation="true">✕</button>
+            }
+        </div>
+    }
+    else
+    {
+        <input @ref="inputRef" class="form-control" type="text"
+               placeholder="نام یا شماره تلفن مشتری را تایپ کنید..."
+               @bind="searchText" @bind:event="oninput"
+               @onblur="OnInputBlur" />
+
+        <div class="list-group position-absolute w-100 shadow-sm" style="z-index: 1050; max-height: 240px; overflow-y: auto;">
+            @if (AllowNone)
+            {
+                @* onmousedown (نه onclick) با preventDefault، تا فوکوس از روی input برداشته نشه
+                   و لیست قبل از ثبت انتخاب بسته نشه *@
+                <button type="button" class="list-group-item list-group-item-action text-muted"
+                        @onmousedown="() => SelectCustomer(null)" @onmousedown:preventDefault="true">
+                    @NoneLabel
+                </button>
+            }
+            @foreach (var c in FilteredCustomers)
+            {
+                <button type="button" class="list-group-item list-group-item-action"
+                        @onmousedown="() => SelectCustomer(c)" @onmousedown:preventDefault="true">
+                    @c.Name
+                    @if (!string.IsNullOrEmpty(c.Phone))
+                    {
+                        <span class="text-muted small"> — @c.Phone</span>
+                    }
+                </button>
+            }
+            @if (!FilteredCustomers.Any() && !AllowNone)
+            {
+                <div class="list-group-item text-muted small">موردی یافت نشد</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<CustomerDto> Customers { get; set; } = Enumerable.Empty<CustomerDto>();
+    [Parameter] public int? Value { get; set; }
+    [Parameter] public EventCallback<int?> ValueChanged { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "-- انتخاب مشتری --";
+    [Parameter] public bool AllowNone { get; set; } = true;
+    [Parameter] public string NoneLabel { get; set; } = "-- مشتری حضوری / بدون مشتری --";
+
+    private bool isSearching;
+    private bool shouldFocus;
+    private string searchText = string.Empty;
+    private ElementReference inputRef;
+
+    private CustomerDto? SelectedCustomer => Customers.FirstOrDefault(c => c.Id == Value);
+
+    private IEnumerable<CustomerDto> FilteredCustomers => string.IsNullOrWhiteSpace(searchText)
+        ? Customers
+        : Customers.Where(c =>
+            c.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+            (c.Phone is not null && c.Phone.Contains(searchText, StringComparison.OrdinalIgnoreCase)));
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (shouldFocus)
+        {
+            shouldFocus = false;
+            await inputRef.FocusAsync();
+        }
+    }
+
+    private void EnterSearchMode()
+    {
+        isSearching = true;
+        searchText = string.Empty;
+        shouldFocus = true;
+    }
+
+    private async Task SelectCustomer(CustomerDto? customer)
+    {
+        await ValueChanged.InvokeAsync(customer?.Id);
+        isSearching = false;
+        searchText = string.Empty;
+    }
+
+    private async Task OnInputBlur()
+    {
+        // یه تأخیر کوچیک، فقط برای اطمینان بیشتر (مکانیزم اصلی جلوگیری از بسته‌شدن زودهنگام،
+        // preventDefault روی onmousedown گزینه‌های لیسته که فوکوس رو اصلاً از input برنمی‌داره)
+        await Task.Delay(150);
+        isSearching = false;
+        StateHasChanged();
+    }
+}

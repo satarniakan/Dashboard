@@ -24,16 +24,7 @@
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label class="form-label">مشتری (اختیاری — خالی = مشتری حضوری)</label>
-                <select class="form-select" @bind="model.CustomerId">
-                    <option value="">-- مشتری حضوری --</option>
-                    @if (customers is not null)
-                    {
-                        @foreach (var c in customers)
-                        {
-                            <option value="@c.Id">@c.Name</option>
-                        }
-                    }
-                </select>
+                <CustomerSearchSelect Customers="customers ?? Enumerable.Empty<CustomerDto>()" @bind-Value="model.CustomerId" NoneLabel="-- مشتری حضوری --" />
             </div>
             <div class="col-md-6 mb-3">
                 <label class="form-label">انبار</label>

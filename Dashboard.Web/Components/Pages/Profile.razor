@@ -1,33 +1,33 @@
-@* Dashboard.Web/Components/Pages/Profile.razor *@
 @page "/profile"
 @attribute [Authorize]
-@attribute [ExcludeFromInteractiveRouting]
+@rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
 @using System.Security.Claims
 @inject IAuthService AuthService
+@inject ILocationService LocationService
 @inject AuthenticationStateProvider AuthStateProvider
-@inject Dashboard.Application.Services.ILocationService LocationService
+
 <PageTitle>پروفایل کاربری</PageTitle>
 
 <h3>پروفایل کاربری</h3>
 
-@if (Welcome is not null)
+@if (Welcome)
 {
     <div class="alert alert-success">
         خوش آمدید! برای دسترسی کامل به امکانات، لطفاً پروفایل خود را تکمیل کنید.
     </div>
 }
 
-@if (Success is not null)
+@if (successMessage is not null)
 {
-    <div class="alert alert-success">اطلاعات با موفقیت ذخیره شد.</div>
+    <div class="alert alert-success">@successMessage</div>
 }
 
-@if (Error is not null)
+@if (errorMessage is not null)
 {
-    <div class="alert alert-danger">@GetErrorMessage(Error)</div>
+    <div class="alert alert-danger">@errorMessage</div>
 }
 
 @if (profile is null)
@@ -36,120 +36,180 @@
 }
 else
 {
-    <div class="card-panel" style="max-width: 420px;">
-        <form method="post" action="/Account/CompleteProfile" data-enhance="false">
-            <AntiforgeryToken />
+    <div class="card-panel" style="max-width: 480px;">
 
+        <div class="mb-3">
+            <label class="form-label">شماره موبایل</label>
+            <input type="text" class="form-control" value="@profile.PhoneNumber" disabled />
+        </div>
+
+        <div class="row">
+            <div class="col-6 mb-3">
+                <label class="form-label">نام</label>
+                <input type="text" class="form-control" @bind="firstName" />
+            </div>
+            <div class="col-6 mb-3">
+                <label class="form-label">نام خانوادگی</label>
+                <input type="text" class="form-control" @bind="lastName" />
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">ایمیل</label>
+            <input type="email" class="form-control" @bind="email" placeholder="ایمیل خود را وارد کنید" />
+        </div>
+
+        <div class="row">
+            <div class="col-6 mb-3">
+                <label class="form-label">استان</label>
+                <select class="form-select" @bind="selectedProvinceId" @bind:after="OnProvinceChanged">
+                    <option value="0">-- انتخاب کنید --</option>
+                    @foreach (var p in provinces)
+                    {
+                        <option value="@p.Id">@p.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-6 mb-3">
+                <label class="form-label">شهر</label>
+                <select class="form-select" @bind="selectedCityId">
+                    <option value="0">-- ابتدا استان را انتخاب کنید --</option>
+                    @foreach (var c in cities)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">آدرس</label>
+            <textarea class="form-control" rows="2" @bind="address"></textarea>
+        </div>
+
+        @if (!profile.HasPassword)
+        {
             <div class="mb-3">
-                <label class="form-label">شماره موبایل</label>
-                <input type="text" class="form-control" value="@profile.PhoneNumber" disabled />
+                <label class="form-label">رمز عبور</label>
+                <input type="password" class="form-control" @bind="password" placeholder="حداقل ۳ کاراکتر" />
             </div>
-
-            <div class="row">
-                <div class="col-6 mb-3">
-                    <label class="form-label">نام</label>
-                    <input type="text" name="firstName" class="form-control" value="@profile.FirstName" />
-                </div>
-                <div class="col-6 mb-3">
-                    <label class="form-label">نام خانوادگی</label>
-                    <input type="text" name="lastName" class="form-control" value="@profile.LastName" />
-                </div>
+            <div class="mb-4">
+                <label class="form-label">تکرار رمز عبور</label>
+                <input type="password" class="form-control" @bind="confirmPassword" />
             </div>
-
-            <div class="mb-3">
-                <label class="form-label">ایمیل</label>
-                <input type="email" name="email" class="form-control" value="@profile.Email" placeholder="ایمیل خود را وارد کنید" />
+        }
+        else
+        {
+            <div class="alert alert-info" style="font-size: 0.85rem;">
+                رمز عبور شما قبلاً تنظیم شده است.
             </div>
-            <div class="row">
-                <div class="col-6 mb-3">
-                    <label class="form-label">استان</label>
-                    <select name="provinceId" class="form-select">
-                        <option value="">-- انتخاب کنید --</option>
-                        @foreach (var p in provinces)
-                        {
-                            <option value="@p.Id" selected="@(p.Id == profile.ProvinceId)">@p.Name</option>
-                        }
-                    </select>
-                </div>
-                <div class="col-6 mb-3">
-                    <label class="form-label">شهر</label>
-                    <select name="cityId" class="form-select">
-                        <option value="">-- انتخاب کنید --</option>
-                        @foreach (var c in allCities)
-                        {
-                            <option value="@c.Id" selected="@(c.Id == profile.CityId)">@c.Name</option>
-                        }
-                    </select>
-                </div>
-            </div>
+        }
 
-            <div class="mb-3">
-                <label class="form-label">آدرس</label>
-                <textarea name="address" class="form-control" rows="2">@profile.Address</textarea>
-            </div>
-            @if (!profile.HasPassword)
-            {
-                <div class="mb-3">
-                    <label class="form-label">رمز عبور</label>
-                    <input type="password" name="password" class="form-control" placeholder="حداقل ۳ کاراکتر" />
-                </div>
-
-                <div class="mb-4">
-                    <label class="form-label">تکرار رمز عبور</label>
-                    <input type="password" name="confirmPassword" class="form-control" />
-                </div>
-            }
-            else
-            {
-                <div class="alert alert-info" style="font-size: 0.85rem;">
-                    رمز عبور شما قبلاً تنظیم شده است.
-                </div>
-            }
-
-            <button type="submit" class="btn btn-primary w-100">ذخیره تغییرات</button>
-        </form>
+        <button class="btn btn-primary w-100" disabled="@isSaving" @onclick="HandleSave">
+            @(isSaving ? "در حال ذخیره..." : "ذخیره تغییرات")
+        </button>
     </div>
 }
 
 @code {
     [SupplyParameterFromQuery(Name = "welcome")]
-    private string? Welcome { get; set; }
-
-    [SupplyParameterFromQuery(Name = "success")]
-    private string? Success { get; set; }
-
-    [SupplyParameterFromQuery(Name = "error")]
-    private string? Error { get; set; }
+    private bool Welcome { get; set; }
 
     private UserProfileDto? profile;
-    private List<Dashboard.Application.DTOs.ProvinceDto> provinces = new();
-    private List<Dashboard.Application.DTOs.CityDto> allCities = new();
+    private List<ProvinceDto> provinces = new();
+    private List<CityDto> cities = new();
+
+    private string firstName = string.Empty;
+    private string lastName = string.Empty;
+    private string? email;
+    private string? address;
+    private string? password;
+    private string? confirmPassword;
+    private int selectedProvinceId;
+    private int selectedCityId;
+
+    private bool isSaving;
+    private string? successMessage;
+    private string? errorMessage;
+
+    private string? _userId;
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        _userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        if (userId is not null)
+        if (_userId is null) return;
+
+        profile = await AuthService.GetProfileAsync(_userId);
+        provinces = await LocationService.GetProvincesAsync();
+
+        if (profile is not null)
         {
-            profile = await AuthService.GetProfileAsync(userId);
-            provinces = await LocationService.GetProvincesAsync();
-            allCities = await LocationService.GetAllCitiesAsync();
+            firstName = profile.FirstName ?? string.Empty;
+            lastName = profile.LastName ?? string.Empty;
+            email = profile.Email;
+            address = profile.Address;
+            selectedProvinceId = profile.ProvinceId ?? 0;
+            selectedCityId = profile.CityId ?? 0;
+
+            if (selectedProvinceId > 0)
+            {
+                cities = await LocationService.GetCitiesByProvinceAsync(selectedProvinceId);
+            }
         }
     }
 
-    private string GetErrorMessage(string code)
+    private async Task OnProvinceChanged()
     {
-        if (!Enum.TryParse<ProfileUpdateStatus>(code, out var status))
-        {
-            return "ذخیره اطلاعات ناموفق بود. لطفاً دوباره تلاش کنید.";
-        }
+        selectedCityId = 0; // چون استان عوض شد، شهر قبلی دیگر معتبر نیست
+        cities = selectedProvinceId > 0
+            ? await LocationService.GetCitiesByProvinceAsync(selectedProvinceId)
+            : new List<CityDto>();
+    }
 
-        return status switch
+    private async Task HandleSave()
+    {
+        if (_userId is null) return;
+
+        isSaving = true;
+        successMessage = null;
+        errorMessage = null;
+
+        try
         {
-            ProfileUpdateStatus.PasswordMismatch => "رمز عبور و تکرار آن یکسان نیستند.",
-            ProfileUpdateStatus.PasswordAlreadySet => "رمز عبور شما قبلاً تنظیم شده است.",
-            ProfileUpdateStatus.EmailAlreadyExists => "این ایمیل قبلاً توسط کاربر دیگری استفاده شده است.",
-            _ => "ذخیره اطلاعات ناموفق بود. لطفاً دوباره تلاش کنید."
-        };
+            var result = await AuthService.CompleteProfileAsync(
+                _userId, firstName, lastName, email,
+                selectedProvinceId > 0 ? selectedProvinceId : null,
+                selectedCityId > 0 ? selectedCityId : null,
+                address, password, confirmPassword);
+
+            switch (result.Status)
+            {
+                case ProfileUpdateStatus.Success:
+                    successMessage = "اطلاعات با موفقیت ذخیره شد.";
+                    break;
+                case ProfileUpdateStatus.PasswordMismatch:
+                    errorMessage = "رمز عبور و تکرار آن یکسان نیستند.";
+                    break;
+                case ProfileUpdateStatus.PasswordAlreadySet:
+                    errorMessage = "رمز عبور شما قبلاً تنظیم شده است.";
+                    break;
+                case ProfileUpdateStatus.EmailAlreadyExists:
+                    errorMessage = "این ایمیل قبلاً توسط کاربر دیگری استفاده شده است.";
+                    break;
+                default:
+                    errorMessage = "ذخیره اطلاعات ناموفق بود. لطفاً دوباره تلاش کنید.";
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"خطا: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
     }
 }
