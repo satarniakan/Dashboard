@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Security.Cryptography;
+using Microsoft.Extensions.Logging;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Interfaces;
 
@@ -27,7 +28,7 @@ public class OtpService : IOtpService
 
     public async Task GenerateAndSendOtpAsync(string phoneNumber)
     {
-        var code = Random.Shared.Next(100000, 999999).ToString();
+        var code = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
 
         var otp = new OtpCode
         {

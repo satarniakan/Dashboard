@@ -41,7 +41,7 @@ public static class Permissions
         PurchaseReceiptsManage, InternalIssuesManage, SalesReturnsManage,
         ScrapRecordsManage, StockTransfersManage, StockCountsManage,
         CustomersManage, SalesCreate, SalesConfirm, SalesCancel, SalesView,
-        AccountingView, TreasuryManage
+        AccountingView, TreasuryManage, CatalogManage
     };
 
     public static string ToPersian(string permission) => permission switch

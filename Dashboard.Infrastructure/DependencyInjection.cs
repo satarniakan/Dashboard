@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Dashboard.Domain.Identity;
 using Dashboard.Domain.Interfaces;
 using Dashboard.Infrastructure.Data;
@@ -12,7 +13,10 @@ namespace Dashboard.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    /// <param name="isDevelopment">
+    /// پیش‌فرض false (امن‌ترین حالت). فقط در Development متن پیامک‌های شبیه‌سازی‌شده (شامل کد OTP) لاگ می‌شود.
+    /// </param>
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration, bool isDevelopment = false)
     {
         services.AddDbContext<AppDbContext>(opt =>
             opt.UseSqlServer(configuration.GetConnectionString("Default")));
@@ -28,10 +32,27 @@ public static class DependencyInjection
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
 
-        services.AddScoped<IProductRepository, ProductRepository>();
+        // AddIdentity به‌صورت پیش‌فرض مسیر "/Account/Login" را برای صفحه‌ی ورود در نظر می‌گیرد،
+        // در حالی که صفحه‌ی واقعی ورود در این پروژه "/login" است. بدون این تنظیم، کاربر لاگ‌اوت‌شده
+        // که به صفحه‌ی محافظت‌شده برود به مسیر اشتباه ریدایرکت می‌شود و «صفحه یافت نشد» می‌بیند.
+        // (باید بعد از AddIdentity بیاید.)
+        services.ConfigureApplicationCookie(options =>
+        {
+            options.LoginPath = "/login";
+            options.AccessDeniedPath = "/login";
+        });
+
+        // --- عمومی / احراز هویت ---
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IOtpRepository, OtpCodeRepository>();
-        services.AddScoped<ISmsSender, FakeSmsSender>();
+        services.AddScoped<ISmsSender>(sp =>
+            new FakeSmsSender(sp.GetRequiredService<ILogger<FakeSmsSender>>(), logMessageBody: isDevelopment));
+        services.AddScoped<ILocationRepository, LocationRepository>();
+
+        // --- محصولات و کاتالوگ ---
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<ICatalogRepository, CatalogRepository>();
 
         // --- ماژول انبارداری (WMS) ---
         services.AddScoped<IWarehouseRepository, WarehouseRepository>();
@@ -48,6 +69,7 @@ public static class DependencyInjection
         // --- ماژول فروش ---
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<ISalesInvoiceRepository, SalesInvoiceRepository>();
+        services.AddScoped<IElectronicInvoiceProvider, PendingElectronicInvoiceProvider>();
 
         // --- ماژول حسابداری و خزانه‌داری ---
         services.AddScoped<IAccountRepository, AccountRepository>();
@@ -56,10 +78,18 @@ public static class DependencyInjection
         services.AddScoped<ICustomerReceiptRepository, CustomerReceiptRepository>();
         services.AddScoped<ISupplierPaymentRepository, SupplierPaymentRepository>();
         services.AddScoped<IInstallmentPlanRepository, InstallmentPlanRepository>();
-        services.AddScoped<IElectronicInvoiceProvider, PendingElectronicInvoiceProvider>();
-        services.AddScoped<ICatalogRepository, CatalogRepository>();
-        services.AddScoped<ILocationRepository, LocationRepository>();
-        services.AddScoped<IUnitOfWork, UnitOfWork>();
+
         return services;
+    }
+
+    /// <summary>
+    /// داده‌های پایه‌ی لازم برای اجرای برنامه را (در صورت نبودن) می‌سازد.
+    /// باید بعد از app.Build() و قبل از app.Run() صدا زده شود. ترتیب اجرا مهم است.
+    /// </summary>
+    public static async Task InitializeInfrastructureAsync(this IServiceProvider services, string contentRootPath)
+    {
+        await RoleSeeder.SeedRolesAsync(services);
+        await ChartOfAccountsSeeder.SeedAsync(services);
+        await IranLocationSeeder.SeedAsync(services, contentRootPath);
     }
 }
