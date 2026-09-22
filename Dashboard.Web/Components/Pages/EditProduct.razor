@@ -5,8 +5,11 @@
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
+@using Dashboard.Domain.Interfaces
 @using System.Security.Claims
 @inject IProductService ProductService
+@inject ICatalogService CatalogService
+@inject IFileStorageService FileStorage
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<Dashboard.Web.Components.Pages.EditProduct> Logger
@@ -25,27 +28,108 @@ else if (editModel is null)
 }
 else
 {
-    <div class="card-panel" style="max-width: 420px;">
+    <div class="card-panel" style="max-width: 640px;">
         <EditForm Model="@editModel" OnValidSubmit="HandleValidSubmit" FormName="EditProductForm">
             <DataAnnotationsValidator />
             <ValidationSummary class="mb-3" />
 
-            <div class="mb-3">
-                <label class="form-label">نام محصول</label>
-                <InputText class="form-control" @bind-Value="editModel.Name" />
-            </div>
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label class="form-label">نام محصول</label>
+                        <InputText class="form-control" @bind-Value="editModel.Name" />
+                    </div>
 
-            <div class="mb-4">
-                <label class="form-label">قیمت (تومان)</label>
-                <InputNumber class="form-control" @bind-Value="editModel.Price" />
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">کد کالا (SKU)</label>
+                            <InputText class="form-control" @bind-Value="editModel.Sku" />
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">بارکد (اختیاری)</label>
+                            <InputText class="form-control" @bind-Value="editModel.Barcode" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">قیمت فروش (تومان)</label>
+                            <InputNumber class="form-control" @bind-Value="editModel.Price" />
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">بهای تمام‌شده (تومان)</label>
+                            <InputNumber class="form-control" @bind-Value="editModel.CostPrice" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">واحد شمارش</label>
+                            <InputText class="form-control" @bind-Value="editModel.Unit" />
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">نقطه سفارش مجدد</label>
+                            <InputNumber class="form-control" @bind-Value="editModel.ReorderPoint" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">دسته‌بندی</label>
+                        <select class="form-select" @bind="editModel.CategoryId">
+                            <option value="">بدون دسته‌بندی</option>
+                            @if (categories is not null)
+                            {
+                                @foreach (var c in categories)
+                                {
+                                    <option value="@c.Id">@c.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <details class="mb-3">
+                        <summary class="text-muted" style="cursor: pointer;">ابعاد و وزن (اختیاری)</summary>
+                        <div class="row mt-2">
+                            <div class="col-3 mb-2">
+                                <label class="form-label small">وزن (kg)</label>
+                                <InputNumber class="form-control" @bind-Value="editModel.Weight" />
+                            </div>
+                            <div class="col-3 mb-2">
+                                <label class="form-label small">طول (cm)</label>
+                                <InputNumber class="form-control" @bind-Value="editModel.Length" />
+                            </div>
+                            <div class="col-3 mb-2">
+                                <label class="form-label small">عرض (cm)</label>
+                                <InputNumber class="form-control" @bind-Value="editModel.Width" />
+                            </div>
+                            <div class="col-3 mb-2">
+                                <label class="form-label small">ارتفاع (cm)</label>
+                                <InputNumber class="form-control" @bind-Value="editModel.Height" />
+                            </div>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">عکس محصول</label>
+                    @if (!string.IsNullOrEmpty(editModel.ImageUrl))
+                    {
+                        <img src="@editModel.ImageUrl" class="img-fluid rounded mb-2 border" alt="پیش‌نمایش" />
+                    }
+                    <InputFile OnChange="HandleImageUpload" class="form-control" accept="image/*" />
+                    @if (isUploading)
+                    {
+                        <p class="text-muted mt-2 small">در حال آپلود...</p>
+                    }
+                </div>
             </div>
 
             @if (!string.IsNullOrEmpty(errorMessage))
             {
-                <div class="alert alert-danger">@errorMessage</div>
+                <div class="alert alert-danger mt-3">@errorMessage</div>
             }
 
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 mt-3">
                 <button type="submit" class="btn btn-primary" disabled="@isSaving">
                     @(isSaving ? "در حال ذخیره..." : "ذخیره تغییرات")
                 </button>
@@ -59,12 +143,16 @@ else
     [Parameter] public int Id { get; set; }
 
     private UpdateProductDto? editModel;
+    private IEnumerable<CategoryDto>? categories;
     private bool isSaving;
+    private bool isUploading;
     private bool notFound;
     private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
+        categories = await CatalogService.GetCategoriesAsync();
+
         var product = await ProductService.GetProductAsync(Id);
 
         if (product is null)
@@ -76,9 +164,42 @@ else
         editModel = new UpdateProductDto
         {
             Name = product.Name,
-            Price = product.Price
+            Price = product.Price,
+            Sku = product.Sku,
+            Barcode = product.Barcode,
+            Unit = product.Unit,
+            CostPrice = product.CostPrice,
+            Weight = product.Weight,
+            Length = product.Length,
+            Width = product.Width,
+            Height = product.Height,
+            ReorderPoint = product.ReorderPoint,
+            CategoryId = product.CategoryId,
+            ImageUrl = product.ImageUrl
         };
     }
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        isUploading = true;
+        try
+        {
+            var file = e.File;
+            await using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024); // حداکثر ۵ مگابایت
+            var url = await FileStorage.SaveFileAsync(stream, file.Name);
+            editModel!.ImageUrl = url;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در آپلود عکس محصول {ProductId}", Id);
+            ToastService.ShowError("آپلود عکس ناموفق بود. لطفاً دوباره تلاش کنید.");
+        }
+        finally
+        {
+            isUploading = false;
+        }
+    }
+
     private async Task HandleValidSubmit()
     {
         isSaving = true;

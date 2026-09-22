@@ -25,6 +25,12 @@ public class Product
     // اگر این محصول یکی از Variant های یک گروه محصول باشد (برای فروشگاه اینترنتی)، این مقدار پر می‌شود
     public int? ProductGroupId { get; private set; }
     public ProductGroup? ProductGroup { get; private set; }
+
+    // دسته‌بندی و عکس مستقیم روی خود کالا (برای کالاهایی که عضو هیچ ProductGroup ای نیستند)
+    public int? CategoryId { get; private set; }
+    public Category? Category { get; private set; }
+    public string? ImageUrl { get; private set; }
+
     private Product() { } // برای EF Core
 
     // سازنده‌ی قبلی — دست‌نخورده، تا کدهای موجود (ProductService و غیره) کار کنند
@@ -110,5 +116,16 @@ public class Product
     {
         ProductGroupId = productGroupId;
     }
+
+    public void SetCategory(int? categoryId)
+    {
+        CategoryId = categoryId;
+    }
+
+    public void SetImage(string? imageUrl)
+    {
+        ImageUrl = imageUrl;
+    }
+
     private static string GenerateFallbackSku() => $"SKU-{Guid.NewGuid().ToString()[..8].ToUpperInvariant()}";
 }

@@ -1,11 +1,14 @@
-﻿@page "/products/add"
+@page "/products/add"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.ProductsManage)]
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.DTOs
 @using Dashboard.Application.Services
+@using Dashboard.Domain.Interfaces
 @using System.Security.Claims
 @inject IProductService ProductService
+@inject ICatalogService CatalogService
+@inject IFileStorageService FileStorage
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<Dashboard.Web.Components.Pages.AddProduct> Logger
@@ -14,27 +17,109 @@
 
 <h3>افزودن محصول</h3>
 
-<div class="card-panel" style="max-width: 480px;">
+<div class="card-panel" style="max-width: 640px;">
     <EditForm Model="@(newProduct!)" OnValidSubmit="HandleValidSubmit" FormName="AddProductForm">
         <DataAnnotationsValidator />
         <ValidationSummary class="mb-3" />
 
-        <div class="mb-3">
-            <label class="form-label">نام محصول</label>
-            <InputText class="form-control" @bind-Value="newProduct!.Name" placeholder="مثلاً: گل رز" />
-        </div>
+        <div class="row">
+            <div class="col-md-8">
+                <div class="mb-3">
+                    <label class="form-label">نام محصول</label>
+                    <InputText class="form-control" @bind-Value="newProduct!.Name" placeholder="مثلاً: گل رز" />
+                </div>
 
-        <div class="mb-4">
-            <label class="form-label">قیمت (تومان)</label>
-            <InputNumber class="form-control" @bind-Value="newProduct!.Price" placeholder="0" />
+                <div class="row">
+                    <div class="col-6 mb-3">
+                        <label class="form-label">کد کالا (SKU)</label>
+                        <InputText class="form-control" @bind-Value="newProduct!.Sku" placeholder="مثلاً: PRD-0001" />
+                    </div>
+                    <div class="col-6 mb-3">
+                        <label class="form-label">بارکد (اختیاری)</label>
+                        <InputText class="form-control" @bind-Value="newProduct!.Barcode" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-6 mb-3">
+                        <label class="form-label">قیمت فروش (تومان)</label>
+                        <InputNumber class="form-control" @bind-Value="newProduct!.Price" placeholder="0" />
+                    </div>
+                    <div class="col-6 mb-3">
+                        <label class="form-label">بهای تمام‌شده (تومان)</label>
+                        <InputNumber class="form-control" @bind-Value="newProduct!.CostPrice" placeholder="0" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-6 mb-3">
+                        <label class="form-label">واحد شمارش</label>
+                        <InputText class="form-control" @bind-Value="newProduct!.Unit" />
+                    </div>
+                    <div class="col-6 mb-3">
+                        <label class="form-label">نقطه سفارش مجدد</label>
+                        <InputNumber class="form-control" @bind-Value="newProduct!.ReorderPoint" />
+                        <div class="form-text">وقتی موجودی از این عدد کمتر شود، در گزارش «کم‌موجودی» نشان داده می‌شود.</div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">دسته‌بندی</label>
+                    <select class="form-select" @bind="newProduct!.CategoryId">
+                        <option value="">بدون دسته‌بندی</option>
+                        @if (categories is not null)
+                        {
+                            @foreach (var c in categories)
+                            {
+                                <option value="@c.Id">@c.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <details class="mb-3">
+                    <summary class="text-muted" style="cursor: pointer;">ابعاد و وزن (اختیاری)</summary>
+                    <div class="row mt-2">
+                        <div class="col-3 mb-2">
+                            <label class="form-label small">وزن (kg)</label>
+                            <InputNumber class="form-control" @bind-Value="newProduct!.Weight" />
+                        </div>
+                        <div class="col-3 mb-2">
+                            <label class="form-label small">طول (cm)</label>
+                            <InputNumber class="form-control" @bind-Value="newProduct!.Length" />
+                        </div>
+                        <div class="col-3 mb-2">
+                            <label class="form-label small">عرض (cm)</label>
+                            <InputNumber class="form-control" @bind-Value="newProduct!.Width" />
+                        </div>
+                        <div class="col-3 mb-2">
+                            <label class="form-label small">ارتفاع (cm)</label>
+                            <InputNumber class="form-control" @bind-Value="newProduct!.Height" />
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">عکس محصول</label>
+                @if (!string.IsNullOrEmpty(newProduct!.ImageUrl))
+                {
+                    <img src="@newProduct.ImageUrl" class="img-fluid rounded mb-2 border" alt="پیش‌نمایش" />
+                }
+                <InputFile OnChange="HandleImageUpload" class="form-control" accept="image/*" />
+                @if (isUploading)
+                {
+                    <p class="text-muted mt-2 small">در حال آپلود...</p>
+                }
+            </div>
         </div>
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-danger">@errorMessage</div>
+            <div class="alert alert-danger mt-3">@errorMessage</div>
         }
 
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 mt-3">
             <button type="submit" class="btn btn-primary" disabled="@isSaving">
                 @(isSaving ? "در حال ذخیره..." : "ذخیره محصول")
             </button>
@@ -47,12 +132,36 @@
     [SupplyParameterFromForm]
     private CreateProductDto? newProduct { get; set; }
 
+    private IEnumerable<CategoryDto>? categories;
     private bool isSaving;
+    private bool isUploading;
     private string? errorMessage;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         newProduct ??= new();
+        categories = await CatalogService.GetCategoriesAsync();
+    }
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        isUploading = true;
+        try
+        {
+            var file = e.File;
+            await using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024); // حداکثر ۵ مگابایت
+            var url = await FileStorage.SaveFileAsync(stream, file.Name);
+            newProduct!.ImageUrl = url;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در آپلود عکس محصول");
+            ToastService.ShowError("آپلود عکس ناموفق بود. لطفاً دوباره تلاش کنید.");
+        }
+        finally
+        {
+            isUploading = false;
+        }
     }
 
     private async Task HandleValidSubmit()
@@ -65,8 +174,6 @@
 
         try
         {
-           
-            
             await ProductService.CreateProductAsync(newProduct!, userEmail);
             ToastService.ShowSuccess("محصول با موفقیت ذخیره شد.");
             NavigationManager.NavigateTo("/products");

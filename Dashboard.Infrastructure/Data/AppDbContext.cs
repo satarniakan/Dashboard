@@ -73,6 +73,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.Property(p => p.Barcode).HasMaxLength(50);
             e.HasIndex(p => p.Sku).IsUnique();
             e.HasIndex(p => p.Barcode).IsUnique().HasFilter("[Barcode] IS NOT NULL");
+            e.Property(p => p.ImageUrl).HasMaxLength(500);
+            e.HasOne(p => p.Category).WithMany().HasForeignKey(p => p.CategoryId).OnDelete(DeleteBehavior.Restrict);
 
         });
 
@@ -93,7 +95,6 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             e.Property(s => s.QuantityOnHand).HasColumnType("decimal(18,3)");
             e.HasIndex(s => new { s.ProductId, s.WarehouseId }).IsUnique();
-            e.Property(s => s.RowVersion).IsRowVersion(); // توکن همزمانی خوش‌بینانه برای جلوگیری از race condition در موجودی
 
             e.HasOne(s => s.Product).WithMany().HasForeignKey(s => s.ProductId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.Warehouse).WithMany().HasForeignKey(s => s.WarehouseId).OnDelete(DeleteBehavior.Restrict);

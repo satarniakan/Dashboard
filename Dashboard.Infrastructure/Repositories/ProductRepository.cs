@@ -13,17 +13,17 @@ public class ProductRepository : IProductRepository
     public ProductRepository(AppDbContext context) => _context = context;
 
     public async Task<Product?> GetByIdAsync(int id) =>
-        await _context.Products.FindAsync(id);
+        await _context.Products.Include(p => p.Category).FirstOrDefaultAsync(p => p.Id == id);
 
     public async Task<IEnumerable<Product>> GetAllAsync() =>
-        await _context.Products.ToListAsync();
+        await _context.Products.Include(p => p.Category).ToListAsync();
 
     public async Task<(IEnumerable<Product> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? search = null)
     {
-        var query = _context.Products.AsQueryable();
+        var query = _context.Products.Include(p => p.Category).AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(p => p.Name.Contains(search));
+            query = query.Where(p => p.Name.Contains(search) || p.Sku.Contains(search));
 
         var totalCount = await query.CountAsync();
 

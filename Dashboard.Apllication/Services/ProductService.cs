@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Interfaces;
 using Dashboard.Application.DTOs;
@@ -28,17 +28,22 @@ public class ProductService : IProductService
         _logger = logger;
     }
 
+    private static ProductDto ToDto(Product p) => new(
+        p.Id, p.Name, p.Price, p.Sku, p.Barcode, p.Unit, p.CostPrice,
+        p.Weight, p.Length, p.Width, p.Height, p.ReorderPoint,
+        p.CategoryId, p.Category?.Name, p.ImageUrl);
+
     public async Task<ProductDto?> GetProductAsync(int id)
     {
         // استفاده از ریپازیتوریِ داخلِ UnitOfWork
         var product = await _unitOfWork.Products.GetByIdAsync(id);
-        return product is null ? null : new ProductDto(product.Id, product.Name, product.Price);
+        return product is null ? null : ToDto(product);
     }
 
     public async Task<IEnumerable<ProductDto>> GetAllProductsAsync()
     {
         var products = await _unitOfWork.Products.GetAllAsync();
-        return products.Select(p => new ProductDto(p.Id, p.Name, p.Price));
+        return products.Select(ToDto);
     }
 
     public async Task<PagedResult<ProductDto>> GetProductsPagedAsync(int page, int pageSize, string? search = null)
@@ -50,7 +55,7 @@ public class ProductService : IProductService
 
         return new PagedResult<ProductDto>
         {
-            Items = items.Select(p => new ProductDto(p.Id, p.Name, p.Price)).ToList(),
+            Items = items.Select(ToDto).ToList(),
             TotalCount = totalCount,
             Page = page,
             PageSize = pageSize
@@ -59,7 +64,23 @@ public class ProductService : IProductService
 
     public async Task<ProductDto> CreateProductAsync(CreateProductDto dto, string? userEmail)
     {
-        var product = new Product(dto.Name, dto.Price);
+        // سازنده‌ی کامل: هم فیلدهای اصلی (نام/قیمت) و هم فیلدهای انبارداری را یک‌جا تنظیم می‌کند
+        var product = new Product(
+            sku: dto.Sku,
+            name: dto.Name,
+            price: dto.Price,
+            costPrice: dto.CostPrice,
+            unit: dto.Unit,
+            barcode: dto.Barcode,
+            weight: dto.Weight,
+            length: dto.Length,
+            width: dto.Width,
+            height: dto.Height,
+            reorderPoint: dto.ReorderPoint);
+
+        product.SetCategory(dto.CategoryId);
+        product.SetImage(dto.ImageUrl);
+
         await _unitOfWork.Products.AddAsync(product);
 
         // لاگ کردن به جای IAuditService، مستقیماً از طریق UnitOfWork
@@ -69,7 +90,7 @@ public class ProductService : IProductService
         await _unitOfWork.CompleteAsync();
 
         _logger.LogInformation("Product {ProductId} created by {UserEmail}", product.Id, userEmail ?? "unknown");
-        return new ProductDto(product.Id, product.Name, product.Price);
+        return ToDto(product);
     }
 
     public async Task<ProductDto?> UpdateProductAsync(int id, UpdateProductDto dto, string? userEmail)
@@ -78,6 +99,19 @@ public class ProductService : IProductService
         if (product is null) return null;
 
         product.Update(dto.Name, dto.Price);
+        product.UpdateWarehouseDetails(
+            sku: dto.Sku,
+            barcode: dto.Barcode,
+            unit: dto.Unit,
+            costPrice: dto.CostPrice,
+            weight: dto.Weight,
+            length: dto.Length,
+            width: dto.Width,
+            height: dto.Height,
+            reorderPoint: dto.ReorderPoint);
+        product.SetCategory(dto.CategoryId);
+        product.SetImage(dto.ImageUrl);
+
         await _unitOfWork.Products.UpdateAsync(product);
 
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("ProductUpdated", userEmail, $"Product {id} updated."));
@@ -85,7 +119,7 @@ public class ProductService : IProductService
         // ذخیره نهایی
         await _unitOfWork.CompleteAsync();
 
-        return new ProductDto(product.Id, product.Name, product.Price);
+        return ToDto(product);
     }
 
     public async Task<bool> DeleteProductAsync(int id, string? userEmail)

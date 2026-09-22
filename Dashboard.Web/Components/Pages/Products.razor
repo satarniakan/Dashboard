@@ -44,8 +44,10 @@
         <table class="table mb-0">
             <thead>
                 <tr>
-                    <th>شناسه</th>
+                    <th></th>
                     <th>نام</th>
+                    <th>کد کالا</th>
+                    <th>دسته‌بندی</th>
                     <th>قیمت</th>
                     <th></th>
                 </tr>
@@ -54,8 +56,19 @@
                 @foreach (var product in products)
                 {
                     <tr>
-                        <td class="text-muted">@product.Id</td>
+                        <td style="width: 48px;">
+                            @if (!string.IsNullOrEmpty(product.ImageUrl))
+                            {
+                                <img src="@product.ImageUrl" alt="@product.Name" class="rounded" style="width: 40px; height: 40px; object-fit: cover;" />
+                            }
+                            else
+                            {
+                                <div class="rounded bg-light d-flex align-items-center justify-content-center text-muted" style="width: 40px; height: 40px; font-size: 0.7rem;">—</div>
+                            }
+                        </td>
                         <td class="fw-medium">@product.Name</td>
+                        <td class="text-muted">@product.Sku</td>
+                        <td class="text-muted">@(product.CategoryName ?? "-")</td>
                         <td>@CurrencyFormatter.ToToman(product.Price)</td>
                         <td class="text-end">
                             <AuthorizeView Roles="@Dashboard.Domain.Identity.Roles.Admin">

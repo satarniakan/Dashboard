@@ -4,6 +4,7 @@ using Dashboard.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Dashboard.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260922073821_AddImage")]
+    partial class AddImage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -520,9 +523,6 @@ namespace Dashboard.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<int?>("CategoryId")
-                        .HasColumnType("int");
-
                     b.Property<decimal>("CostPrice")
                         .HasColumnType("decimal(18,2)");
 
@@ -531,10 +531,6 @@ namespace Dashboard.Infrastructure.Migrations
 
                     b.Property<decimal?>("Height")
                         .HasColumnType("decimal(18,3)");
-
-                    b.Property<string>("ImageUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -575,8 +571,6 @@ namespace Dashboard.Infrastructure.Migrations
                     b.HasIndex("Barcode")
                         .IsUnique()
                         .HasFilter("[Barcode] IS NOT NULL");
-
-                    b.HasIndex("CategoryId");
 
                     b.HasIndex("ProductGroupId");
 
@@ -1734,17 +1728,10 @@ namespace Dashboard.Infrastructure.Migrations
 
             modelBuilder.Entity("Dashboard.Domain.Entities.Product", b =>
                 {
-                    b.HasOne("Dashboard.Domain.Entities.Category", "Category")
-                        .WithMany()
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("Dashboard.Domain.Entities.ProductGroup", "ProductGroup")
                         .WithMany("Variants")
                         .HasForeignKey("ProductGroupId")
                         .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Category");
 
                     b.Navigation("ProductGroup");
                 });
