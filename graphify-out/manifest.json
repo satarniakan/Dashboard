@@ -1116,10 +1116,10 @@
     "semantic_hash": "d5d7897ae10031b0fb42ffd9c381651d"
   },
   "Dashboard.Web/Components/App.razor": {
-    "mtime": 1789980867.8177564,
-    "seen": 1790076086.3859496,
-    "ast_hash": "32f5831138d35952962b266e390cf110",
-    "semantic_hash": "32f5831138d35952962b266e390cf110"
+    "mtime": 1790077517.0014453,
+    "seen": 1790080210.9338315,
+    "ast_hash": "dd3300d90eca66ebed652dde0a0b1d07",
+    "semantic_hash": "dd3300d90eca66ebed652dde0a0b1d07"
   },
   "Dashboard.Web/Components/Layout/MainLayout.razor": {
     "mtime": 1789980867.8177564,
@@ -1146,10 +1146,10 @@
     "semantic_hash": "bdc7a0873231c569cd31aa85311186a3"
   },
   "Dashboard.Web/Components/Pages/Accounting/AddCustomerReceipt.razor": {
-    "mtime": 1789980867.8317814,
-    "seen": 1790076086.3859553,
-    "ast_hash": "f6538018768612d50de3869f38c77428",
-    "semantic_hash": "f6538018768612d50de3869f38c77428"
+    "mtime": 1790079858.3268049,
+    "seen": 1790080210.935616,
+    "ast_hash": "0bbcbdf304b2a1bf4744be8de97779bd",
+    "semantic_hash": "0bbcbdf304b2a1bf4744be8de97779bd"
   },
   "Dashboard.Web/Components/Pages/Accounting/AddFinancialAccount.razor": {
     "mtime": 1789980867.8317814,
@@ -1158,10 +1158,10 @@
     "semantic_hash": "7c57cb936ca4b2dc84b06a5192923a33"
   },
   "Dashboard.Web/Components/Pages/Accounting/AddSupplierPayment.razor": {
-    "mtime": 1789980867.8317814,
-    "seen": 1790076086.3859577,
-    "ast_hash": "6b6936b1fb8ae2202513ad8334a58133",
-    "semantic_hash": "6b6936b1fb8ae2202513ad8334a58133"
+    "mtime": 1790080717.010405,
+    "seen": 1790081535.060627,
+    "ast_hash": "7de9dc11709aac76a56f5270325f104c",
+    "semantic_hash": "7de9dc11709aac76a56f5270325f104c"
   },
   "Dashboard.Web/Components/Pages/Accounting/CustomerReceipts.razor": {
     "mtime": 1789980867.8317814,
@@ -1224,10 +1224,10 @@
     "semantic_hash": "4f9ce4cffe1d73dba6ffe4ae09085f60"
   },
   "Dashboard.Web/Components/Pages/AddProduct.razor": {
-    "mtime": 1790048880.0,
-    "seen": 1790076086.38597,
-    "ast_hash": "9ee447aa26ce3dfea673ae07205c2166",
-    "semantic_hash": "9ee447aa26ce3dfea673ae07205c2166"
+    "mtime": 1790080716.902236,
+    "seen": 1790081535.0652618,
+    "ast_hash": "801ab13c99a34733f48b1df379563725",
+    "semantic_hash": "801ab13c99a34733f48b1df379563725"
   },
   "Dashboard.Web/Components/Pages/Admin/AddUser.razor": {
     "mtime": 1789980867.8474247,
@@ -1284,10 +1284,10 @@
     "semantic_hash": "8ef9e4eddfaea3c165abc9ba0e6d983a"
   },
   "Dashboard.Web/Components/Pages/Catalog/ProductGroupDetail.razor": {
-    "mtime": 1789980867.8630657,
-    "seen": 1790076086.385981,
-    "ast_hash": "d1588d5d6a87cc11fa38fc208e12ad1f",
-    "semantic_hash": "d1588d5d6a87cc11fa38fc208e12ad1f"
+    "mtime": 1790080716.988089,
+    "seen": 1790081535.0693078,
+    "ast_hash": "4bc5a432d32d8bf2643d1e8f217d83e6",
+    "semantic_hash": "4bc5a432d32d8bf2643d1e8f217d83e6"
   },
   "Dashboard.Web/Components/Pages/Catalog/ProductGroups.razor": {
     "mtime": 1789980867.8630657,
@@ -1302,10 +1302,10 @@
     "semantic_hash": "e6ee184864dfca49bd187e288e7461bb"
   },
   "Dashboard.Web/Components/Pages/EditProduct.razor": {
-    "mtime": 1790048880.0,
-    "seen": 1790076086.3859847,
-    "ast_hash": "f6f20425709254bbca71b9f9b8830174",
-    "semantic_hash": "f6f20425709254bbca71b9f9b8830174"
+    "mtime": 1790080716.943048,
+    "seen": 1790081535.0703146,
+    "ast_hash": "aba407235d494e3e213b0df67cd32e50",
+    "semantic_hash": "aba407235d494e3e213b0df67cd32e50"
   },
   "Dashboard.Web/Components/Pages/Error.razor": {
     "mtime": 1789980867.8630657,
@@ -1374,22 +1374,22 @@
     "semantic_hash": "be3dc5ec914d9b9ed5457a508b86d11e"
   },
   "Dashboard.Web/Components/Pages/Warehouse/AddPurchaseReceipt.razor": {
-    "mtime": 1789980867.879101,
-    "seen": 1790076086.385998,
-    "ast_hash": "ee846a2a0b9e319a8e9e28dc7fe6cd7a",
-    "semantic_hash": "ee846a2a0b9e319a8e9e28dc7fe6cd7a"
+    "mtime": 1790080717.0271695,
+    "seen": 1790081535.0755277,
+    "ast_hash": "57fed839952c981373b7163d63d55154",
+    "semantic_hash": "57fed839952c981373b7163d63d55154"
   },
   "Dashboard.Web/Components/Pages/Warehouse/AddSalesInvoice.razor": {
-    "mtime": 1789980867.879101,
-    "seen": 1790076086.3859992,
-    "ast_hash": "4b308248c0e7ea0bd2ae300388b3f09b",
-    "semantic_hash": "4b308248c0e7ea0bd2ae300388b3f09b"
+    "mtime": 1790080717.0558681,
+    "seen": 1790081535.07553,
+    "ast_hash": "9b43a8a6bbb56f54d47010d1cabaab15",
+    "semantic_hash": "9b43a8a6bbb56f54d47010d1cabaab15"
   },
   "Dashboard.Web/Components/Pages/Warehouse/AddSalesReturn.razor": {
-    "mtime": 1789980867.879101,
-    "seen": 1790076086.3860002,
-    "ast_hash": "cea0f482c29d69fc7108bdd4a6d3e8a8",
-    "semantic_hash": "cea0f482c29d69fc7108bdd4a6d3e8a8"
+    "mtime": 1790078670.9893596,
+    "seen": 1790080210.9513621,
+    "ast_hash": "b5ba8c07dd6268ca0497123c47c00f4a",
+    "semantic_hash": "b5ba8c07dd6268ca0497123c47c00f4a"
   },
   "Dashboard.Web/Components/Pages/Warehouse/AddScrapRecord.razor": {
     "mtime": 1789980867.879101,
@@ -1440,10 +1440,10 @@
     "semantic_hash": "96ab06f8cc735d938174c8e3cd6967b4"
   },
   "Dashboard.Web/Components/Pages/Warehouse/SalesInvoiceDetail.razor": {
-    "mtime": 1789980867.879101,
-    "seen": 1790076086.3860102,
-    "ast_hash": "40e65555b02f50702c6d9e80a71555aa",
-    "semantic_hash": "40e65555b02f50702c6d9e80a71555aa"
+    "mtime": 1790080717.0813508,
+    "seen": 1790081535.0795803,
+    "ast_hash": "3f5ac0532e5d856d6936944eb2baca14",
+    "semantic_hash": "3f5ac0532e5d856d6936944eb2baca14"
   },
   "Dashboard.Web/Components/Pages/Warehouse/SalesInvoices.razor": {
     "mtime": 1789980867.879101,
@@ -1638,10 +1638,10 @@
     "semantic_hash": "077c774ddbb73676972ca904ed26f2d2"
   },
   "Dashboard.Web/Program.cs": {
-    "mtime": 1790067676.364771,
-    "seen": 1790076086.386047,
-    "ast_hash": "fcb1c6312582a88a6ddcac2ea2af443f",
-    "semantic_hash": "fcb1c6312582a88a6ddcac2ea2af443f"
+    "mtime": 1790076527.1774516,
+    "seen": 1790080210.9715798,
+    "ast_hash": "c42f0d53d75faf7958a250c0559bf4dd",
+    "semantic_hash": "c42f0d53d75faf7958a250c0559bf4dd"
   },
   "Dashboard.Web/Properties/launchSettings.json": {
     "mtime": 1789980867.9260263,
@@ -1696,5 +1696,23 @@
     "seen": 1790076086.3860571,
     "ast_hash": "9e88777ed30dfd1b7a4dd51282e3643a",
     "semantic_hash": "9e88777ed30dfd1b7a4dd51282e3643a"
+  },
+  "Dashboard.Apllication/Helpers/PersianNumberToWords.cs": {
+    "mtime": 1790080307.3949964,
+    "seen": 1790081535.0009816,
+    "ast_hash": "ad5515eb4bd564c74a028cd99a17c603",
+    "semantic_hash": "ad5515eb4bd564c74a028cd99a17c603"
+  },
+  "Dashboard.Web/Components/Shared/AppPriceField.razor": {
+    "mtime": 1790079845.2848892,
+    "seen": 1790080210.963041,
+    "ast_hash": "545656031bc27d705a461dfbba8aabea",
+    "semantic_hash": "545656031bc27d705a461dfbba8aabea"
+  },
+  "Dashboard.Web/wwwroot/priceInput.js": {
+    "mtime": 1790078621.7483237,
+    "seen": 1790080210.9749224,
+    "ast_hash": "ff415f8e6ec213cc8ae3c2bdcd8a638f",
+    "semantic_hash": "ff415f8e6ec213cc8ae3c2bdcd8a638f"
   }
 }

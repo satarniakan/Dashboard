@@ -136,7 +136,8 @@ else
                                 var row = planRows[i];
                                 <tr>
                                     <td><PersianDateTimePicker TValue="DateTime" @bind-Value="row.DueDate" ShowTime="false" /></td>
-                                    <td><AppPriceField TValue="decimal" @bind-Value="row.Amount" WrapperClass="" /></td>
+                                    <td><AppPriceField TValue="decimal" @bind-Value="row.Amount" WrapperClass=""
+                                                       ShowWords="true" /></td>
                                     <td><button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => planRows.Remove(row)">حذف</button></td>
                                 </tr>
                             }

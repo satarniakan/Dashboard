@@ -80,9 +80,9 @@
                     <div class="row g-3 mb-4">
                         <!-- روند فروش ۷ روز اخیر (نمودار میله‌ای ساده بدون کتابخانه جانبی) -->
                         <div class="col-md-7">
-                            <div class="card-panel h-100">
+                            <div class="card-panel h-100 d-flex flex-column">
                                 <h6 class="mb-3">روند فروش ۷ روز اخیر</h6>
-                                <div class="d-flex align-items-end gap-2" style="height: 160px;">
+                                <div class="mt-auto d-flex align-items-end gap-2" style="height: 180px;">
                                     @{
                                         var maxSale = data.SalesTrend.Any() ? data.SalesTrend.Max(p => p.TotalAmount) : 0;
                                     }
@@ -90,10 +90,6 @@
                                     {
                                         var heightPercent = maxSale > 0 ? (double)(point.TotalAmount / maxSale) * 100 : 0;
                                         <div class="flex-fill text-center">
-                                            @* این div با ارتفاع ثابت ۱۶۰ پیکسل، همون کادر بیرونیه؛ فقط برای همین بار.
-                                               چون height:درصد روی خود بار فقط وقتی کار می‌کنه که والدش
-                                               ارتفاع "قطعی" (نه auto) داشته باشه — قبلاً این ارتفاع رو نداشت،
-                                               برای همین بار همیشه با ارتفاع صفر رندر می‌شد. *@
                                             <div class="d-flex align-items-end justify-content-center" style="height: 160px;">
                                                 <div class="bg-primary rounded-top" style="width: 70%; height: @(Math.Max(heightPercent, 2))%;" title="@CurrencyFormatter.ToToman(point.TotalAmount)"></div>
                                             </div>

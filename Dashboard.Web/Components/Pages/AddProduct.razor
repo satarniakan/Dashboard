@@ -43,11 +43,13 @@
                 <div class="row">
                     <div class="col-6 mb-3">
                         <label class="form-label">قیمت فروش (تومان)</label>
-                        <AppPriceField TValue="decimal" @bind-Value="newProduct!.Price" Placeholder="0" WrapperClass="" />
+                        <AppPriceField TValue="decimal" @bind-Value="newProduct!.Price" Placeholder="0" WrapperClass=""
+                                       ShowWords="true" QuickAmounts="new[] { 100_000L, 500_000L, 1_000_000L }" />
                     </div>
                     <div class="col-6 mb-3">
                         <label class="form-label">بهای تمام‌شده (تومان)</label>
-                        <AppPriceField TValue="decimal" @bind-Value="newProduct!.CostPrice" Placeholder="0" WrapperClass="" />
+                        <AppPriceField TValue="decimal" @bind-Value="newProduct!.CostPrice" Placeholder="0" WrapperClass=""
+                                       ShowWords="true" />
                     </div>
                 </div>
 
