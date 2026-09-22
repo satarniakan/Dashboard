@@ -3,6 +3,7 @@
 @attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.SalesReturnsManage)]
 @using Microsoft.AspNetCore.Authorization
 @using Dashboard.Application.DTOs
+@using Dashboard.Application.Helpers
 @using Dashboard.Application.Services
 @using System.Security.Claims
 @inject IStockService StockService
@@ -60,7 +61,7 @@
                 <br />
                 <strong>مشتری:</strong> @selectedInvoice.CustomerName
                 <br />
-                <strong>مبلغ:</strong> @selectedInvoice.TotalAmount
+                <strong>مبلغ:</strong> @CurrencyFormatter.ToToman(selectedInvoice.TotalAmount)
             </div>
         }
         <div class="row">

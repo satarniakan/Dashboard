@@ -56,11 +56,11 @@ else
                 <div class="row">
                     <div class="col-6 mb-2">
                         <label class="form-label">قیمت فروش</label>
-                        <input type="number" class="form-control" @bind="newVariant.Price" />
+                        <AppPriceField TValue="decimal" @bind-Value="newVariant.Price" WrapperClass="" />
                     </div>
                     <div class="col-6 mb-2">
                         <label class="form-label">بهای تمام‌شده</label>
-                        <input type="number" class="form-control" @bind="newVariant.CostPrice" />
+                        <AppPriceField TValue="decimal" @bind-Value="newVariant.CostPrice" WrapperClass="" />
                     </div>
                 </div>
 

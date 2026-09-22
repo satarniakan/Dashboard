@@ -95,6 +95,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             e.Property(s => s.QuantityOnHand).HasColumnType("decimal(18,3)");
             e.HasIndex(s => new { s.ProductId, s.WarehouseId }).IsUnique();
+            e.Property(s => s.RowVersion).IsRowVersion(); // توکن همزمانی خوش‌بینانه برای جلوگیری از race condition در موجودی
 
             e.HasOne(s => s.Product).WithMany().HasForeignKey(s => s.ProductId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.Warehouse).WithMany().HasForeignKey(s => s.WarehouseId).OnDelete(DeleteBehavior.Restrict);

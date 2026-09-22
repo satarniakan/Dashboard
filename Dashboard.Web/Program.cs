@@ -1,11 +1,10 @@
-// Dashboard.Web/Program.cs
+﻿// Dashboard.Web/Program.cs
 using Dashboard.Application;
-using Dashboard.Application.DTOs;
 using Dashboard.Application.Services;
 using Dashboard.Infrastructure;
 using Dashboard.Web.Components;
+using Dashboard.Web.Endpoints;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using Serilog;
@@ -115,7 +114,7 @@ builder.Services.AddDataProtection()
 
 // هر لایه تنظیمات سرویس‌های خودش را رجیستر می‌کند
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.IsDevelopment());
 // AddIdentity به‌صورت پیش‌فرض مسیر "/Account/Login" را برای صفحه‌ی ورود در نظر می‌گیرد،
 // در حالی که صفحه‌ی واقعی ورود در این پروژه "/login" است. بدون این تنظیم، وقتی کاربر
 // لاگ‌اوت شده باشد و بخواهد به صفحه‌ای محافظت‌شده برود، به مسیر اشتباه ریدایرکت می‌شود
@@ -206,78 +205,8 @@ app.UseAuthorization();
 app.UseAntiforgery();
 app.UseRateLimiter();
 
-// ===== Auth endpoints — هر کدام فقط IAuthService را صدا می‌زنند، بدون منطق تجاری =====
-
-app.MapPost("/Account/Login", async (
-    IAuthService authService,
-    [FromForm] string email,
-    [FromForm] string password) =>
-{
-    var result = await authService.LoginWithPasswordAsync(email, password);
-
-    return result.Succeeded
-        ? Results.Redirect("/")
-        : Results.Redirect("/login-password?error=1");
-}).RequireRateLimiting("login");
-
-app.MapPost("/Account/RequestOtp", async (
-    IAuthService authService,
-    [FromForm] string phoneNumber) =>
-{
-    await authService.RequestOtpAsync(phoneNumber);
-    return Results.Redirect($"/verify-otp?phone={phoneNumber}");
-}).RequireRateLimiting("otp-request");
-
-app.MapPost("/Account/VerifyOtp", async (
-    IAuthService authService,
-    [FromForm] string phoneNumber,
-    [FromForm] string code) =>
-{
-    var result = await authService.VerifyOtpAsync(phoneNumber, code);
-
-    if (!result.Succeeded)
-    {
-        return Results.Redirect($"/verify-otp?phone={phoneNumber}&error=1");
-    }
-
-    return result.IsNewUser
-        ? Results.Redirect("/profile?welcome=1")
-        : Results.Redirect("/");
-}).RequireRateLimiting("otp-verify");
-
-app.MapPost("/Account/CompleteProfile", async (
-    HttpContext httpContext,
-    IAuthService authService,
-    [FromForm] string firstName,
-    [FromForm] string lastName,
-    [FromForm] string? email,
-    [FromForm] int? provinceId,
-    [FromForm] int? cityId,
-    [FromForm] string? address,
-    [FromForm] string? password,
-    [FromForm] string? confirmPassword) =>
-{
-    var userId = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-    if (userId is null)
-    {
-        return Results.Redirect("/login");
-    }
-
-    var result = await authService.CompleteProfileAsync(userId, firstName, lastName, email, provinceId, cityId, address, password, confirmPassword);
-
-    return result.Status switch
-    {
-        ProfileUpdateStatus.Success => Results.Redirect("/profile?success=1"),
-        ProfileUpdateStatus.UserNotFound => Results.Redirect("/login"),
-        _ => Results.Redirect($"/profile?error={result.Status}")
-    };
-});
-
-app.MapPost("/logout", async (IAuthService authService) =>
-{
-    await authService.LogoutAsync();
-    return Results.Redirect("/login");
-});
+// Endpointهای احراز هویت (Dashboard.Web/Endpoints/AccountEndpoints.cs) — هر کدام فقط IAuthService را صدا می‌زنند
+app.MapAccountEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

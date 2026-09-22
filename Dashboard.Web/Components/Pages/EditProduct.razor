@@ -54,11 +54,11 @@ else
                     <div class="row">
                         <div class="col-6 mb-3">
                             <label class="form-label">قیمت فروش (تومان)</label>
-                            <InputNumber class="form-control" @bind-Value="editModel.Price" />
+                            <AppPriceField TValue="decimal" @bind-Value="editModel.Price" WrapperClass="" />
                         </div>
                         <div class="col-6 mb-3">
                             <label class="form-label">بهای تمام‌شده (تومان)</label>
-                            <InputNumber class="form-control" @bind-Value="editModel.CostPrice" />
+                            <AppPriceField TValue="decimal" @bind-Value="editModel.CostPrice" WrapperClass="" />
                         </div>
                     </div>
 
