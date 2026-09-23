@@ -54,6 +54,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ProductAttributeValue> ProductAttributeValues => Set<ProductAttributeValue>();
     public DbSet<ProductVariantAttribute> ProductVariantAttributes => Set<ProductVariantAttribute>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
+    public DbSet<Unit> Units => Set<Unit>();
     public DbSet<Province> Provinces => Set<Province>();
     public DbSet<City> Cities => Set<City>();
     protected override void OnModelCreating(ModelBuilder builder)
@@ -332,6 +333,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<ProductImage>(e =>
         {
             e.Property(i => i.Url).HasMaxLength(500).IsRequired();
+        });
+
+        // ---------- Unit (واحد شمارش) ----------
+        builder.Entity<Unit>(e =>
+        {
+            e.Property(u => u.Name).HasMaxLength(50).IsRequired();
+            e.HasIndex(u => u.Name).IsUnique();
         });
 
 

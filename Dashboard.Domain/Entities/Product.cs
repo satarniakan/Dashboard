@@ -111,6 +111,13 @@ public class Product
 
     public void Deactivate() => IsActive = false;
     public void Activate() => IsActive = true;
+
+    // تغییر واحد شمارش — فقط از مسیر مدیریت واحدها صدا زده می‌شود (ویرایش آبشاری)
+    public void RenameUnit(string unit)
+    {
+        if (string.IsNullOrWhiteSpace(unit)) throw new ArgumentException("واحد شمارش نمی‌تواند خالی باشد.", nameof(unit));
+        Unit = unit;
+    }
     // یک محصول موجود را به‌عنوان یکی از Variant های یک گروه محصول علامت‌گذاری می‌کند
     public void AssignToGroup(int productGroupId)
     {

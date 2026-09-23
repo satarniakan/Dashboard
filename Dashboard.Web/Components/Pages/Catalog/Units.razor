@@ -1,0 +1,183 @@
+@page "/catalog/units"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.CatalogManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@inject ICatalogService CatalogService
+@inject Dashboard.Web.Services.ToastService ToastService
+@inject ILogger<Dashboard.Web.Components.Pages.Catalog.Units> Logger
+<PageTitle>واحدهای شمارش</PageTitle>
+
+<h3>واحدهای شمارش</h3>
+
+<div class="card-panel mb-4" style="max-width: 480px;">
+    <EditForm Model="@newUnit" OnValidSubmit="HandleAdd" FormName="AddUnitForm">
+        <div class="mb-3">
+            <label class="form-label">نام واحد جدید (مثلاً: کیلوگرم، بسته، متر)</label>
+            <InputText class="form-control" @bind-Value="newUnit.Name" maxlength="50" />
+        </div>
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+            @(isSaving ? "در حال ذخیره..." : "افزودن واحد")
+        </button>
+    </EditForm>
+</div>
+
+<div class="card-panel">
+    @if (units is null)
+    {
+        <p class="text-muted">در حال بارگذاری...</p>
+    }
+    else if (!units.Any())
+    {
+        <p class="text-muted text-center py-4">هنوز واحدی ثبت نشده است.</p>
+    }
+    else
+    {
+        <table class="table mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>نام واحد</th>
+                    <th>تعداد کالاها</th>
+                    <th style="width: 180px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in units)
+                {
+                    if (editingId == u.Id)
+                    {
+                        <tr>
+                            <td>
+                                <input class="form-control form-control-sm" @bind="editName" maxlength="50"
+                                       @bind:after="() => editError = null" />
+                                @if (!string.IsNullOrEmpty(editError))
+                                {
+                                    <div class="text-danger small mt-1">@editError</div>
+                                }
+                            </td>
+                            <td class="text-muted">@QuantityFormatter.Format(u.ProductCount) کالا</td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-sm btn-success" disabled="@isSaving" @onclick="SaveEdit">ذخیره</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CancelEdit">انصراف</button>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        <tr>
+                            <td class="fw-medium">@u.Name</td>
+                            <td class="text-muted">@QuantityFormatter.Format(u.ProductCount) کالا</td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => StartEdit(u)">ویرایش</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" title="@(u.ProductCount > 0 ? "این واحد در حال استفاده است" : "حذف واحد")"
+                                        @onclick="() => HandleDelete(u)">
+                                    حذف
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<UnitDto>? units;
+    private CreateUnitDto newUnit = new();
+    private bool isSaving;
+    private string? errorMessage;
+
+    private int? editingId;
+    private string editName = string.Empty;
+    private string? editError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        units = (await CatalogService.GetUnitsAsync()).ToList();
+    }
+
+    private async Task HandleAdd()
+    {
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            await CatalogService.CreateUnitAsync(newUnit);
+            units = (await CatalogService.GetUnitsAsync()).ToList();
+            newUnit = new();
+            ToastService.ShowSuccess("واحد شمارش جدید اضافه شد.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در افزودن واحد شمارش");
+            errorMessage = ErrorMessageHelper.ToUserMessage(ex);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void StartEdit(UnitDto unit)
+    {
+        editingId = unit.Id;
+        editName = unit.Name;
+        editError = null;
+    }
+
+    private void CancelEdit()
+    {
+        editingId = null;
+        editError = null;
+    }
+
+    private async Task SaveEdit()
+    {
+        if (editingId is null) return;
+        isSaving = true;
+        editError = null;
+        try
+        {
+            await CatalogService.UpdateUnitAsync(editingId.Value, new UpdateUnitDto { Name = editName });
+            units = (await CatalogService.GetUnitsAsync()).ToList();
+            editingId = null;
+            ToastService.ShowSuccess("نام واحد به‌روزرسانی شد (کالاهای مرتبط هم اصلاح شدند).");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در ویرایش واحد شمارش");
+            editError = ErrorMessageHelper.ToUserMessage(ex);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task HandleDelete(UnitDto unit)
+    {
+        if (unit.ProductCount > 0)
+        {
+            ToastService.ShowInfo($"{unit.ProductCount} کالا از واحد «{unit.Name}» استفاده می‌کند؛ اول واحد آن کالاها را تغییر دهید.");
+            return;
+        }
+        try
+        {
+            await CatalogService.DeleteUnitAsync(unit.Id);
+            units = (await CatalogService.GetUnitsAsync()).ToList();
+            ToastService.ShowSuccess("واحد شمارش حذف شد.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در حذف واحد شمارش");
+            ToastService.ShowError(ErrorMessageHelper.ToUserMessage(ex));
+        }
+    }
+}

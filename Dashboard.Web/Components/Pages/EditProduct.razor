@@ -67,7 +67,18 @@ else
                     <div class="row">
                         <div class="col-6 mb-3">
                             <label class="form-label">واحد شمارش</label>
-                            <InputText class="form-control" @bind-Value="editModel.Unit" />
+                            <select class="form-select" @bind="editModel.Unit">
+                                @* واحد فعلی کالا اگر در فهرست نبود (داده‌ی قدیمی/آزاد)، حفظ می‌شود *@
+                                @if (!string.IsNullOrEmpty(editModel.Unit) && !unitNames.Contains(editModel.Unit))
+                                {
+                                    <option value="@editModel.Unit">@editModel.Unit (فعلی)</option>
+                                }
+                                @foreach (var unit in unitNames)
+                                {
+                                    <option value="@unit">@unit</option>
+                                }
+                            </select>
+                            <div class="form-text">مدیریت واحدها: <a href="/catalog/units">واحدهای شمارش</a></div>
                         </div>
                         <div class="col-6 mb-3">
                             <label class="form-label">نقطه سفارش مجدد</label>
@@ -146,6 +157,7 @@ else
 
     private UpdateProductDto? editModel;
     private IEnumerable<CategoryDto>? categories;
+    private List<string> unitNames = new();
     private bool isSaving;
     private bool isUploading;
     private bool notFound;
@@ -154,6 +166,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         categories = await CatalogService.GetCategoriesAsync();
+        unitNames = (await CatalogService.GetUnitsAsync()).Select(u => u.Name).ToList();
 
         var product = await ProductService.GetProductAsync(Id);
 

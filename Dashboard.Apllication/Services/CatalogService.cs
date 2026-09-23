@@ -1,5 +1,6 @@
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Interfaces;
+using Dashboard.Domain.Exceptions;
 using Dashboard.Application.DTOs;
 
 namespace Dashboard.Application.Services;
@@ -18,6 +19,12 @@ public interface ICatalogService
 
     Task AddVariantAsync(CreateVariantDto dto);
     Task AddImageAsync(int productGroupId, string url, bool isPrimary);
+
+    // واحد شمارش
+    Task<IEnumerable<UnitDto>> GetUnitsAsync();
+    Task CreateUnitAsync(CreateUnitDto dto);
+    Task UpdateUnitAsync(int id, UpdateUnitDto dto);
+    Task DeleteUnitAsync(int id);
 }
 
 public class CatalogService : ICatalogService
@@ -45,6 +52,67 @@ public class CatalogService : ICatalogService
     {
         var categories = await _unitOfWork.Catalog.GetCategoriesAsync();
         return categories.Select(c => new CategoryDto(c.Id, c.Name, c.Slug, c.ParentCategoryId));
+    }
+
+    public async Task<IEnumerable<UnitDto>> GetUnitsAsync()
+    {
+        var units = await _unitOfWork.Catalog.GetUnitsAsync();
+        // تعداد کالاهای هر واحد برای نمایش در صفحه و جلوگیری از حذف واحدِ در حال استفاده
+        var usage = (await _unitOfWork.Products.GetAllUnitNamesAsync())
+            .GroupBy(n => n, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+        return units
+            .OrderBy(u => u.Name)
+            .Select(u => new UnitDto(u.Id, u.Name, usage.GetValueOrDefault(u.Name, 0)));
+    }
+
+    public async Task CreateUnitAsync(CreateUnitDto dto)
+    {
+        var name = dto.Name.Trim();
+        if (string.IsNullOrEmpty(name))
+            throw new BusinessRuleException("نام واحد شمارش الزامی است.");
+        if (await _unitOfWork.Catalog.GetUnitByNameAsync(name) is not null)
+            throw new BusinessRuleException($"واحد شمارش «{name}» از قبل ثبت شده است.");
+
+        await _unitOfWork.Catalog.AddUnitAsync(new Unit { Name = name });
+        await _unitOfWork.CompleteAsync();
+    }
+
+    public async Task UpdateUnitAsync(int id, UpdateUnitDto dto)
+    {
+        var unit = await _unitOfWork.Catalog.GetUnitByIdAsync(id)
+            ?? throw new BusinessRuleException("واحد شمارش مورد نظر یافت نشد.");
+
+        var name = dto.Name.Trim();
+        if (string.IsNullOrEmpty(name))
+            throw new BusinessRuleException("نام واحد شمارش الزامی است.");
+        var duplicate = await _unitOfWork.Catalog.GetUnitByNameAsync(name);
+        if (duplicate is not null && duplicate.Id != id)
+            throw new BusinessRuleException($"واحد شمارش «{name}» از قبل ثبت شده است.");
+
+        if (unit.Name == name) return;
+
+        // Product.Unit رشته‌ای است؛ تغییر نام واحد باید روی کالاهای موجود هم اعمال شود
+        var oldName = unit.Name;
+        unit.Name = name;
+        foreach (var product in await _unitOfWork.Products.GetByUnitNameAsync(oldName))
+        {
+            product.RenameUnit(name);
+        }
+        await _unitOfWork.CompleteAsync();
+    }
+
+    public async Task DeleteUnitAsync(int id)
+    {
+        var unit = await _unitOfWork.Catalog.GetUnitByIdAsync(id)
+            ?? throw new BusinessRuleException("واحد شمارش مورد نظر یافت نشد.");
+
+        var inUse = await _unitOfWork.Products.GetByUnitNameAsync(unit.Name);
+        if (inUse.Any())
+            throw new BusinessRuleException($"{inUse.Count} کالا از واحد «{unit.Name}» استفاده می‌کند؛ اول واحد آن کالاها را تغییر دهید.");
+
+        _unitOfWork.Catalog.RemoveUnit(unit);
+        await _unitOfWork.CompleteAsync();
     }
 
     public async Task CreateAttributeAsync(CreateAttributeDto dto)

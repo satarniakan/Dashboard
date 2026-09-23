@@ -14,4 +14,8 @@ public interface IProductRepository
     Task AddAsync(Product product);
     Task UpdateAsync(Product product);
     Task DeleteAsync(int id);
+
+    // برای مدیریت واحد شمارش: کالاهایی که از یک واحد مشخص استفاده می‌کنند (ویرایش/حذفِ آبشاری)
+    Task<List<Product>> GetByUnitNameAsync(string unitName);
+    Task<List<string>> GetAllUnitNamesAsync();
 }

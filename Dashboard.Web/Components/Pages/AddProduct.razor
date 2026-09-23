@@ -56,7 +56,13 @@
                 <div class="row">
                     <div class="col-6 mb-3">
                         <label class="form-label">واحد شمارش</label>
-                        <InputText class="form-control" @bind-Value="newProduct!.Unit" />
+                        <select class="form-select" @bind="newProduct!.Unit">
+                            @foreach (var unit in unitNames)
+                            {
+                                <option value="@unit">@unit</option>
+                            }
+                        </select>
+                        <div class="form-text">مدیریت واحدها: <a href="/catalog/units">واحدهای شمارش</a></div>
                     </div>
                     <div class="col-6 mb-3">
                         <label class="form-label">نقطه سفارش مجدد</label>
@@ -135,6 +141,7 @@
     private CreateProductDto? newProduct { get; set; }
 
     private IEnumerable<CategoryDto>? categories;
+    private List<string> unitNames = new();
     private bool isSaving;
     private bool isUploading;
     private string? errorMessage;
@@ -143,6 +150,7 @@
     {
         newProduct ??= new();
         categories = await CatalogService.GetCategoriesAsync();
+        unitNames = (await CatalogService.GetUnitsAsync()).Select(u => u.Name).ToList();
     }
 
     private async Task HandleImageUpload(InputFileChangeEventArgs e)

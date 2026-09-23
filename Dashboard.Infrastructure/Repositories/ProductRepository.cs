@@ -58,4 +58,10 @@ public class ProductRepository : IProductRepository
             //await _context.SaveChangesAsync();
         }
     }
+
+    public async Task<List<Product>> GetByUnitNameAsync(string unitName) =>
+        await _context.Products.Where(p => p.Unit == unitName).ToListAsync();
+
+    public async Task<List<string>> GetAllUnitNamesAsync() =>
+        await _context.Products.Select(p => p.Unit).ToListAsync();
 }

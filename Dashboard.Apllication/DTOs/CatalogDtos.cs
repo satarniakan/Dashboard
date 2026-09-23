@@ -8,6 +8,16 @@ public class CreateCategoryDto
     public int? ParentCategoryId { get; set; }
 }
 
+public record UnitDto(int Id, string Name, int ProductCount);
+public class CreateUnitDto
+{
+    public string Name { get; set; } = string.Empty;
+}
+public class UpdateUnitDto
+{
+    public string Name { get; set; } = string.Empty;
+}
+
 public record AttributeValueDto(int Id, string Value);
 public record AttributeDto(int Id, string Name, List<AttributeValueDto> Values);
 public class CreateAttributeDto

@@ -54,4 +54,19 @@ public class CatalogRepository : ICatalogRepository
 
     public async Task AddImageAsync(ProductImage image) =>
         await _context.ProductImages.AddAsync(image);
+
+    public async Task<IEnumerable<Unit>> GetUnitsAsync() =>
+        await _context.Units.OrderBy(u => u.Name).ToListAsync();
+
+    public async Task<Unit?> GetUnitByIdAsync(int id) =>
+        await _context.Units.FindAsync(id);
+
+    public async Task<Unit?> GetUnitByNameAsync(string name) =>
+        await _context.Units.FirstOrDefaultAsync(u => u.Name == name);
+
+    public async Task AddUnitAsync(Unit unit) =>
+        await _context.Units.AddAsync(unit);
+
+    public void RemoveUnit(Unit unit) =>
+        _context.Units.Remove(unit);
 }

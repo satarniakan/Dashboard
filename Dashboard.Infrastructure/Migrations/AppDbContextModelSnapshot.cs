@@ -1338,6 +1338,27 @@ namespace Dashboard.Infrastructure.Migrations
                     b.ToTable("SupplierPayments");
                 });
 
+            modelBuilder.Entity("Dashboard.Domain.Entities.Unit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Units");
+                });
+
             modelBuilder.Entity("Dashboard.Domain.Entities.Warehouse", b =>
                 {
                     b.Property<int>("Id")

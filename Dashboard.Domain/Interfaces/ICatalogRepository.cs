@@ -20,4 +20,11 @@ public interface ICatalogRepository
 
     Task AddVariantAttributeAsync(ProductVariantAttribute variantAttribute);
     Task AddImageAsync(ProductImage image);
+
+    // واحد شمارش
+    Task<IEnumerable<Unit>> GetUnitsAsync();
+    Task<Unit?> GetUnitByIdAsync(int id);
+    Task<Unit?> GetUnitByNameAsync(string name);
+    Task AddUnitAsync(Unit unit);
+    void RemoveUnit(Unit unit);
 }
