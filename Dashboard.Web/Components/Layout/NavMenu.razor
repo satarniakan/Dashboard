@@ -10,19 +10,14 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All"><i class="bi bi-house-door"></i>خانه</NavLink>
+        </div>
+
         <AuthorizeView>
             <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All"><i class="bi bi-house-door"></i>خانه</NavLink>
-                </div>
-
-                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.ProductsView" Context="productsCtx">
-                    <Authorized>
-                        <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="products"><i class="bi bi-box-seam"></i>محصولات</NavLink>
-                        </div>
-                    </Authorized>
-                </AuthorizeView>
+              
+              
 
                 <!-- ===================== بخش فروش ===================== -->
                 <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.SalesView" Context="salesSectionCtx">
@@ -129,15 +124,8 @@
                                 <div class="nav-item px-3"><NavLink class="nav-link" href="catalog/categories"><i class="bi bi-diagram-3"></i>دسته‌بندی‌ها</NavLink></div>
                                 <div class="nav-item px-3"><NavLink class="nav-link" href="catalog/attributes"><i class="bi bi-sliders"></i>ویژگی‌ها</NavLink></div>
                                 <div class="nav-item px-3"><NavLink class="nav-link" href="catalog/units"><i class="bi bi-rulers"></i>واحدهای شمارش</NavLink></div>
+                                <div class="nav-item px-3"><NavLink class="nav-link" href="products"><i class="bi bi-box-seam"></i>محصولات</NavLink></div>
                             </div>
-                        </div>
-                    </Authorized>
-                </AuthorizeView>
-
-                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.AuditLogsView" Context="auditCtx">
-                    <Authorized>
-                        <div class="nav-item px-3">
-                            <NavLink class="nav-link" href="audit-logs"><i class="bi bi-clock-history"></i>گزارش رویدادها</NavLink>
                         </div>
                     </Authorized>
                 </AuthorizeView>
@@ -154,6 +142,7 @@
                                 <div class="nav-item px-3"><NavLink class="nav-link" href="admin/users"><i class="bi bi-person-gear"></i>کاربران</NavLink></div>
                                 <div class="nav-item px-3"><NavLink class="nav-link" href="admin/roles"><i class="bi bi-shield-check"></i>مدیریت مجوزها</NavLink></div>
                                 <div class="nav-item px-3"><NavLink class="nav-link" href="admin/seed-test-data"><i class="bi bi-database-add"></i>تولید دیتای تستی</NavLink></div>
+                                <div class="nav-item px-3"><NavLink class="nav-link" href="audit-logs"><i class="bi bi-clock-history"></i>گزارش رویدادها</NavLink></div>
                             </div>
                         </div>
                     </Authorized>

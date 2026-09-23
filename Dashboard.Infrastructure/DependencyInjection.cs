@@ -29,8 +29,9 @@ public static class DependencyInjection
             options.Password.RequireLowercase = false;
             options.Password.RequireDigit = false;
         })
-            .AddEntityFrameworkStores<AppDbContext>()
-            .AddDefaultTokenProviders();
+     .AddEntityFrameworkStores<AppDbContext>()
+     .AddDefaultTokenProviders()
+     .AddClaimsPrincipalFactory<AppUserClaimsPrincipalFactory>();
 
         // AddIdentity به‌صورت پیش‌فرض مسیر "/Account/Login" را برای صفحه‌ی ورود در نظر می‌گیرد،
         // در حالی که صفحه‌ی واقعی ورود در این پروژه "/login" است. بدون این تنظیم، کاربر لاگ‌اوت‌شده

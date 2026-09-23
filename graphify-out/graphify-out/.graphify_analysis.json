@@ -1,0 +1,861 @@
+{
+  "communities": {
+    "0": [
+      "manifest",
+      "manifest_dashboard_apllication_dtos_salesinvoicedtos_cs",
+      "manifest_dashboard_apllication_dtos_salesinvoicedtos_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_salesinvoicedtos_cs_mtime",
+      "manifest_dashboard_apllication_dtos_salesinvoicedtos_cs_seen",
+      "manifest_dashboard_apllication_dtos_salesinvoicedtos_cs_semantic_hash",
+      "manifest_dashboard_apllication_dtos_supplierdtos_cs",
+      "manifest_dashboard_apllication_dtos_supplierdtos_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_supplierdtos_cs_mtime",
+      "manifest_dashboard_apllication_dtos_supplierdtos_cs_seen",
+      "manifest_dashboard_apllication_dtos_supplierdtos_cs_semantic_hash"
+    ],
+    "1": [
+      "manifest_claude_settings_local_json",
+      "manifest_claude_settings_local_json_ast_hash",
+      "manifest_claude_settings_local_json_mtime",
+      "manifest_claude_settings_local_json_seen",
+      "manifest_claude_settings_local_json_semantic_hash"
+    ],
+    "2": [
+      "manifest_dashboard_apllication_dashboard_apllication_csproj",
+      "manifest_dashboard_apllication_dashboard_apllication_csproj_ast_hash",
+      "manifest_dashboard_apllication_dashboard_apllication_csproj_mtime",
+      "manifest_dashboard_apllication_dashboard_apllication_csproj_seen",
+      "manifest_dashboard_apllication_dashboard_apllication_csproj_semantic_hash"
+    ],
+    "3": [
+      "manifest_dashboard_apllication_dependencyinjection_cs",
+      "manifest_dashboard_apllication_dependencyinjection_cs_ast_hash",
+      "manifest_dashboard_apllication_dependencyinjection_cs_mtime",
+      "manifest_dashboard_apllication_dependencyinjection_cs_seen",
+      "manifest_dashboard_apllication_dependencyinjection_cs_semantic_hash"
+    ],
+    "4": [
+      "manifest_dashboard_apllication_dtos_authdtos_cs",
+      "manifest_dashboard_apllication_dtos_authdtos_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_authdtos_cs_mtime",
+      "manifest_dashboard_apllication_dtos_authdtos_cs_seen",
+      "manifest_dashboard_apllication_dtos_authdtos_cs_semantic_hash"
+    ],
+    "5": [
+      "manifest_dashboard_apllication_dtos_catalogdtos_cs",
+      "manifest_dashboard_apllication_dtos_catalogdtos_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_catalogdtos_cs_mtime",
+      "manifest_dashboard_apllication_dtos_catalogdtos_cs_seen",
+      "manifest_dashboard_apllication_dtos_catalogdtos_cs_semantic_hash"
+    ],
+    "6": [
+      "manifest_dashboard_apllication_dtos_createuserdto_cs",
+      "manifest_dashboard_apllication_dtos_createuserdto_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_createuserdto_cs_mtime",
+      "manifest_dashboard_apllication_dtos_createuserdto_cs_seen",
+      "manifest_dashboard_apllication_dtos_createuserdto_cs_semantic_hash"
+    ],
+    "7": [
+      "manifest_dashboard_apllication_dtos_customerdtos_cs",
+      "manifest_dashboard_apllication_dtos_customerdtos_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_customerdtos_cs_mtime",
+      "manifest_dashboard_apllication_dtos_customerdtos_cs_seen",
+      "manifest_dashboard_apllication_dtos_customerdtos_cs_semantic_hash"
+    ],
+    "8": [
+      "manifest_dashboard_apllication_dtos_dashboarddtos_cs",
+      "manifest_dashboard_apllication_dtos_dashboarddtos_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_dashboarddtos_cs_mtime",
+      "manifest_dashboard_apllication_dtos_dashboarddtos_cs_seen",
+      "manifest_dashboard_apllication_dtos_dashboarddtos_cs_semantic_hash"
+    ],
+    "9": [
+      "manifest_dashboard_apllication_dtos_financialdtos_cs",
+      "manifest_dashboard_apllication_dtos_financialdtos_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_financialdtos_cs_mtime",
+      "manifest_dashboard_apllication_dtos_financialdtos_cs_seen",
+      "manifest_dashboard_apllication_dtos_financialdtos_cs_semantic_hash"
+    ],
+    "10": [
+      "manifest_dashboard_apllication_dtos_installmentdtos_cs",
+      "manifest_dashboard_apllication_dtos_installmentdtos_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_installmentdtos_cs_mtime",
+      "manifest_dashboard_apllication_dtos_installmentdtos_cs_seen",
+      "manifest_dashboard_apllication_dtos_installmentdtos_cs_semantic_hash"
+    ],
+    "11": [
+      "manifest_dashboard_apllication_dtos_journaldtos_cs",
+      "manifest_dashboard_apllication_dtos_journaldtos_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_journaldtos_cs_mtime",
+      "manifest_dashboard_apllication_dtos_journaldtos_cs_seen",
+      "manifest_dashboard_apllication_dtos_journaldtos_cs_semantic_hash"
+    ],
+    "12": [
+      "manifest_dashboard_apllication_dtos_locationdtos_cs",
+      "manifest_dashboard_apllication_dtos_locationdtos_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_locationdtos_cs_mtime",
+      "manifest_dashboard_apllication_dtos_locationdtos_cs_seen",
+      "manifest_dashboard_apllication_dtos_locationdtos_cs_semantic_hash"
+    ],
+    "13": [
+      "manifest_dashboard_apllication_dtos_pagedresult_cs",
+      "manifest_dashboard_apllication_dtos_pagedresult_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_pagedresult_cs_mtime",
+      "manifest_dashboard_apllication_dtos_pagedresult_cs_seen",
+      "manifest_dashboard_apllication_dtos_pagedresult_cs_semantic_hash"
+    ],
+    "14": [
+      "manifest_dashboard_apllication_dtos_productdto_cs",
+      "manifest_dashboard_apllication_dtos_productdto_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_productdto_cs_mtime",
+      "manifest_dashboard_apllication_dtos_productdto_cs_seen",
+      "manifest_dashboard_apllication_dtos_productdto_cs_semantic_hash"
+    ],
+    "15": [
+      "manifest_dashboard_apllication_dtos_roledto_cs",
+      "manifest_dashboard_apllication_dtos_roledto_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_roledto_cs_mtime",
+      "manifest_dashboard_apllication_dtos_roledto_cs_seen",
+      "manifest_dashboard_apllication_dtos_roledto_cs_semantic_hash"
+    ],
+    "16": [
+      "manifest_dashboard_apllication_dtos_stockdtos_cs",
+      "manifest_dashboard_apllication_dtos_stockdtos_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_stockdtos_cs_mtime",
+      "manifest_dashboard_apllication_dtos_stockdtos_cs_seen",
+      "manifest_dashboard_apllication_dtos_stockdtos_cs_semantic_hash"
+    ],
+    "17": [
+      "manifest_dashboard_apllication_dtos_useradmindtos_cs",
+      "manifest_dashboard_apllication_dtos_useradmindtos_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_useradmindtos_cs_mtime",
+      "manifest_dashboard_apllication_dtos_useradmindtos_cs_seen",
+      "manifest_dashboard_apllication_dtos_useradmindtos_cs_semantic_hash"
+    ],
+    "18": [
+      "manifest_dashboard_apllication_dtos_warehousedtos_cs",
+      "manifest_dashboard_apllication_dtos_warehousedtos_cs_ast_hash",
+      "manifest_dashboard_apllication_dtos_warehousedtos_cs_mtime",
+      "manifest_dashboard_apllication_dtos_warehousedtos_cs_seen",
+      "manifest_dashboard_apllication_dtos_warehousedtos_cs_semantic_hash"
+    ],
+    "19": [
+      "manifest_dashboard_apllication_helpers_currencyformatter_cs",
+      "manifest_dashboard_apllication_helpers_currencyformatter_cs_ast_hash",
+      "manifest_dashboard_apllication_helpers_currencyformatter_cs_mtime",
+      "manifest_dashboard_apllication_helpers_currencyformatter_cs_seen",
+      "manifest_dashboard_apllication_helpers_currencyformatter_cs_semantic_hash"
+    ],
+    "20": [
+      "manifest_dashboard_apllication_helpers_documentnumbergenerator_cs",
+      "manifest_dashboard_apllication_helpers_documentnumbergenerator_cs_ast_hash",
+      "manifest_dashboard_apllication_helpers_documentnumbergenerator_cs_mtime",
+      "manifest_dashboard_apllication_helpers_documentnumbergenerator_cs_seen",
+      "manifest_dashboard_apllication_helpers_documentnumbergenerator_cs_semantic_hash"
+    ],
+    "21": [
+      "manifest_dashboard_apllication_helpers_persiandatehelper_cs",
+      "manifest_dashboard_apllication_helpers_persiandatehelper_cs_ast_hash",
+      "manifest_dashboard_apllication_helpers_persiandatehelper_cs_mtime",
+      "manifest_dashboard_apllication_helpers_persiandatehelper_cs_seen",
+      "manifest_dashboard_apllication_helpers_persiandatehelper_cs_semantic_hash"
+    ],
+    "22": [
+      "manifest_dashboard_apllication_helpers_quantityformatter_cs",
+      "manifest_dashboard_apllication_helpers_quantityformatter_cs_ast_hash",
+      "manifest_dashboard_apllication_helpers_quantityformatter_cs_mtime",
+      "manifest_dashboard_apllication_helpers_quantityformatter_cs_seen",
+      "manifest_dashboard_apllication_helpers_quantityformatter_cs_semantic_hash"
+    ],
+    "23": [
+      "manifest_dashboard_apllication_services_auditservice_cs",
+      "manifest_dashboard_apllication_services_auditservice_cs_ast_hash",
+      "manifest_dashboard_apllication_services_auditservice_cs_mtime",
+      "manifest_dashboard_apllication_services_auditservice_cs_seen",
+      "manifest_dashboard_apllication_services_auditservice_cs_semantic_hash"
+    ],
+    "24": [
+      "manifest_dashboard_apllication_services_authservice_cs",
+      "manifest_dashboard_apllication_services_authservice_cs_ast_hash",
+      "manifest_dashboard_apllication_services_authservice_cs_mtime",
+      "manifest_dashboard_apllication_services_authservice_cs_seen",
+      "manifest_dashboard_apllication_services_authservice_cs_semantic_hash"
+    ],
+    "25": [
+      "manifest_dashboard_apllication_services_catalogservice_cs",
+      "manifest_dashboard_apllication_services_catalogservice_cs_ast_hash",
+      "manifest_dashboard_apllication_services_catalogservice_cs_mtime",
+      "manifest_dashboard_apllication_services_catalogservice_cs_seen",
+      "manifest_dashboard_apllication_services_catalogservice_cs_semantic_hash"
+    ],
+    "26": [
+      "manifest_dashboard_apllication_services_dashboardservice_cs",
+      "manifest_dashboard_apllication_services_dashboardservice_cs_ast_hash",
+      "manifest_dashboard_apllication_services_dashboardservice_cs_mtime",
+      "manifest_dashboard_apllication_services_dashboardservice_cs_seen",
+      "manifest_dashboard_apllication_services_dashboardservice_cs_semantic_hash"
+    ],
+    "27": [
+      "manifest_dashboard_apllication_services_installmentservice_cs",
+      "manifest_dashboard_apllication_services_installmentservice_cs_ast_hash",
+      "manifest_dashboard_apllication_services_installmentservice_cs_mtime",
+      "manifest_dashboard_apllication_services_installmentservice_cs_seen",
+      "manifest_dashboard_apllication_services_installmentservice_cs_semantic_hash"
+    ],
+    "28": [
+      "manifest_dashboard_apllication_services_journalservice_cs",
+      "manifest_dashboard_apllication_services_journalservice_cs_ast_hash",
+      "manifest_dashboard_apllication_services_journalservice_cs_mtime",
+      "manifest_dashboard_apllication_services_journalservice_cs_seen",
+      "manifest_dashboard_apllication_services_journalservice_cs_semantic_hash"
+    ],
+    "29": [
+      "manifest_dashboard_apllication_services_locationservice_cs",
+      "manifest_dashboard_apllication_services_locationservice_cs_ast_hash",
+      "manifest_dashboard_apllication_services_locationservice_cs_mtime",
+      "manifest_dashboard_apllication_services_locationservice_cs_seen",
+      "manifest_dashboard_apllication_services_locationservice_cs_semantic_hash"
+    ],
+    "30": [
+      "manifest_dashboard_apllication_services_otpservice_cs",
+      "manifest_dashboard_apllication_services_otpservice_cs_ast_hash",
+      "manifest_dashboard_apllication_services_otpservice_cs_mtime",
+      "manifest_dashboard_apllication_services_otpservice_cs_seen",
+      "manifest_dashboard_apllication_services_otpservice_cs_semantic_hash"
+    ],
+    "31": [
+      "manifest_dashboard_apllication_services_permissionservice_cs",
+      "manifest_dashboard_apllication_services_permissionservice_cs_ast_hash",
+      "manifest_dashboard_apllication_services_permissionservice_cs_mtime",
+      "manifest_dashboard_apllication_services_permissionservice_cs_seen",
+      "manifest_dashboard_apllication_services_permissionservice_cs_semantic_hash"
+    ],
+    "32": [
+      "manifest_dashboard_apllication_services_productservice_cs",
+      "manifest_dashboard_apllication_services_productservice_cs_ast_hash",
+      "manifest_dashboard_apllication_services_productservice_cs_mtime",
+      "manifest_dashboard_apllication_services_productservice_cs_seen",
+      "manifest_dashboard_apllication_services_productservice_cs_semantic_hash"
+    ],
+    "33": [
+      "manifest_dashboard_apllication_services_salesservice_cs",
+      "manifest_dashboard_apllication_services_salesservice_cs_ast_hash",
+      "manifest_dashboard_apllication_services_salesservice_cs_mtime",
+      "manifest_dashboard_apllication_services_salesservice_cs_seen",
+      "manifest_dashboard_apllication_services_salesservice_cs_semantic_hash"
+    ],
+    "34": [
+      "manifest_dashboard_apllication_services_stockservice_cs",
+      "manifest_dashboard_apllication_services_stockservice_cs_ast_hash",
+      "manifest_dashboard_apllication_services_stockservice_cs_mtime",
+      "manifest_dashboard_apllication_services_stockservice_cs_seen",
+      "manifest_dashboard_apllication_services_stockservice_cs_semantic_hash"
+    ],
+    "35": [
+      "manifest_dashboard_apllication_services_stockvalidator_cs",
+      "manifest_dashboard_apllication_services_stockvalidator_cs_ast_hash",
+      "manifest_dashboard_apllication_services_stockvalidator_cs_mtime",
+      "manifest_dashboard_apllication_services_stockvalidator_cs_seen",
+      "manifest_dashboard_apllication_services_stockvalidator_cs_semantic_hash"
+    ],
+    "36": [
+      "manifest_dashboard_apllication_services_testdataseederservice_cs",
+      "manifest_dashboard_apllication_services_testdataseederservice_cs_ast_hash",
+      "manifest_dashboard_apllication_services_testdataseederservice_cs_mtime",
+      "manifest_dashboard_apllication_services_testdataseederservice_cs_seen",
+      "manifest_dashboard_apllication_services_testdataseederservice_cs_semantic_hash"
+    ],
+    "37": [
+      "manifest_dashboard_apllication_services_treasuryservice_cs",
+      "manifest_dashboard_apllication_services_treasuryservice_cs_ast_hash",
+      "manifest_dashboard_apllication_services_treasuryservice_cs_mtime",
+      "manifest_dashboard_apllication_services_treasuryservice_cs_seen",
+      "manifest_dashboard_apllication_services_treasuryservice_cs_semantic_hash"
+    ],
+    "38": [
+      "manifest_dashboard_apllication_services_useradminservice_cs",
+      "manifest_dashboard_apllication_services_useradminservice_cs_ast_hash",
+      "manifest_dashboard_apllication_services_useradminservice_cs_mtime",
+      "manifest_dashboard_apllication_services_useradminservice_cs_seen",
+      "manifest_dashboard_apllication_services_useradminservice_cs_semantic_hash"
+    ],
+    "39": [
+      "manifest_dashboard_apllication_validators_commonvalidations_cs",
+      "manifest_dashboard_apllication_validators_commonvalidations_cs_ast_hash",
+      "manifest_dashboard_apllication_validators_commonvalidations_cs_mtime",
+      "manifest_dashboard_apllication_validators_commonvalidations_cs_seen",
+      "manifest_dashboard_apllication_validators_commonvalidations_cs_semantic_hash"
+    ],
+    "40": [
+      "manifest_dashboard_domain_accounting_systemaccountcodes_cs",
+      "manifest_dashboard_domain_accounting_systemaccountcodes_cs_ast_hash",
+      "manifest_dashboard_domain_accounting_systemaccountcodes_cs_mtime",
+      "manifest_dashboard_domain_accounting_systemaccountcodes_cs_seen",
+      "manifest_dashboard_domain_accounting_systemaccountcodes_cs_semantic_hash"
+    ],
+    "41": [
+      "manifest_dashboard_domain_dashboard_domain_csproj",
+      "manifest_dashboard_domain_dashboard_domain_csproj_ast_hash",
+      "manifest_dashboard_domain_dashboard_domain_csproj_mtime",
+      "manifest_dashboard_domain_dashboard_domain_csproj_seen",
+      "manifest_dashboard_domain_dashboard_domain_csproj_semantic_hash"
+    ],
+    "42": [
+      "manifest_dashboard_domain_entities_account_cs",
+      "manifest_dashboard_domain_entities_account_cs_ast_hash",
+      "manifest_dashboard_domain_entities_account_cs_mtime",
+      "manifest_dashboard_domain_entities_account_cs_seen",
+      "manifest_dashboard_domain_entities_account_cs_semantic_hash"
+    ],
+    "43": [
+      "manifest_dashboard_domain_entities_auditlog_cs",
+      "manifest_dashboard_domain_entities_auditlog_cs_ast_hash",
+      "manifest_dashboard_domain_entities_auditlog_cs_mtime",
+      "manifest_dashboard_domain_entities_auditlog_cs_seen",
+      "manifest_dashboard_domain_entities_auditlog_cs_semantic_hash"
+    ],
+    "44": [
+      "manifest_dashboard_domain_entities_category_cs",
+      "manifest_dashboard_domain_entities_category_cs_ast_hash",
+      "manifest_dashboard_domain_entities_category_cs_mtime",
+      "manifest_dashboard_domain_entities_category_cs_seen",
+      "manifest_dashboard_domain_entities_category_cs_semantic_hash"
+    ],
+    "45": [
+      "manifest_dashboard_domain_entities_city_cs",
+      "manifest_dashboard_domain_entities_city_cs_ast_hash",
+      "manifest_dashboard_domain_entities_city_cs_mtime",
+      "manifest_dashboard_domain_entities_city_cs_seen",
+      "manifest_dashboard_domain_entities_city_cs_semantic_hash"
+    ],
+    "46": [
+      "manifest_dashboard_domain_entities_customer_cs",
+      "manifest_dashboard_domain_entities_customer_cs_ast_hash",
+      "manifest_dashboard_domain_entities_customer_cs_mtime",
+      "manifest_dashboard_domain_entities_customer_cs_seen",
+      "manifest_dashboard_domain_entities_customer_cs_semantic_hash"
+    ],
+    "47": [
+      "manifest_dashboard_domain_entities_customerreceipt_cs",
+      "manifest_dashboard_domain_entities_customerreceipt_cs_ast_hash",
+      "manifest_dashboard_domain_entities_customerreceipt_cs_mtime",
+      "manifest_dashboard_domain_entities_customerreceipt_cs_seen",
+      "manifest_dashboard_domain_entities_customerreceipt_cs_semantic_hash"
+    ],
+    "48": [
+      "manifest_dashboard_domain_entities_financialaccount_cs",
+      "manifest_dashboard_domain_entities_financialaccount_cs_ast_hash",
+      "manifest_dashboard_domain_entities_financialaccount_cs_mtime",
+      "manifest_dashboard_domain_entities_financialaccount_cs_seen",
+      "manifest_dashboard_domain_entities_financialaccount_cs_semantic_hash"
+    ],
+    "49": [
+      "manifest_dashboard_domain_entities_installmentplan_cs",
+      "manifest_dashboard_domain_entities_installmentplan_cs_ast_hash",
+      "manifest_dashboard_domain_entities_installmentplan_cs_mtime",
+      "manifest_dashboard_domain_entities_installmentplan_cs_seen",
+      "manifest_dashboard_domain_entities_installmentplan_cs_semantic_hash"
+    ],
+    "50": [
+      "manifest_dashboard_domain_entities_internalissue_cs",
+      "manifest_dashboard_domain_entities_internalissue_cs_ast_hash",
+      "manifest_dashboard_domain_entities_internalissue_cs_mtime",
+      "manifest_dashboard_domain_entities_internalissue_cs_seen",
+      "manifest_dashboard_domain_entities_internalissue_cs_semantic_hash"
+    ],
+    "51": [
+      "manifest_dashboard_domain_entities_journalentry_cs",
+      "manifest_dashboard_domain_entities_journalentry_cs_ast_hash",
+      "manifest_dashboard_domain_entities_journalentry_cs_mtime",
+      "manifest_dashboard_domain_entities_journalentry_cs_seen",
+      "manifest_dashboard_domain_entities_journalentry_cs_semantic_hash"
+    ],
+    "52": [
+      "manifest_dashboard_domain_entities_otpcode_cs",
+      "manifest_dashboard_domain_entities_otpcode_cs_ast_hash",
+      "manifest_dashboard_domain_entities_otpcode_cs_mtime",
+      "manifest_dashboard_domain_entities_otpcode_cs_seen",
+      "manifest_dashboard_domain_entities_otpcode_cs_semantic_hash"
+    ],
+    "53": [
+      "manifest_dashboard_domain_entities_product_cs",
+      "manifest_dashboard_domain_entities_product_cs_ast_hash",
+      "manifest_dashboard_domain_entities_product_cs_mtime",
+      "manifest_dashboard_domain_entities_product_cs_seen",
+      "manifest_dashboard_domain_entities_product_cs_semantic_hash"
+    ],
+    "54": [
+      "manifest_dashboard_domain_entities_productattribute_cs",
+      "manifest_dashboard_domain_entities_productattribute_cs_ast_hash",
+      "manifest_dashboard_domain_entities_productattribute_cs_mtime",
+      "manifest_dashboard_domain_entities_productattribute_cs_seen",
+      "manifest_dashboard_domain_entities_productattribute_cs_semantic_hash"
+    ],
+    "55": [
+      "manifest_dashboard_domain_entities_productgroup_cs",
+      "manifest_dashboard_domain_entities_productgroup_cs_ast_hash",
+      "manifest_dashboard_domain_entities_productgroup_cs_mtime",
+      "manifest_dashboard_domain_entities_productgroup_cs_seen",
+      "manifest_dashboard_domain_entities_productgroup_cs_semantic_hash"
+    ],
+    "56": [
+      "manifest_dashboard_domain_entities_productimage_cs",
+      "manifest_dashboard_domain_entities_productimage_cs_ast_hash",
+      "manifest_dashboard_domain_entities_productimage_cs_mtime",
+      "manifest_dashboard_domain_entities_productimage_cs_seen",
+      "manifest_dashboard_domain_entities_productimage_cs_semantic_hash"
+    ],
+    "57": [
+      "manifest_dashboard_domain_entities_province_cs",
+      "manifest_dashboard_domain_entities_province_cs_ast_hash",
+      "manifest_dashboard_domain_entities_province_cs_mtime",
+      "manifest_dashboard_domain_entities_province_cs_seen",
+      "manifest_dashboard_domain_entities_province_cs_semantic_hash"
+    ],
+    "58": [
+      "manifest_dashboard_domain_entities_purchasereceipt_cs",
+      "manifest_dashboard_domain_entities_purchasereceipt_cs_ast_hash",
+      "manifest_dashboard_domain_entities_purchasereceipt_cs_mtime",
+      "manifest_dashboard_domain_entities_purchasereceipt_cs_seen",
+      "manifest_dashboard_domain_entities_purchasereceipt_cs_semantic_hash"
+    ],
+    "59": [
+      "manifest_dashboard_domain_entities_salesinvoice_cs",
+      "manifest_dashboard_domain_entities_salesinvoice_cs_ast_hash",
+      "manifest_dashboard_domain_entities_salesinvoice_cs_mtime",
+      "manifest_dashboard_domain_entities_salesinvoice_cs_seen",
+      "manifest_dashboard_domain_entities_salesinvoice_cs_semantic_hash"
+    ],
+    "60": [
+      "manifest_dashboard_domain_entities_salesreturn_cs",
+      "manifest_dashboard_domain_entities_salesreturn_cs_ast_hash",
+      "manifest_dashboard_domain_entities_salesreturn_cs_mtime",
+      "manifest_dashboard_domain_entities_salesreturn_cs_seen",
+      "manifest_dashboard_domain_entities_salesreturn_cs_semantic_hash"
+    ],
+    "61": [
+      "manifest_dashboard_domain_entities_scraprecord_cs",
+      "manifest_dashboard_domain_entities_scraprecord_cs_ast_hash",
+      "manifest_dashboard_domain_entities_scraprecord_cs_mtime",
+      "manifest_dashboard_domain_entities_scraprecord_cs_seen",
+      "manifest_dashboard_domain_entities_scraprecord_cs_semantic_hash"
+    ],
+    "62": [
+      "manifest_dashboard_domain_entities_stockcount_cs",
+      "manifest_dashboard_domain_entities_stockcount_cs_ast_hash",
+      "manifest_dashboard_domain_entities_stockcount_cs_mtime",
+      "manifest_dashboard_domain_entities_stockcount_cs_seen",
+      "manifest_dashboard_domain_entities_stockcount_cs_semantic_hash"
+    ],
+    "63": [
+      "manifest_dashboard_domain_entities_stocklevel_cs",
+      "manifest_dashboard_domain_entities_stocklevel_cs_ast_hash",
+      "manifest_dashboard_domain_entities_stocklevel_cs_mtime",
+      "manifest_dashboard_domain_entities_stocklevel_cs_seen",
+      "manifest_dashboard_domain_entities_stocklevel_cs_semantic_hash"
+    ],
+    "64": [
+      "manifest_dashboard_domain_entities_stocktransaction_cs",
+      "manifest_dashboard_domain_entities_stocktransaction_cs_ast_hash",
+      "manifest_dashboard_domain_entities_stocktransaction_cs_mtime",
+      "manifest_dashboard_domain_entities_stocktransaction_cs_seen",
+      "manifest_dashboard_domain_entities_stocktransaction_cs_semantic_hash"
+    ],
+    "65": [
+      "manifest_dashboard_domain_entities_stocktransfer_cs",
+      "manifest_dashboard_domain_entities_stocktransfer_cs_ast_hash",
+      "manifest_dashboard_domain_entities_stocktransfer_cs_mtime",
+      "manifest_dashboard_domain_entities_stocktransfer_cs_seen",
+      "manifest_dashboard_domain_entities_stocktransfer_cs_semantic_hash"
+    ],
+    "66": [
+      "manifest_dashboard_domain_entities_supplier_cs",
+      "manifest_dashboard_domain_entities_supplier_cs_ast_hash",
+      "manifest_dashboard_domain_entities_supplier_cs_mtime",
+      "manifest_dashboard_domain_entities_supplier_cs_seen",
+      "manifest_dashboard_domain_entities_supplier_cs_semantic_hash"
+    ],
+    "67": [
+      "manifest_dashboard_domain_entities_supplierpayment_cs",
+      "manifest_dashboard_domain_entities_supplierpayment_cs_ast_hash",
+      "manifest_dashboard_domain_entities_supplierpayment_cs_mtime",
+      "manifest_dashboard_domain_entities_supplierpayment_cs_seen",
+      "manifest_dashboard_domain_entities_supplierpayment_cs_semantic_hash"
+    ],
+    "68": [
+      "manifest_dashboard_domain_entities_warehouse_cs",
+      "manifest_dashboard_domain_entities_warehouse_cs_ast_hash",
+      "manifest_dashboard_domain_entities_warehouse_cs_mtime",
+      "manifest_dashboard_domain_entities_warehouse_cs_seen",
+      "manifest_dashboard_domain_entities_warehouse_cs_semantic_hash"
+    ],
+    "69": [
+      "manifest_dashboard_domain_enums_accounttype_cs",
+      "manifest_dashboard_domain_enums_accounttype_cs_ast_hash",
+      "manifest_dashboard_domain_enums_accounttype_cs_mtime",
+      "manifest_dashboard_domain_enums_accounttype_cs_seen",
+      "manifest_dashboard_domain_enums_accounttype_cs_semantic_hash"
+    ],
+    "70": [
+      "manifest_dashboard_domain_enums_financialaccounttype_cs",
+      "manifest_dashboard_domain_enums_financialaccounttype_cs_ast_hash",
+      "manifest_dashboard_domain_enums_financialaccounttype_cs_mtime",
+      "manifest_dashboard_domain_enums_financialaccounttype_cs_seen",
+      "manifest_dashboard_domain_enums_financialaccounttype_cs_semantic_hash"
+    ],
+    "71": [
+      "manifest_dashboard_domain_enums_paymentmethod_cs",
+      "manifest_dashboard_domain_enums_paymentmethod_cs_ast_hash",
+      "manifest_dashboard_domain_enums_paymentmethod_cs_mtime",
+      "manifest_dashboard_domain_enums_paymentmethod_cs_seen",
+      "manifest_dashboard_domain_enums_paymentmethod_cs_semantic_hash"
+    ],
+    "72": [
+      "manifest_dashboard_domain_enums_salesinvoicestatus_cs",
+      "manifest_dashboard_domain_enums_salesinvoicestatus_cs_ast_hash",
+      "manifest_dashboard_domain_enums_salesinvoicestatus_cs_mtime",
+      "manifest_dashboard_domain_enums_salesinvoicestatus_cs_seen",
+      "manifest_dashboard_domain_enums_salesinvoicestatus_cs_semantic_hash"
+    ],
+    "73": [
+      "manifest_dashboard_domain_enums_stockcountstatus_cs",
+      "manifest_dashboard_domain_enums_stockcountstatus_cs_ast_hash",
+      "manifest_dashboard_domain_enums_stockcountstatus_cs_mtime",
+      "manifest_dashboard_domain_enums_stockcountstatus_cs_seen",
+      "manifest_dashboard_domain_enums_stockcountstatus_cs_semantic_hash"
+    ],
+    "74": [
+      "manifest_dashboard_domain_enums_stocktransactiontype_cs",
+      "manifest_dashboard_domain_enums_stocktransactiontype_cs_ast_hash",
+      "manifest_dashboard_domain_enums_stocktransactiontype_cs_mtime",
+      "manifest_dashboard_domain_enums_stocktransactiontype_cs_seen",
+      "manifest_dashboard_domain_enums_stocktransactiontype_cs_semantic_hash"
+    ],
+    "75": [
+      "manifest_dashboard_domain_enums_stocktransferstatus_cs",
+      "manifest_dashboard_domain_enums_stocktransferstatus_cs_ast_hash",
+      "manifest_dashboard_domain_enums_stocktransferstatus_cs_mtime",
+      "manifest_dashboard_domain_enums_stocktransferstatus_cs_seen",
+      "manifest_dashboard_domain_enums_stocktransferstatus_cs_semantic_hash"
+    ],
+    "76": [
+      "manifest_dashboard_domain_exceptions_businessruleexception_cs",
+      "manifest_dashboard_domain_exceptions_businessruleexception_cs_ast_hash",
+      "manifest_dashboard_domain_exceptions_businessruleexception_cs_mtime",
+      "manifest_dashboard_domain_exceptions_businessruleexception_cs_seen",
+      "manifest_dashboard_domain_exceptions_businessruleexception_cs_semantic_hash"
+    ],
+    "77": [
+      "manifest_dashboard_domain_exceptions_notfoundexception_cs",
+      "manifest_dashboard_domain_exceptions_notfoundexception_cs_ast_hash",
+      "manifest_dashboard_domain_exceptions_notfoundexception_cs_mtime",
+      "manifest_dashboard_domain_exceptions_notfoundexception_cs_seen",
+      "manifest_dashboard_domain_exceptions_notfoundexception_cs_semantic_hash"
+    ],
+    "78": [
+      "manifest_dashboard_domain_identity_applicationuser_cs",
+      "manifest_dashboard_domain_identity_applicationuser_cs_ast_hash",
+      "manifest_dashboard_domain_identity_applicationuser_cs_mtime",
+      "manifest_dashboard_domain_identity_applicationuser_cs_seen",
+      "manifest_dashboard_domain_identity_applicationuser_cs_semantic_hash"
+    ],
+    "79": [
+      "manifest_dashboard_domain_identity_permissions_cs",
+      "manifest_dashboard_domain_identity_permissions_cs_ast_hash",
+      "manifest_dashboard_domain_identity_permissions_cs_mtime",
+      "manifest_dashboard_domain_identity_permissions_cs_seen",
+      "manifest_dashboard_domain_identity_permissions_cs_semantic_hash"
+    ],
+    "80": [
+      "manifest_dashboard_domain_identity_roles_cs",
+      "manifest_dashboard_domain_identity_roles_cs_ast_hash",
+      "manifest_dashboard_domain_identity_roles_cs_mtime",
+      "manifest_dashboard_domain_identity_roles_cs_seen",
+      "manifest_dashboard_domain_identity_roles_cs_semantic_hash"
+    ],
+    "81": [
+      "manifest_dashboard_domain_interfaces_iaccountrepository_cs",
+      "manifest_dashboard_domain_interfaces_iaccountrepository_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_iaccountrepository_cs_mtime",
+      "manifest_dashboard_domain_interfaces_iaccountrepository_cs_seen",
+      "manifest_dashboard_domain_interfaces_iaccountrepository_cs_semantic_hash"
+    ],
+    "82": [
+      "manifest_dashboard_domain_interfaces_iauditlogrepository_cs",
+      "manifest_dashboard_domain_interfaces_iauditlogrepository_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_iauditlogrepository_cs_mtime",
+      "manifest_dashboard_domain_interfaces_iauditlogrepository_cs_seen",
+      "manifest_dashboard_domain_interfaces_iauditlogrepository_cs_semantic_hash"
+    ],
+    "83": [
+      "manifest_dashboard_domain_interfaces_icatalogrepository_cs",
+      "manifest_dashboard_domain_interfaces_icatalogrepository_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_icatalogrepository_cs_mtime",
+      "manifest_dashboard_domain_interfaces_icatalogrepository_cs_seen",
+      "manifest_dashboard_domain_interfaces_icatalogrepository_cs_semantic_hash"
+    ],
+    "84": [
+      "manifest_dashboard_domain_interfaces_icustomerreceiptrepository_cs",
+      "manifest_dashboard_domain_interfaces_icustomerreceiptrepository_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_icustomerreceiptrepository_cs_mtime",
+      "manifest_dashboard_domain_interfaces_icustomerreceiptrepository_cs_seen",
+      "manifest_dashboard_domain_interfaces_icustomerreceiptrepository_cs_semantic_hash"
+    ],
+    "85": [
+      "manifest_dashboard_domain_interfaces_icustomerrepository_cs",
+      "manifest_dashboard_domain_interfaces_icustomerrepository_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_icustomerrepository_cs_mtime",
+      "manifest_dashboard_domain_interfaces_icustomerrepository_cs_seen",
+      "manifest_dashboard_domain_interfaces_icustomerrepository_cs_semantic_hash"
+    ],
+    "86": [
+      "manifest_dashboard_domain_interfaces_ielectronicinvoiceprovider_cs",
+      "manifest_dashboard_domain_interfaces_ielectronicinvoiceprovider_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_ielectronicinvoiceprovider_cs_mtime",
+      "manifest_dashboard_domain_interfaces_ielectronicinvoiceprovider_cs_seen",
+      "manifest_dashboard_domain_interfaces_ielectronicinvoiceprovider_cs_semantic_hash"
+    ],
+    "87": [
+      "manifest_dashboard_domain_interfaces_ifilestorageservice_cs",
+      "manifest_dashboard_domain_interfaces_ifilestorageservice_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_ifilestorageservice_cs_mtime",
+      "manifest_dashboard_domain_interfaces_ifilestorageservice_cs_seen",
+      "manifest_dashboard_domain_interfaces_ifilestorageservice_cs_semantic_hash"
+    ],
+    "88": [
+      "manifest_dashboard_domain_interfaces_ifinancialaccountrepository_cs",
+      "manifest_dashboard_domain_interfaces_ifinancialaccountrepository_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_ifinancialaccountrepository_cs_mtime",
+      "manifest_dashboard_domain_interfaces_ifinancialaccountrepository_cs_seen",
+      "manifest_dashboard_domain_interfaces_ifinancialaccountrepository_cs_semantic_hash"
+    ],
+    "89": [
+      "manifest_dashboard_domain_interfaces_iinstallmentplanrepository_cs",
+      "manifest_dashboard_domain_interfaces_iinstallmentplanrepository_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_iinstallmentplanrepository_cs_mtime",
+      "manifest_dashboard_domain_interfaces_iinstallmentplanrepository_cs_seen",
+      "manifest_dashboard_domain_interfaces_iinstallmentplanrepository_cs_semantic_hash"
+    ],
+    "90": [
+      "manifest_dashboard_domain_interfaces_iinternalissuerepository_cs",
+      "manifest_dashboard_domain_interfaces_iinternalissuerepository_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_iinternalissuerepository_cs_mtime",
+      "manifest_dashboard_domain_interfaces_iinternalissuerepository_cs_seen",
+      "manifest_dashboard_domain_interfaces_iinternalissuerepository_cs_semantic_hash"
+    ],
+    "91": [
+      "manifest_dashboard_domain_interfaces_ijournalentryrepository_cs",
+      "manifest_dashboard_domain_interfaces_ijournalentryrepository_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_ijournalentryrepository_cs_mtime",
+      "manifest_dashboard_domain_interfaces_ijournalentryrepository_cs_seen",
+      "manifest_dashboard_domain_interfaces_ijournalentryrepository_cs_semantic_hash"
+    ],
+    "92": [
+      "manifest_dashboard_domain_interfaces_ilocationrepository_cs",
+      "manifest_dashboard_domain_interfaces_ilocationrepository_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_ilocationrepository_cs_mtime",
+      "manifest_dashboard_domain_interfaces_ilocationrepository_cs_seen",
+      "manifest_dashboard_domain_interfaces_ilocationrepository_cs_semantic_hash"
+    ],
+    "93": [
+      "manifest_dashboard_domain_interfaces_iotprepository_cs",
+      "manifest_dashboard_domain_interfaces_iotprepository_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_iotprepository_cs_mtime",
+      "manifest_dashboard_domain_interfaces_iotprepository_cs_seen",
+      "manifest_dashboard_domain_interfaces_iotprepository_cs_semantic_hash"
+    ],
+    "94": [
+      "manifest_dashboard_domain_interfaces_iproductrepository_cs",
+      "manifest_dashboard_domain_interfaces_iproductrepository_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_iproductrepository_cs_mtime",
+      "manifest_dashboard_domain_interfaces_iproductrepository_cs_seen",
+      "manifest_dashboard_domain_interfaces_iproductrepository_cs_semantic_hash"
+    ],
+    "95": [
+      "manifest_dashboard_domain_interfaces_ipurchasereceiptrepository_cs",
+      "manifest_dashboard_domain_interfaces_ipurchasereceiptrepository_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_ipurchasereceiptrepository_cs_mtime",
+      "manifest_dashboard_domain_interfaces_ipurchasereceiptrepository_cs_seen",
+      "manifest_dashboard_domain_interfaces_ipurchasereceiptrepository_cs_semantic_hash"
+    ],
+    "96": [
+      "manifest_dashboard_domain_interfaces_isalesinvoicerepository_cs",
+      "manifest_dashboard_domain_interfaces_isalesinvoicerepository_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_isalesinvoicerepository_cs_mtime",
+      "manifest_dashboard_domain_interfaces_isalesinvoicerepository_cs_seen",
+      "manifest_dashboard_domain_interfaces_isalesinvoicerepository_cs_semantic_hash"
+    ],
+    "97": [
+      "manifest_dashboard_domain_interfaces_isalesreturnrepository_cs",
+      "manifest_dashboard_domain_interfaces_isalesreturnrepository_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_isalesreturnrepository_cs_mtime",
+      "manifest_dashboard_domain_interfaces_isalesreturnrepository_cs_seen",
+      "manifest_dashboard_domain_interfaces_isalesreturnrepository_cs_semantic_hash"
+    ],
+    "98": [
+      "manifest_dashboard_domain_interfaces_iscraprecordrepository_cs",
+      "manifest_dashboard_domain_interfaces_iscraprecordrepository_cs_ast_hash",
+      "manifest_dashboard_domain_interfaces_iscraprecordrepository_cs_mtime",
+      "manifest_dashboard_domain_interfaces_iscraprecordrepository_cs_seen",
+      "manifest_dashboard_domain_interfaces_iscraprecordrepository_cs_semantic_hash"
+    ]
+  },
+  "cohesion": {
+    "0": 0.18181818181818182,
+    "1": 0.4,
+    "2": 0.4,
+    "3": 0.4,
+    "4": 0.4,
+    "5": 0.4,
+    "6": 0.4,
+    "7": 0.4,
+    "8": 0.4,
+    "9": 0.4,
+    "10": 0.4,
+    "11": 0.4,
+    "12": 0.4,
+    "13": 0.4,
+    "14": 0.4,
+    "15": 0.4,
+    "16": 0.4,
+    "17": 0.4,
+    "18": 0.4,
+    "19": 0.4,
+    "20": 0.4,
+    "21": 0.4,
+    "22": 0.4,
+    "23": 0.4,
+    "24": 0.4,
+    "25": 0.4,
+    "26": 0.4,
+    "27": 0.4,
+    "28": 0.4,
+    "29": 0.4,
+    "30": 0.4,
+    "31": 0.4,
+    "32": 0.4,
+    "33": 0.4,
+    "34": 0.4,
+    "35": 0.4,
+    "36": 0.4,
+    "37": 0.4,
+    "38": 0.4,
+    "39": 0.4,
+    "40": 0.4,
+    "41": 0.4,
+    "42": 0.4,
+    "43": 0.4,
+    "44": 0.4,
+    "45": 0.4,
+    "46": 0.4,
+    "47": 0.4,
+    "48": 0.4,
+    "49": 0.4,
+    "50": 0.4,
+    "51": 0.4,
+    "52": 0.4,
+    "53": 0.4,
+    "54": 0.4,
+    "55": 0.4,
+    "56": 0.4,
+    "57": 0.4,
+    "58": 0.4,
+    "59": 0.4,
+    "60": 0.4,
+    "61": 0.4,
+    "62": 0.4,
+    "63": 0.4,
+    "64": 0.4,
+    "65": 0.4,
+    "66": 0.4,
+    "67": 0.4,
+    "68": 0.4,
+    "69": 0.4,
+    "70": 0.4,
+    "71": 0.4,
+    "72": 0.4,
+    "73": 0.4,
+    "74": 0.4,
+    "75": 0.4,
+    "76": 0.4,
+    "77": 0.4,
+    "78": 0.4,
+    "79": 0.4,
+    "80": 0.4,
+    "81": 0.4,
+    "82": 0.4,
+    "83": 0.4,
+    "84": 0.4,
+    "85": 0.4,
+    "86": 0.4,
+    "87": 0.4,
+    "88": 0.4,
+    "89": 0.4,
+    "90": 0.4,
+    "91": 0.4,
+    "92": 0.4,
+    "93": 0.4,
+    "94": 0.4,
+    "95": 0.4,
+    "96": 0.4,
+    "97": 0.4,
+    "98": 0.4
+  },
+  "gods": [
+    {
+      "id": "manifest_claude_settings_local_json",
+      "label": ".claude/settings.local.json",
+      "degree": 5
+    },
+    {
+      "id": "manifest_dashboard_apllication_dtos_authdtos_cs",
+      "label": "Dashboard.Apllication/DTOs/AuthDtos.cs",
+      "degree": 5
+    },
+    {
+      "id": "manifest_dashboard_apllication_dtos_catalogdtos_cs",
+      "label": "Dashboard.Apllication/DTOs/CatalogDtos.cs",
+      "degree": 5
+    },
+    {
+      "id": "manifest_dashboard_apllication_dtos_createuserdto_cs",
+      "label": "Dashboard.Apllication/DTOs/CreateUserDto.cs",
+      "degree": 5
+    },
+    {
+      "id": "manifest_dashboard_apllication_dtos_customerdtos_cs",
+      "label": "Dashboard.Apllication/DTOs/CustomerDtos.cs",
+      "degree": 5
+    },
+    {
+      "id": "manifest_dashboard_apllication_dtos_dashboarddtos_cs",
+      "label": "Dashboard.Apllication/DTOs/DashboardDtos.cs",
+      "degree": 5
+    },
+    {
+      "id": "manifest_dashboard_apllication_dtos_financialdtos_cs",
+      "label": "Dashboard.Apllication/DTOs/FinancialDtos.cs",
+      "degree": 5
+    },
+    {
+      "id": "manifest_dashboard_apllication_dtos_installmentdtos_cs",
+      "label": "Dashboard.Apllication/DTOs/InstallmentDtos.cs",
+      "degree": 5
+    },
+    {
+      "id": "manifest_dashboard_apllication_dtos_journaldtos_cs",
+      "label": "Dashboard.Apllication/DTOs/JournalDtos.cs",
+      "degree": 5
+    },
+    {
+      "id": "manifest_dashboard_apllication_dtos_locationdtos_cs",
+      "label": "Dashboard.Apllication/DTOs/LocationDtos.cs",
+      "degree": 5
+    }
+  ],
+  "surprises": [],
+  "tokens": {
+    "input": 0,
+    "output": 0
+  }
+}

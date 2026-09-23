@@ -1,5 +1,6 @@
 ﻿@inherits LayoutComponentBase
 @using Dashboard.Web.Components.Shared
+@using Dashboard.Domain.Identity
 <div class="page">
     <div class="sidebar">
         <NavMenu @rendermode="InteractiveServer" />
@@ -9,7 +10,18 @@
         <div class="top-row px-4">
             <AuthorizeView>
                 <Authorized>
-                    <span class="text-muted small">@context.User.Identity?.Name</span>
+                    <span class="text-muted small">
+                        @(context.User.FindFirst("FullName")?.Value ?? context.User.Identity?.Name)
+                        @{
+                            var roleNames = context.User.FindAll(System.Security.Claims.ClaimTypes.Role)
+                                                         .Select(c => Roles.ToPersian(c.Value));
+                            var roleText = string.Join("، ", roleNames);
+                        }
+                        @if (!string.IsNullOrWhiteSpace(roleText))
+                        {
+                            <span class="badge bg-light text-dark ms-1">@roleText</span>
+                        }
+                    </span>
                 </Authorized>
             </AuthorizeView>
         </div>

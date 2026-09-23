@@ -8,9 +8,14 @@
 
 <PageTitle>گزارش رویدادها</PageTitle>
 
-<h3>گزارش رویدادها</h3>
+<h3 class="mb-4">گزارش رویدادها</h3>
 
 <div class="card-panel">
+    <div class="mb-3">
+        <input type="search" class="form-control" style="max-width: 320px;" placeholder="جست‌وجو در رویدادها..."
+               value="@searchTerm" @oninput="OnSearchChanged" />
+    </div>
+
     @if (logs is null)
     {
         <p class="text-muted">در حال بارگذاری...</p>
@@ -43,13 +48,43 @@
             </tbody>
         </table>
     }
+
+    <Dashboard.Web.Components.Shared.Pager CurrentPage="currentPage" TotalPages="totalPages"
+                                           TotalCount="totalCount" OnPageChanged="OnPageChanged" />
 </div>
 
 @code {
     private IEnumerable<AuditLog>? logs;
 
+    private string searchTerm = string.Empty;
+    private int currentPage = 1;
+    private int totalPages;
+    private int totalCount;
+    private const int PageSize = 10;
+
     protected override async Task OnInitializedAsync()
     {
-        logs = await AuditService.GetRecentEventsAsync(100);
+        await LoadLogs();
+    }
+
+    private async Task LoadLogs()
+    {
+        var result = await AuditService.GetEventsPagedAsync(currentPage, PageSize, searchTerm);
+        logs = result.Items;
+        totalPages = result.TotalPages;
+        totalCount = result.TotalCount;
+    }
+
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? string.Empty;
+        currentPage = 1;
+        await LoadLogs();
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        currentPage = page;
+        await LoadLogs();
     }
 }
