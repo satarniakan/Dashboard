@@ -11,20 +11,40 @@
 @inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>تغییر نقش‌های کاربر</PageTitle>
 
-<h3>تغییر نقش‌های کاربر</h3>
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">تغییر نقش‌های کاربر</h3>
+        <div class="text-body-secondary small">نقش‌های دسترسی این کاربر را انتخاب کنید و تغییرات را ذخیره نمایید.</div>
+    </div>
+    <a href="/admin/users" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+    </a>
+</div>
 
 @if (user is null)
 {
-    <p class="text-muted">در حال بارگذاری...</p>
+    <p class="text-body-secondary">در حال بارگذاری...</p>
 }
 else
 {
-    <div class="card-panel" style="max-width: 420px;">
-        <p><strong>شماره موبایل:</strong> @user.PhoneNumber</p>
-        <p><strong>نام:</strong> @(user.FullName ?? "-")</p>
+    <div style="max-width: 480px;">
 
-        <div class="mb-4">
-            <label class="form-label">نقش‌ها</label>
+        @* ===== اطلاعات کاربر ===== *@
+        <div class="card-panel mb-3">
+            <h6 class="form-section-title"><i class="bi bi-person"></i>اطلاعات کاربر</h6>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-body-secondary small">نام</span>
+                <strong>@(user.FullName ?? "-")</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-0">
+                <span class="text-body-secondary small">شماره موبایل</span>
+                <strong>@user.PhoneNumber</strong>
+            </div>
+        </div>
+
+        @* ===== نقش‌ها ===== *@
+        <div class="card-panel mb-3">
+            <h6 class="form-section-title"><i class="bi bi-shield-lock"></i>نقش‌ها</h6>
             @foreach (var role in allRoles)
             {
                 <div class="form-check">
@@ -38,13 +58,26 @@ else
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-danger">@errorMessage</div>
+            <div class="alert alert-danger mb-0">
+                <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
+            </div>
         }
 
-        <button class="btn btn-primary" @onclick="SaveRoles" disabled="@isSaving">
-            @(isSaving ? "در حال ذخیره..." : "ذخیره")
-        </button>
-        <a href="/admin/users" class="btn btn-outline-secondary">انصراف</a>
+        @* ===== نوار عملیات ===== *@
+        <div class="card-panel form-actions mt-3 d-flex align-items-center gap-2">
+            <button class="btn btn-primary" @onclick="SaveRoles" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-check-lg me-1"></i>
+                }
+                ذخیره تغییرات
+            </button>
+            <a href="/admin/users" class="btn btn-outline-secondary">انصراف</a>
+        </div>
     </div>
 }
 

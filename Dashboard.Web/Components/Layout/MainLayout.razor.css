@@ -14,13 +14,34 @@ main {
 }
 
 .top-row {
-    background-color: #f7f7f7;
-    border-bottom: 1px solid #d6d5d5;
+    background-color: var(--brand-surface);
+    border-bottom: 1px solid var(--brand-border);
     justify-content: flex-end;
     height: 3.5rem;
     display: flex;
     align-items: center;
 }
+
+.theme-toggle {
+    background: none;
+    border: 1px solid var(--brand-border);
+    border-radius: 8px;
+    color: var(--brand-text-muted);
+    width: 2.25rem;
+    height: 2.25rem;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-inline-start: 1.25rem;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+    .theme-toggle:hover {
+        color: var(--brand-primary);
+        border-color: var(--brand-primary);
+    }
 
     .top-row ::deep a, .top-row ::deep .btn-link {
         white-space: nowrap;

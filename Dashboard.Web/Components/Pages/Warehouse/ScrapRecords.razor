@@ -9,11 +9,14 @@
 
 <PageTitle>ضایعات</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="mb-0">ضایعات</h3>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">ضایعات</h3>
+        <div class="text-body-secondary small">فهرست اسناد ضایعات ثبت‌شده</div>
+    </div>
     <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.ScrapRecordsManage" Context="manageContext">
         <Authorized>
-            <a href="/warehouse/scrap/add" class="btn btn-primary">+ ثبت ضایعات</a>
+            <a href="/warehouse/scrap/add" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>ثبت ضایعات</a>
         </Authorized>
     </AuthorizeView>
 </div>
@@ -21,11 +24,14 @@
 <div class="card-panel">
     @if (records is null)
     {
-        <p class="text-muted">در حال بارگذاری...</p>
+        <p class="text-body-secondary">در حال بارگذاری...</p>
     }
     else if (!records.Any())
     {
-        <p class="text-muted text-center py-4">هنوز موردی ثبت نشده است.</p>
+        <div class="text-center text-body-secondary py-5">
+            <i class="bi bi-trash3 d-block fs-1 mb-2"></i>
+            هنوز موردی ثبت نشده است.
+        </div>
     }
     else
     {
@@ -44,7 +50,7 @@
                 {
                     <tr>
                         <td class="fw-medium">@r.RecordNumber</td>
-                        <td class="text-muted">@r.RecordDate.@r.RecordDate.ToPersianDate()</td>
+                        <td class="text-muted">@r.RecordDate.ToPersianDate()</td>
                         <td>@r.WarehouseName</td>
                         <td class="text-muted">@(r.Reason ?? "-")</td>
                         <td>@r.ItemCount</td>

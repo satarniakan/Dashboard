@@ -1,4 +1,4 @@
-﻿@page "/warehouse/sales/add"
+@page "/warehouse/sales/add"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.SalesCreate)]
 @using Microsoft.AspNetCore.Authorization
@@ -14,21 +14,32 @@
 @inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddSalesInvoice> Logger
 <PageTitle>فاکتور فروش جدید</PageTitle>
 
-<h3>فاکتور فروش جدید</h3>
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">فاکتور فروش جدید</h3>
+        <div class="text-body-secondary small">فاکتور به‌صورت پیش‌نویس ثبت می‌شود؛ موجودی انبار پس از تأیید فاکتور کسر خواهد شد.</div>
+    </div>
+    <a href="/warehouse/sales" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+    </a>
+</div>
 
-<div class="card-panel" style="max-width: 800px;">
-    <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddSalesInvoiceForm">
-        <DataAnnotationsValidator />
-        <ValidationSummary class="mb-3" />
+<EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddSalesInvoiceForm">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="mb-3" />
+
+    @* ===== اطلاعات سند ===== *@
+    <div class="card-panel mb-3">
+        <h6 class="form-section-title"><i class="bi bi-receipt"></i>اطلاعات سند</h6>
 
         <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">مشتری (اختیاری — خالی = مشتری حضوری)</label>
+            <div class="col-md-6">
+                <label class="form-label">مشتری</label>
                 <CustomerSearchSelect Customers="customers ?? Enumerable.Empty<CustomerDto>()" @bind-Value="model.CustomerId" NoneLabel="-- مشتری حضوری --" />
+                <div class="form-text">اختیاری — اگر انتخاب نشود، فاکتور به‌عنوان فروش حضوری ثبت می‌شود.</div>
             </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">انبار</label>
-                <select class="form-select" @bind="model.WarehouseId">
+            <div class="col-md-6">
+                <AppDropdown Label="انبار" @bind-Value="model.WarehouseId" Hint="موجودی از این انبار کسر می‌شود">
                     <option value="0">-- انتخاب کنید --</option>
                     @if (warehouses is not null)
                     {
@@ -37,31 +48,33 @@
                             <option value="@w.Id">@w.Name</option>
                         }
                     }
-                </select>
+                </AppDropdown>
             </div>
         </div>
 
         <div class="row">
-           
             <div class="col-md-4 mb-3">
-                <label class="form-label">تاریخ</label>
+                <label class="form-label">تاریخ فاکتور</label>
                 <PersianDateTimePicker TValue="DateTime" @bind-Value="model.InvoiceDate" ShowTime="true" />
             </div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">تخفیف (تومان)</label>
-                <InputNumber class="form-control" @bind-Value="model.DiscountAmount" />
+            <div class="col-md-4">
+                <AppPriceField TValue="decimal" @bind-Value="model.DiscountAmount" Label="تخفیف (تومان)"
+                               WrapperClass="" ShowWords="true" Hint="مبلغ تخفیف کلی روی فاکتور" />
             </div>
         </div>
 
         <div class="mb-3">
             <label class="form-label">توضیحات (اختیاری)</label>
-            <InputTextArea class="form-control" @bind-Value="model.Notes" />
+            <InputTextArea class="form-control" rows="3" @bind-Value="model.Notes" />
         </div>
+    </div>
 
-        <hr />
-        <h6 class="mb-3">اقلام فاکتور</h6>
+    @* ===== اقلام فاکتور ===== *@
+    <div class="card-panel mb-3">
+        <h6 class="form-section-title"><i class="bi bi-basket"></i>اقلام فاکتور</h6>
+        <div class="form-text mb-3">با انتخاب هر کالا، قیمت واحد به‌صورت خودکار از قیمت فعلی محصول پر می‌شود و می‌توانید آن را تغییر دهید.</div>
 
-        <table class="table mb-2">
+        <table class="table mb-2 align-middle">
             <thead>
                 <tr>
                     <th style="width: 35%">کالا</th>
@@ -95,7 +108,7 @@
                             <AppPriceField TValue="decimal" @bind-Value="row.UnitPrice" WrapperClass=""
                                            ShowWords="true" />
                         </td>
-                        <td class="text-muted">@CurrencyFormatter.ToToman(row.Quantity * row.UnitPrice)</td>
+                        <td class="text-body-secondary">@CurrencyFormatter.ToToman(row.Quantity * row.UnitPrice)</td>
                         <td>
                             <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => model.Items.Remove(row)">حذف</button>
                         </td>
@@ -104,21 +117,55 @@
             </tbody>
         </table>
 
-        <button type="button" class="btn btn-sm btn-outline-primary mb-4" @onclick="AddRow">+ افزودن ردیف</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddRow">
+            <i class="bi bi-plus-lg me-1"></i>افزودن ردیف
+        </button>
 
-        @if (!string.IsNullOrEmpty(errorMessage))
+        @if (model.Items.Any(i => i.Quantity > 0 && i.UnitPrice > 0))
         {
-            <div class="alert alert-danger">@errorMessage</div>
+            <div class="bg-body-tertiary rounded p-3 mt-3">
+                <div class="d-flex justify-content-between small">
+                    <span class="text-body-secondary">جمع اقلام:</span>
+                    <span>@CurrencyFormatter.ToToman(ItemsTotal)</span>
+                </div>
+                @if (model.DiscountAmount > 0)
+                {
+                    <div class="d-flex justify-content-between small mt-1">
+                        <span class="text-body-secondary">تخفیف:</span>
+                        <span class="text-danger">−@CurrencyFormatter.ToToman(model.DiscountAmount)</span>
+                    </div>
+                }
+                <div class="d-flex justify-content-between fw-bold mt-2">
+                    <span>مبلغ نهایی:</span>
+                    <span>@CurrencyFormatter.ToToman(NetTotal)</span>
+                </div>
+            </div>
         }
+    </div>
 
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                @(isSaving ? "در حال ذخیره..." : "ثبت پیش‌نویس فاکتور")
-            </button>
-            <a href="/warehouse/sales" class="btn btn-outline-secondary">انصراف</a>
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3 mb-0">
+            <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
         </div>
-    </EditForm>
-</div>
+    }
+
+    @* ===== نوار عملیات ===== *@
+    <div class="card-panel form-actions mt-3 d-flex align-items-center gap-2">
+        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+            @if (isSaving)
+            {
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            }
+            else
+            {
+                <i class="bi bi-check-lg me-1"></i>
+            }
+            ثبت پیش‌نویس فاکتور
+        </button>
+        <a href="/warehouse/sales" class="btn btn-outline-secondary">انصراف</a>
+    </div>
+</EditForm>
 
 @code {
     [SupplyParameterFromForm]
@@ -130,6 +177,9 @@
 
     private bool isSaving;
     private string? errorMessage;
+
+    private decimal ItemsTotal => model.Items.Sum(i => i.Quantity * i.UnitPrice);
+    private decimal NetTotal => ItemsTotal - model.DiscountAmount;
 
     protected override async Task OnInitializedAsync()
     {

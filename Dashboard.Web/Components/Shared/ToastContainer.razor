@@ -33,12 +33,25 @@
 
     private async void HandleShow(ToastMessage toast)
     {
-        _activeToasts.Add(toast);
-        await InvokeAsync(StateHasChanged);
+        // در رندر استاتیک (پیش‌رندر اولیه یا پردازش POST فرم بدون مدار تعاملی)
+        // توست جایی برای نمایش ندارد و re-render وسط پاسخ استاتیک می‌تواند
+        // رندرر را با «renderer does not have a component with ID» متوقف کند
+        if (RendererInfo.Name == "Static")
+            return;
 
-        await Task.Delay(3500);
-        _activeToasts.Remove(toast);
-        await InvokeAsync(StateHasChanged);
+        try
+        {
+            _activeToasts.Add(toast);
+            await InvokeAsync(StateHasChanged);
+
+            await Task.Delay(3500);
+            if (_activeToasts.RemoveAll(t => t.Id == toast.Id) > 0)
+                await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException)
+        {
+            // مدار در همین لحظه بسته شده؛ توست دیگر مهم نیست
+        }
     }
 
     public void Dispose()

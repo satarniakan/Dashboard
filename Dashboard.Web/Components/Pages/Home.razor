@@ -14,39 +14,64 @@
             <Authorized>
                 @if (data is null)
                 {
-                    <p class="text-muted">در حال بارگذاری...</p>
+                    <p class="text-body-secondary">در حال بارگذاری...</p>
                 }
                 else
                 {
-                    <h3 class="mb-4">داشبورد مدیریتی</h3>
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h3 class="mb-1">داشبورد مدیریتی</h3>
+                            <div class="text-body-secondary small">نمای کلی فروش، سود و مطالبات</div>
+                        </div>
+                    </div>
 
                     <!-- کارت‌های KPI -->
                     <div class="row g-3 mb-4">
                         <div class="col-md-3 col-6">
-                            <div class="card-panel">
-                                <div class="text-muted small mb-1">فروش امروز</div>
-                                <div class="fs-4 fw-bold">@CurrencyFormatter.ToToman(data.Kpis.TodaySales)</div>
-                                <div class="text-muted small">@data.Kpis.TodayInvoiceCount فاکتور</div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <div class="card-panel">
-                                <div class="text-muted small mb-1">فروش این ماه</div>
-                                <div class="fs-4 fw-bold">@CurrencyFormatter.ToToman(data.Kpis.MonthSales)</div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <div class="card-panel">
-                                <div class="text-muted small mb-1">سود این ماه</div>
-                                <div class="fs-4 fw-bold @(data.Kpis.MonthProfit >= 0 ? "text-success" : "text-danger")">
-                                    @CurrencyFormatter.ToToman(data.Kpis.MonthProfit)
+                            <div class="card-panel h-100">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="text-body-secondary small mb-1">فروش امروز</div>
+                                        <div class="fs-4 fw-bold">@CurrencyFormatter.ToToman(data.Kpis.TodaySales)</div>
+                                        <div class="text-body-secondary small">@data.Kpis.TodayInvoiceCount فاکتور</div>
+                                    </div>
+                                    <i class="bi bi-cash-stack fs-3" style="color: var(--brand-primary);" aria-hidden="true"></i>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-3 col-6">
-                            <div class="card-panel">
-                                <div class="text-muted small mb-1">جمع مطالبات از مشتریان</div>
-                                <div class="fs-4 fw-bold">@CurrencyFormatter.ToToman(data.Kpis.TotalReceivable)</div>
+                            <div class="card-panel h-100">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="text-body-secondary small mb-1">فروش این ماه</div>
+                                        <div class="fs-4 fw-bold">@CurrencyFormatter.ToToman(data.Kpis.MonthSales)</div>
+                                    </div>
+                                    <i class="bi bi-calendar3 fs-3" style="color: var(--brand-primary);" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="card-panel h-100">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="text-body-secondary small mb-1">سود این ماه</div>
+                                        <div class="fs-4 fw-bold @(data.Kpis.MonthProfit >= 0 ? "text-success" : "text-danger")">
+                                            @CurrencyFormatter.ToToman(data.Kpis.MonthProfit)
+                                        </div>
+                                    </div>
+                                    <i class="bi bi-graph-up-arrow fs-3" style="color: var(--brand-success);" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="card-panel h-100">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="text-body-secondary small mb-1">جمع مطالبات از مشتریان</div>
+                                        <div class="fs-4 fw-bold">@CurrencyFormatter.ToToman(data.Kpis.TotalReceivable)</div>
+                                    </div>
+                                    <i class="bi bi-people fs-3" style="color: var(--brand-primary);" aria-hidden="true"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -91,9 +116,9 @@
                                         var heightPercent = maxSale > 0 ? (double)(point.TotalAmount / maxSale) * 100 : 0;
                                         <div class="flex-fill text-center">
                                             <div class="d-flex align-items-end justify-content-center" style="height: 160px;">
-                                                <div class="bg-primary rounded-top" style="width: 70%; height: @(Math.Max(heightPercent, 2))%;" title="@CurrencyFormatter.ToToman(point.TotalAmount)"></div>
+                                                <div class="rounded-top" style="width: 70%; height: @(Math.Max(heightPercent, 2))%; background: var(--brand-primary);" title="@CurrencyFormatter.ToToman(point.TotalAmount)"></div>
                                             </div>
-                                            <div class="text-muted small mt-1">@point.Date.ToString("MM/dd")</div>
+                                            <div class="text-body-secondary small mt-1">@point.Date.ToString("MM/dd")</div>
                                         </div>
                                     }
                                 </div>
@@ -106,7 +131,10 @@
                                 <h6 class="mb-3">پرفروش‌ترین کالاها (این دوره)</h6>
                                 @if (!data.TopProducts.Any())
                                 {
-                                    <p class="text-muted small">داده‌ای موجود نیست.</p>
+                                    <div class="text-center text-body-secondary py-4">
+                                        <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                        <span class="small">داده‌ای موجود نیست.</span>
+                                    </div>
                                 }
                                 else
                                 {
@@ -116,7 +144,7 @@
                                             {
                                                 <tr>
                                                     <td>@p.ProductName</td>
-                                                    <td class="text-muted">@QuantityFormatter.Format(p.TotalQuantitySold) عدد</td>
+                                                    <td class="text-body-secondary">@QuantityFormatter.Format(p.TotalQuantitySold) عدد</td>
                                                     <td class="text-end">@CurrencyFormatter.ToToman(p.TotalRevenue)</td>
                                                 </tr>
                                             }
@@ -132,7 +160,10 @@
                         <h6 class="mb-3">آخرین فاکتورهای فروش</h6>
                         @if (!data.RecentInvoices.Any())
                         {
-                            <p class="text-muted small">هنوز فاکتوری ثبت نشده است.</p>
+                            <div class="text-center text-body-secondary py-4">
+                                <i class="bi bi-receipt fs-3 d-block mb-2"></i>
+                                <span class="small">هنوز فاکتوری ثبت نشده است.</span>
+                            </div>
                         }
                         else
                         {
@@ -145,7 +176,7 @@
                                     {
                                         <tr>
                                             <td><a href="/warehouse/sales/@inv.Id">@inv.InvoiceNumber</a></td>
-                                            <td class="text-muted">@inv.InvoiceDate.ToString("yyyy/MM/dd")</td>
+                                            <td class="text-body-secondary">@inv.InvoiceDate.ToString("yyyy/MM/dd")</td>
                                             <td>@(inv.CustomerName ?? "مشتری حضوری")</td>
                                             <td>@CurrencyFormatter.ToToman(inv.TotalAmount)</td>
                                             <td>@inv.Status</td>
@@ -159,13 +190,13 @@
             </Authorized>
             <NotAuthorized>
                 <h3>خوش آمدید 👋</h3>
-                <p class="text-muted">از منوی کناری بخش مورد نظرتان را انتخاب کنید.</p>
+                <p class="text-body-secondary">از منوی کناری بخش مورد نظرتان را انتخاب کنید.</p>
             </NotAuthorized>
         </AuthorizeView>
     </Authorized>
     <NotAuthorized>
         <h3>به سیستم مدیریت خوش آمدید</h3>
-        <p class="text-muted">برای ادامه، <a href="/login">وارد شوید</a>.</p>
+        <p class="text-body-secondary">برای ادامه، <a href="/login">وارد شوید</a>.</p>
     </NotAuthorized>
 </AuthorizeView>
 

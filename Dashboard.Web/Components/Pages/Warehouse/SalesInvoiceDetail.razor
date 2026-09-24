@@ -1,4 +1,4 @@
-﻿@page "/warehouse/sales/{Id:int}"
+@page "/warehouse/sales/{Id:int}"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.SalesView)]
 @using Microsoft.AspNetCore.Authorization
@@ -17,14 +17,25 @@
 
 @if (invoice is null)
 {
-    <p class="text-muted">در حال بارگذاری...</p>
+    <p class="text-body-secondary">در حال بارگذاری...</p>
 }
 else
 {
-    <div class="no-print d-flex justify-content-between align-items-center mb-4">
-        <h3 class="mb-0">فاکتور @invoice.InvoiceNumber</h3>
+    <div class="no-print d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h3 class="mb-1">فاکتور @invoice.InvoiceNumber</h3>
+            <div class="text-body-secondary small">
+                تاریخ: @invoice.InvoiceDate.ToPersianDate()
+                <span class="badge @StatusBadgeClass ms-2 align-middle">@StatusLabel</span>
+            </div>
+        </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-outline-secondary" @onclick="Print">چاپ</button>
+            <a href="/warehouse/sales" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+            </a>
+            <button class="btn btn-outline-secondary" @onclick="Print">
+                <i class="bi bi-printer me-1"></i>چاپ
+            </button>
 
             @if (invoice.Status == "Draft")
             {
@@ -55,17 +66,29 @@ else
         <div class="no-print alert alert-danger">@errorMessage</div>
     }
 
-    <div class="card-panel" id="invoice-print-area">
-        <div class="d-flex justify-content-between mb-4">
-            <div>
-                <h5 class="mb-1">فاکتور فروش شماره @invoice.InvoiceNumber</h5>
-                <p class="text-muted mb-0">تاریخ: @invoice.InvoiceDate.ToPersianDate()</p>
+    <div class="card-panel mb-3" id="invoice-print-area">
+        <h6 class="form-section-title"><i class="bi bi-file-earmark-text"></i>اطلاعات فاکتور</h6>
+
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <div class="small text-body-secondary">شماره فاکتور</div>
+                <div class="fw-bold">@invoice.InvoiceNumber</div>
             </div>
-            <div class="text-end">
-                <p class="mb-1"><strong>مشتری:</strong> @(invoice.CustomerName ?? "مشتری حضوری")</p>
-                <p class="mb-0"><strong>انبار:</strong> @invoice.WarehouseName</p>
+            <div class="col-md-3">
+                <div class="small text-body-secondary">تاریخ</div>
+                <div>@invoice.InvoiceDate.ToPersianDate()</div>
+            </div>
+            <div class="col-md-3">
+                <div class="small text-body-secondary">مشتری</div>
+                <div>@(invoice.CustomerName ?? "مشتری حضوری")</div>
+            </div>
+            <div class="col-md-3">
+                <div class="small text-body-secondary">انبار</div>
+                <div>@invoice.WarehouseName</div>
             </div>
         </div>
+
+        <h6 class="form-section-title"><i class="bi bi-basket"></i>اقلام فاکتور</h6>
 
         <table class="table mb-3">
             <thead>
@@ -91,8 +114,8 @@ else
 
         <div class="d-flex justify-content-end">
             <div style="min-width: 260px;">
-                <div class="d-flex justify-content-between">
-                    <span class="text-muted">تخفیف:</span>
+                <div class="d-flex justify-content-between bg-body-tertiary rounded px-3 py-2">
+                    <span class="text-body-secondary">تخفیف:</span>
                     <span>@CurrencyFormatter.ToToman(invoice.DiscountAmount)</span>
                 </div>
                 <div class="d-flex justify-content-between fw-bold fs-5 mt-2">
@@ -104,13 +127,13 @@ else
 
         @if (!string.IsNullOrEmpty(invoice.Notes))
         {
-            <p class="text-muted mt-4 mb-0">توضیحات: @invoice.Notes</p>
+            <p class="text-body-secondary mt-4 mb-0">توضیحات: @invoice.Notes</p>
         }
     </div>
     @if (invoice.Status == "Confirmed")
     {
-        <div class="no-print card-panel mt-4">
-            <h5 class="mb-3">اقساط</h5>
+        <div class="no-print card-panel mt-3">
+            <h6 class="form-section-title"><i class="bi bi-credit-card"></i>اقساط</h6>
 
             @if (installmentPlan is null)
             {
@@ -120,9 +143,9 @@ else
                 }
                 else
                 {
-                    <p class="text-muted mb-3">جمع اقساط باید دقیقاً برابر @CurrencyFormatter.ToToman(invoice.TotalAmount) باشد.</p>
+                    <p class="text-body-secondary mb-3">جمع اقساط باید دقیقاً برابر @CurrencyFormatter.ToToman(invoice.TotalAmount) باشد.</p>
 
-                    <table class="table mb-2">
+                    <table class="table mb-2 align-middle">
                         <thead>
                             <tr>
                                 <th>سررسید</th>
@@ -145,8 +168,10 @@ else
                     </table>
 
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddPlanRow">+ افزودن قسط</button>
-                        <span class="text-muted">
+                        <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddPlanRow">
+                            <i class="bi bi-plus-lg me-1"></i>افزودن قسط
+                        </button>
+                        <span class="text-body-secondary">
                             جمع فعلی: @CurrencyFormatter.ToToman(planRows.Sum(r => r.Amount))
                         </span>
                     </div>
@@ -157,7 +182,11 @@ else
                     }
 
                     <button class="btn btn-primary" disabled="@isSavingPlan" @onclick="SavePlan">
-                        @(isSavingPlan ? "در حال ذخیره..." : "ذخیره طرح اقساط")
+                        @if (isSavingPlan)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        }
+                        ذخیره طرح اقساط
                     </button>
                     <button class="btn btn-outline-secondary" @onclick="() => showPlanForm = false">انصراف</button>
                 }
@@ -221,6 +250,22 @@ else
     private SalesInvoiceDto? invoice;
     private bool isProcessing;
     private string? errorMessage;
+
+    private string StatusLabel => invoice!.Status switch
+    {
+        "Draft" => "پیش‌نویس",
+        "Confirmed" => "تأییدشده",
+        "Canceled" => "لغوشده",
+        _ => invoice!.Status
+    };
+
+    private string StatusBadgeClass => invoice!.Status switch
+    {
+        "Draft" => "bg-warning-subtle text-warning",
+        "Confirmed" => "bg-success-subtle text-success",
+        "Canceled" => "bg-secondary-subtle text-secondary",
+        _ => "bg-secondary-subtle text-secondary"
+    };
 
     protected override async Task OnInitializedAsync()
     {

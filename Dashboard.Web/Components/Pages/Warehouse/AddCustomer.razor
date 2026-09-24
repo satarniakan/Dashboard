@@ -1,4 +1,4 @@
-﻿@page "/warehouse/customers/add"
+@page "/warehouse/customers/add"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.CustomersManage)]
 @using Microsoft.AspNetCore.Authorization
@@ -10,41 +10,78 @@
 @inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>افزودن مشتری</PageTitle>
 
-<h3>افزودن مشتری</h3>
-
-<div class="card-panel" style="max-width: 480px;">
-    <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddCustomerForm">
-        <DataAnnotationsValidator />
-        <ValidationSummary class="mb-3" />
-
-        <div class="mb-3">
-            <label class="form-label">نام مشتری</label>
-            <InputText class="form-control" @bind-Value="model.Name" />
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">تلفن (اختیاری)</label>
-            <InputText class="form-control" @bind-Value="model.Phone" />
-        </div>
-
-        <div class="mb-4">
-            <label class="form-label">آدرس (اختیاری)</label>
-            <InputText class="form-control" @bind-Value="model.Address" />
-        </div>
-
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-danger">@errorMessage</div>
-        }
-
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                @(isSaving ? "در حال ذخیره..." : "ذخیره مشتری")
-            </button>
-            <a href="/warehouse/customers" class="btn btn-outline-secondary">انصراف</a>
-        </div>
-    </EditForm>
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">افزودن مشتری</h3>
+        <div class="text-body-secondary small">اطلاعات مشتری جدید را وارد کنید؛ نام مشتری الزامی است.</div>
+    </div>
+    <a href="/warehouse/customers" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+    </a>
 </div>
+
+<EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddCustomerForm">
+    <DataAnnotationsValidator />
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+
+            @* ===== اطلاعات مشتری ===== *@
+            <div class="card-panel mb-3">
+                <h6 class="form-section-title"><i class="bi bi-person"></i>اطلاعات مشتری</h6>
+
+                <AppTextField @bind-Value="model.Name" Label="نام مشتری"
+                              Placeholder="مثلاً: فروشگاه گل ارکیده" />
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <AppTextField @bind-Value="model.Phone" Label="تلفن (اختیاری)"
+                                      Placeholder="مثلاً: ۰۹۱۲۰۰۰۰۰۰۰" />
+                    </div>
+                    <div class="col-md-6">
+                        <AppTextField @bind-Value="model.Address" Label="آدرس (اختیاری)"
+                                      Placeholder="مثلاً: تهران، خیابان ولیعصر" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+
+            @* ===== راهنما ===== *@
+            <div class="card-panel tips-panel">
+                <h6 class="form-section-title"><i class="bi bi-lightbulb"></i>راهنمای سریع</h6>
+                <ul class="small text-body-secondary mb-0 ps-3">
+                    <li class="mb-2">نام مشتری در فاکتورهای فروش نمایش داده می‌شود.</li>
+                    <li>اگر تلفن یا آدرسی ندارید، همین حالا می‌توانید مشتری را ذخیره کنید و بعداً تکمیل کنید.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3 mb-0">
+            <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
+        </div>
+    }
+
+    @* ===== نوار عملیات ===== *@
+    <div class="card-panel form-actions mt-3 d-flex align-items-center gap-2">
+        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+            @if (isSaving)
+            {
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            }
+            else
+            {
+                <i class="bi bi-check-lg me-1"></i>
+            }
+            ذخیره مشتری
+        </button>
+        <a href="/warehouse/customers" class="btn btn-outline-secondary">انصراف</a>
+    </div>
+</EditForm>
 
 @code {
     [SupplyParameterFromForm]

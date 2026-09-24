@@ -10,44 +10,66 @@
 @inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>گروه محصول جدید</PageTitle>
 
-<h3>گروه محصول جدید</h3>
-
-<div class="card-panel" style="max-width: 480px;">
-    <EditForm Model="@model" OnValidSubmit="HandleSubmit" FormName="AddProductGroupForm">
-        <div class="mb-3">
-            <label class="form-label">نام</label>
-            <InputText class="form-control" @bind-Value="model.Name" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Slug</label>
-            <InputText class="form-control" @bind-Value="model.Slug" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">دسته‌بندی</label>
-            <select class="form-select" @bind="model.CategoryId">
-                <option value="">-- بدون دسته --</option>
-                @if (categories is not null)
-                {
-                    @foreach (var c in categories)
-                    {
-                        <option value="@c.Id">@c.Name</option>
-                    }
-                }
-            </select>
-        </div>
-        <div class="mb-4">
-            <label class="form-label">توضیحات</label>
-            <InputTextArea class="form-control" @bind-Value="model.Description" />
-        </div>
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-danger">@errorMessage</div>
-        }
-        <button type="submit" class="btn btn-primary" disabled="@isSaving">
-            @(isSaving ? "در حال ذخیره..." : "ذخیره و ادامه")
-        </button>
-    </EditForm>
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">گروه محصول جدید</h3>
+        <div class="text-body-secondary small">گروهی از تنوع‌های یک کالا (مثلاً رنگ و سایزهای یک تی‌شرت) ایجاد کنید.</div>
+    </div>
+    <a href="/catalog/product-groups" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به گروه‌ها
+    </a>
 </div>
+
+<EditForm Model="@model" OnValidSubmit="HandleSubmit" FormName="AddProductGroupForm">
+    @* ===== اطلاعات گروه ===== *@
+    <div class="card-panel mb-3" style="max-width: 640px;">
+        <h6 class="form-section-title"><i class="bi bi-collection"></i>اطلاعات گروه</h6>
+
+        <AppTextField @bind-Value="model.Name" Label="نام"
+                      Placeholder="مثلاً: تی‌شرت مردانه مدل ۲۰۲۶" />
+
+        <AppTextField @bind-Value="model.Slug" Label="Slug"
+                      Placeholder="مثلاً: mens-tshirt-2026" Hint="برای آدرس صفحه‌ی گروه" />
+
+        <AppDropdown Label="دسته‌بندی" Placeholder="-- بدون دسته --" @bind-Value="model.CategoryId">
+            @if (categories is not null)
+            {
+                @foreach (var c in categories)
+                {
+                    <option value="@c.Id">@c.Name</option>
+                }
+            }
+        </AppDropdown>
+
+        <div class="mb-3">
+            <label class="form-label">توضیحات</label>
+            <InputTextArea class="form-control" rows="3" @bind-Value="model.Description" />
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3 mb-0">
+            <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
+        </div>
+    }
+
+    @* ===== نوار عملیات ===== *@
+    <div class="card-panel form-actions mt-3 d-flex align-items-center gap-2" style="max-width: 640px;">
+        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+            @if (isSaving)
+            {
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            }
+            else
+            {
+                <i class="bi bi-check-lg me-1"></i>
+            }
+            ذخیره و ادامه
+        </button>
+        <a href="/catalog/product-groups" class="btn btn-outline-secondary">انصراف</a>
+    </div>
+</EditForm>
 
 @code {
     [SupplyParameterFromForm]

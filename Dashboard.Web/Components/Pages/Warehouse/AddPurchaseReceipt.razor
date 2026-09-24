@@ -14,17 +14,27 @@
 @inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>ثبت رسید خرید</PageTitle>
 
-<h3>ثبت رسید خرید</h3>
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">ثبت رسید خرید</h3>
+        <div class="text-body-secondary small">رسید ورود کالا به انبار را ثبت کنید؛ اقلام رسید در پایین فرم اضافه می‌شوند.</div>
+    </div>
+    <a href="/warehouse/purchase-receipts" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+    </a>
+</div>
 
-<div class="card-panel" style="max-width: 720px;">
-    <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddPurchaseReceiptForm">
-        <DataAnnotationsValidator />
-        <ValidationSummary class="mb-3" />
+<EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddPurchaseReceiptForm">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="mb-3" />
+
+    @* ===== اطلاعات سند ===== *@
+    <div class="card-panel mb-3">
+        <h6 class="form-section-title"><i class="bi bi-truck"></i>اطلاعات سند</h6>
 
         <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">تأمین‌کننده</label>
-                <select class="form-select" @bind="model.SupplierId">
+            <div class="col-md-6">
+                <AppDropdown Label="تأمین‌کننده" @bind-Value="model.SupplierId" Hint="تأمین‌کننده‌ی این خرید">
                     <option value="0">-- انتخاب کنید --</option>
                     @if (suppliers is not null)
                     {
@@ -33,11 +43,10 @@
                             <option value="@s.Id">@s.Name</option>
                         }
                     }
-                </select>
+                </AppDropdown>
             </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">انبار مقصد</label>
-                <select class="form-select" @bind="model.WarehouseId">
+            <div class="col-md-6">
+                <AppDropdown Label="انبار مقصد" @bind-Value="model.WarehouseId" Hint="کالاهای رسیده به این انبار اضافه می‌شوند">
                     <option value="0">-- انتخاب کنید --</option>
                     @if (warehouses is not null)
                     {
@@ -46,27 +55,29 @@
                             <option value="@w.Id">@w.Name</option>
                         }
                     }
-                </select>
+                </AppDropdown>
             </div>
         </div>
 
         <div class="row">
-            
             <div class="col-md-6 mb-3">
-                <label class="form-label">تاریخ</label>
+                <label class="form-label">تاریخ رسید</label>
                 <PersianDateTimePicker TValue="DateTime" @bind-Value="model.ReceiptDate" ShowTime="true" />
             </div>
         </div>
 
         <div class="mb-3">
             <label class="form-label">توضیحات (اختیاری)</label>
-            <InputTextArea class="form-control" @bind-Value="model.Notes" />
+            <InputTextArea class="form-control" rows="3" @bind-Value="model.Notes" />
         </div>
+    </div>
 
-        <hr />
-        <h6 class="mb-3">اقلام رسید</h6>
+    @* ===== اقلام رسید ===== *@
+    <div class="card-panel mb-3">
+        <h6 class="form-section-title"><i class="bi bi-box-seam"></i>اقلام رسید</h6>
+        <div class="form-text mb-3">برای هر ردیف، کالا و مقدار را انتخاب کنید و بهای تمام‌شده‌ی واحد را وارد نمایید.</div>
 
-        <table class="table mb-2">
+        <table class="table mb-2 align-middle">
             <thead>
                 <tr>
                     <th style="width: 45%">کالا</th>
@@ -107,21 +118,34 @@
             </tbody>
         </table>
 
-        <button type="button" class="btn btn-sm btn-outline-primary mb-4" @onclick="AddRow">+ افزودن ردیف</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddRow">
+            <i class="bi bi-plus-lg me-1"></i>افزودن ردیف
+        </button>
+    </div>
 
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-danger">@errorMessage</div>
-        }
-
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                @(isSaving ? "در حال ذخیره..." : "ثبت رسید")
-            </button>
-            <a href="/warehouse/purchase-receipts" class="btn btn-outline-secondary">انصراف</a>
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3 mb-0">
+            <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
         </div>
-    </EditForm>
-</div>
+    }
+
+    @* ===== نوار عملیات ===== *@
+    <div class="card-panel form-actions mt-3 d-flex align-items-center gap-2">
+        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+            @if (isSaving)
+            {
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            }
+            else
+            {
+                <i class="bi bi-check-lg me-1"></i>
+            }
+            ثبت رسید
+        </button>
+        <a href="/warehouse/purchase-receipts" class="btn btn-outline-secondary">انصراف</a>
+    </div>
+</EditForm>
 
 @code {
     [SupplyParameterFromForm]

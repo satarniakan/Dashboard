@@ -9,19 +9,27 @@
 
 <PageTitle>دریافت از مشتریان</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="mb-0">دریافت از مشتریان</h3>
-    <a href="/accounting/customer-receipts/add" class="btn btn-primary">+ ثبت دریافت</a>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">دریافت از مشتریان</h3>
+        <div class="text-body-secondary small">فهرست دریافت‌های ثبت‌شده از مشتریان</div>
+    </div>
+    <a href="/accounting/customer-receipts/add" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>ثبت دریافت
+    </a>
 </div>
 
 <div class="card-panel">
     @if (receipts is null)
     {
-        <p class="text-muted">در حال بارگذاری...</p>
+        <p class="text-body-secondary">در حال بارگذاری...</p>
     }
     else if (!receipts.Any())
     {
-        <p class="text-muted text-center py-4">هنوز دریافتی ثبت نشده است.</p>
+        <div class="text-center text-body-secondary py-5">
+            <i class="bi bi-receipt fs-1 d-block mb-2"></i>
+            هنوز دریافتی ثبت نشده است.
+        </div>
     }
     else
     {

@@ -13,64 +13,104 @@
 @inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>ثبت ضایعات</PageTitle>
 
-<h3>ثبت ضایعات</h3>
-
-<div class="card-panel" style="max-width: 680px;">
-    <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddScrapRecordForm">
-        <DataAnnotationsValidator />
-        <ValidationSummary class="mb-3" />
-
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">انبار</label>
-                <select class="form-select" @bind="model.WarehouseId">
-                    <option value="0">-- انتخاب کنید --</option>
-                    @if (warehouses is not null)
-                    {
-                        @foreach (var w in warehouses)
-                        {
-                            <option value="@w.Id">@w.Name</option>
-                        }
-                    }
-                </select>
-            </div>
-          
-        </div>
-
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label">تاریخ</label>
-                <PersianDateTimePicker TValue="DateTime" @bind-Value="model.RecordDate" ShowTime="true" />
-            </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label">دلیل (اختیاری)</label>
-                <InputText class="form-control" @bind-Value="model.Reason" placeholder="مثلاً: آسیب‌دیدگی، انقضا" />
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">توضیحات (اختیاری)</label>
-            <InputTextArea class="form-control" @bind-Value="model.Notes" />
-        </div>
-
-        <hr />
-        <h6 class="mb-3">اقلام ضایعاتی</h6>
-
-        <StockItemRowsEditor Items="model.Items" Products="@(products ?? Enumerable.Empty<ProductDto>())" />
-
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-danger mt-3">@errorMessage</div>
-        }
-
-        <div class="d-flex gap-2 mt-3">
-            <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                @(isSaving ? "در حال ذخیره..." : "ثبت ضایعات")
-            </button>
-            <a href="/warehouse/scrap" class="btn btn-outline-secondary">انصراف</a>
-        </div>
-    </EditForm>
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">ثبت ضایعات</h3>
+        <div class="text-body-secondary small">کالاهای آسیب‌دیده یا غیرقابل فروش را از موجودی انبار کسر کنید؛ انتخاب انبار الزامی است.</div>
+    </div>
+    <a href="/warehouse/scrap" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+    </a>
 </div>
+
+<EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddScrapRecordForm">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="mb-3" />
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+
+            @* ===== اطلاعات سند ===== *@
+            <div class="card-panel mb-3">
+                <h6 class="form-section-title"><i class="bi bi-recycle"></i>اطلاعات ضایعات</h6>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <AppDropdown TValue="int" Label="انبار" @bind-Value="model.WarehouseId"
+                                    Hint="ضایعات از موجودی این انبار کسر می‌شود.">
+                            <option value="0">-- انتخاب کنید --</option>
+                            @if (warehouses is not null)
+                            {
+                                @foreach (var w in warehouses)
+                                {
+                                    <option value="@w.Id">@w.Name</option>
+                                }
+                            }
+                        </AppDropdown>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">تاریخ</label>
+                            <PersianDateTimePicker TValue="DateTime" @bind-Value="model.RecordDate" ShowTime="true" />
+                        </div>
+                    </div>
+                </div>
+
+                <AppTextField @bind-Value="model.Reason" Label="دلیل (اختیاری)"
+                              Placeholder="مثلاً: آسیب‌دیدگی، انقضا" />
+
+                <div class="mb-3">
+                    <label class="form-label">توضیحات (اختیاری)</label>
+                    <InputTextArea class="form-control" @bind-Value="model.Notes" />
+                </div>
+            </div>
+
+            @* ===== اقلام ضایعاتی ===== *@
+            <div class="card-panel mb-3">
+                <h6 class="form-section-title"><i class="bi bi-box-seam"></i>اقلام ضایعاتی</h6>
+                <div class="form-text mb-2">برای هر ردیف، کالا و مقدار ضایع‌شده را انتخاب کنید؛ این مقدار از موجودی انبار کسر می‌شود.</div>
+
+                <StockItemRowsEditor Items="model.Items" Products="@(products ?? Enumerable.Empty<ProductDto>())" />
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+
+            @* ===== راهنما ===== *@
+            <div class="card-panel tips-panel">
+                <h6 class="form-section-title"><i class="bi bi-lightbulb"></i>راهنمای سریع</h6>
+                <ul class="small text-body-secondary mb-0 ps-3">
+                    <li class="mb-2">انتخاب انبار الزامی است.</li>
+                    <li class="mb-2">ثبت ضایعات قابل بازگشت نیست؛ قبل از ثبت، مقادیر را بررسی کنید.</li>
+                    <li>دلیل ضایعات در گزارش‌های بعدی به تحلیل بهتر کمک می‌کند.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3 mb-0">
+            <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
+        </div>
+    }
+
+    @* ===== نوار عملیات ===== *@
+    <div class="card-panel form-actions mt-3 d-flex align-items-center gap-2">
+        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+            @if (isSaving)
+            {
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            }
+            else
+            {
+                <i class="bi bi-check-lg me-1"></i>
+            }
+            ثبت ضایعات
+        </button>
+        <a href="/warehouse/scrap" class="btn btn-outline-secondary">انصراف</a>
+    </div>
+</EditForm>
 
 @code {
     [SupplyParameterFromForm]

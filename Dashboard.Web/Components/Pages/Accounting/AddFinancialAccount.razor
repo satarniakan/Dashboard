@@ -10,50 +10,79 @@
 @inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>افزودن صندوق/بانک</PageTitle>
 
-<h3>افزودن صندوق یا حساب بانکی</h3>
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">افزودن صندوق یا حساب بانکی</h3>
+        <div class="text-body-secondary small">صندوق نقدی یا حساب بانکی جدید برای ثبت گردش‌های مالی ایجاد کنید.</div>
+    </div>
+    <a href="/accounting/financial-accounts" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+    </a>
+</div>
 
-<div class="card-panel" style="max-width: 480px;">
+<div style="max-width: 560px;">
     <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddFinancialAccountForm">
         <DataAnnotationsValidator />
-        <ValidationSummary class="mb-3" />
 
-        <div class="mb-3">
-            <label class="form-label">نوع</label>
-            <select class="form-select" @bind="model.Type">
+        @* ===== اطلاعات حساب ===== *@
+        <div class="card-panel mb-3">
+            <h6 class="form-section-title"><i class="bi bi-wallet2"></i>اطلاعات حساب</h6>
+
+            <AppDropdown Label="نوع" @bind-Value="model.Type"
+                         Hint="اگر حساب بانکی انتخاب کنید، فیلدهای بانکی نمایش داده می‌شوند.">
                 <option value="Cash">صندوق نقدی</option>
                 <option value="Bank">حساب بانکی</option>
-            </select>
+            </AppDropdown>
+
+            <AppTextField @bind-Value="model.Name" Label="نام"
+                          Placeholder="مثلاً: صندوق اصلی، بانک ملت" />
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">نام (مثلاً: صندوق اصلی، بانک ملت)</label>
-            <InputText class="form-control" @bind-Value="model.Name" />
-        </div>
-
+        @* ===== اطلاعات بانک ===== *@
         @if (model.Type == "Bank")
         {
-            <div class="mb-3">
-                <label class="form-label">نام بانک</label>
-                <InputText class="form-control" @bind-Value="model.BankName" />
-            </div>
-            <div class="mb-3">
-                <label class="form-label">شماره حساب</label>
-                <InputText class="form-control" @bind-Value="model.AccountNumber" />
-            </div>
-            <div class="mb-4">
-                <label class="form-label">شبا (اختیاری)</label>
-                <InputText class="form-control" @bind-Value="model.Iban" />
+            <div class="card-panel mb-3">
+                <h6 class="form-section-title"><i class="bi bi-bank"></i>اطلاعات بانک</h6>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <AppTextField @bind-Value="model.BankName" Label="نام بانک"
+                                      Placeholder="مثلاً: بانک ملت" />
+                    </div>
+                    <div class="col-md-6">
+                        <AppTextField @bind-Value="model.AccountNumber" Label="شماره حساب"
+                                      Placeholder="شماره حساب بانکی" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <AppTextField @bind-Value="model.Iban" Label="شبا (اختیاری)"
+                                      Placeholder="IR..." />
+                    </div>
+                </div>
             </div>
         }
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-danger">@errorMessage</div>
+            <div class="alert alert-danger mb-0">
+                <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
+            </div>
         }
 
-        <div class="d-flex gap-2">
+        @* ===== نوار عملیات ===== *@
+        <div class="card-panel form-actions mt-3 d-flex align-items-center gap-2">
             <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                @(isSaving ? "در حال ذخیره..." : "ذخیره")
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-check-lg me-1"></i>
+                }
+                ذخیره
             </button>
             <a href="/accounting/financial-accounts" class="btn btn-outline-secondary">انصراف</a>
         </div>
@@ -81,7 +110,6 @@
         {
             Logger.LogError(ex, "خطا در ذخیره صندوق/بانک");
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
-            @inject Dashboard.Web.Services.ToastService ToastService
         }
         finally
         {

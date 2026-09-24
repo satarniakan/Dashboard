@@ -13,56 +13,81 @@
 
 @if (group is null)
 {
-    <p class="text-muted">در حال بارگذاری...</p>
+    <p class="text-body-secondary">در حال بارگذاری...</p>
 }
 else
 {
-    <h3>@group.Name</h3>
-    <p class="text-muted">@group.CategoryName</p>
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h3 class="mb-1">@group.Name</h3>
+            <div class="text-body-secondary small">@(group.CategoryName ?? "بدون دسته‌بندی")</div>
+        </div>
+        <a href="/catalog/product-groups" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-right me-1"></i>بازگشت به گروه‌ها
+        </a>
+    </div>
 
-    <div class="row">
+    <div class="row g-3">
         <div class="col-md-6">
-            <div class="card-panel mb-4">
-                <h5 class="mb-3">تصاویر</h5>
-                <div class="d-flex flex-wrap gap-2 mb-3">
-                    @foreach (var img in group.Images)
-                    {
-                        <img src="@img.Url" style="width:80px;height:80px;object-fit:cover;border-radius:8px;" />
-                    }
-                </div>
-                <InputFile OnChange="HandleImageUpload" class="form-control" accept="image/*" />
+            @* ===== تصاویر ===== *@
+            <div class="card-panel mb-3">
+                <h6 class="form-section-title"><i class="bi bi-image"></i>تصاویر</h6>
+
                 @if (isUploading)
                 {
-                    <p class="text-muted mt-2">در حال آپلود...</p>
+                    <div class="image-dropzone">
+                        <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+                        <div class="small mt-2">در حال آپلود…</div>
+                    </div>
+                }
+                else
+                {
+                    <label class="image-dropzone">
+                        <InputFile OnChange="HandleImageUpload" accept="image/*" class="d-none" />
+                        <i class="bi bi-cloud-arrow-up fs-1"></i>
+                        <div>انتخاب عکس</div>
+                        <div class="small">یا فایل را اینجا رها کنید</div>
+                    </label>
+                }
+
+                @if (group.Images.Any())
+                {
+                    <div class="d-flex flex-wrap gap-2 mt-3 mb-1">
+                        @foreach (var img in group.Images)
+                        {
+                            <img src="@img.Url" style="width:80px;height:80px;object-fit:cover;border-radius:8px;" />
+                        }
+                    </div>
                 }
             </div>
         </div>
 
         <div class="col-md-6">
-            <div class="card-panel mb-4">
-                <h5 class="mb-3">افزودن Variant جدید</h5>
-                <div class="mb-2">
+            @* ===== افزودن Variant ===== *@
+            <div class="card-panel mb-3">
+                <h6 class="form-section-title"><i class="bi bi-plus-square"></i>افزودن Variant جدید</h6>
+
+                <div class="mb-3">
                     <label class="form-label">کد کالا (SKU)</label>
                     <input class="form-control" @bind="newVariant.Sku" />
                 </div>
-                <div class="mb-2">
+                <div class="mb-3">
                     <label class="form-label">بارکد (اختیاری)</label>
                     <input class="form-control" @bind="newVariant.Barcode" />
                 </div>
-                <div class="mb-2">
+                <div class="mb-3">
                     <label class="form-label">نام نمایشی (مثلاً: قرمز - L)</label>
                     <input class="form-control" @bind="newVariant.VariantName" />
                 </div>
+
                 <div class="row">
-                    <div class="col-6 mb-2">
-                        <label class="form-label">قیمت فروش</label>
-                        <AppPriceField TValue="decimal" @bind-Value="newVariant.Price" WrapperClass=""
-                                       ShowWords="true" />
+                    <div class="col-6">
+                        <AppPriceField TValue="decimal" @bind-Value="newVariant.Price" Label="قیمت فروش (تومان)"
+                                       Placeholder="0" WrapperClass="" ShowWords="true" />
                     </div>
-                    <div class="col-6 mb-2">
-                        <label class="form-label">بهای تمام‌شده</label>
-                        <AppPriceField TValue="decimal" @bind-Value="newVariant.CostPrice" WrapperClass=""
-                                       ShowWords="true" />
+                    <div class="col-6">
+                        <AppPriceField TValue="decimal" @bind-Value="newVariant.CostPrice" Label="بهای تمام‌شده (تومان)"
+                                       Placeholder="0" WrapperClass="" ShowWords="true" />
                     </div>
                 </div>
 
@@ -70,7 +95,7 @@ else
                 {
                     @foreach (var attr in attributes)
                     {
-                        <div class="mb-2">
+                        <div class="mb-3">
                             <label class="form-label">@attr.Name</label>
                             <select class="form-select" @onchange="e => OnAttributeSelected(attr.Id, e.Value)">
                                 <option value="0">-- ندارد --</option>
@@ -85,21 +110,21 @@ else
 
                 @if (!string.IsNullOrEmpty(variantError))
                 {
-                    <div class="alert alert-danger">@variantError</div>
+                    <div class="alert alert-danger mb-0">
+                        <i class="bi bi-exclamation-octagon me-1"></i>@variantError
+                    </div>
                 }
-
-                <button class="btn btn-primary mt-2" disabled="@isSavingVariant" @onclick="HandleAddVariant">
-                    @(isSavingVariant ? "در حال ذخیره..." : "افزودن Variant")
-                </button>
             </div>
         </div>
     </div>
 
+    @* ===== فهرست Variant ها ===== *@
     <div class="card-panel">
-        <h5 class="mb-3">Variant های این گروه</h5>
+        <h6 class="form-section-title"><i class="bi bi-list-ul"></i>Variant های این گروه</h6>
+
         @if (!group.Variants.Any())
         {
-            <p class="text-muted text-center py-4">هنوز Variant ای اضافه نشده است.</p>
+            <p class="text-body-secondary text-center py-4 mb-0">هنوز Variant ای اضافه نشده است.</p>
         }
         else
         {
@@ -117,6 +142,20 @@ else
                 </tbody>
             </table>
         }
+
+        <div class="d-flex mt-3">
+            <button type="button" class="btn btn-primary" disabled="@isSavingVariant" @onclick="HandleAddVariant">
+                @if (isSavingVariant)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-plus-lg me-1"></i>
+                }
+                افزودن Variant
+            </button>
+        </div>
     </div>
 }
 

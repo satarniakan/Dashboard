@@ -10,34 +10,50 @@
 @inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>افزودن کاربر جدید</PageTitle>
 
-<h3>افزودن کاربر جدید</h3>
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">افزودن کاربر جدید</h3>
+        <div class="text-body-secondary small">اطلاعات کاربر جدید را وارد کنید؛ فیلدهای ستاره‌دار الزامی هستند.</div>
+    </div>
+    <a href="/admin/users" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+    </a>
+</div>
 
-<div class="card-panel" style="max-width: 480px;">
+<div style="max-width: 560px;">
     <EditForm Model="@(newUser!)" OnValidSubmit="HandleValidSubmit" FormName="AddUserForm">
         <DataAnnotationsValidator />
-        <ValidationSummary class="mb-3" />
 
-        <div class="mb-3">
-            <label class="form-label">نام کامل</label>
-            <InputText class="form-control" @bind-Value="newUser!.FullName" placeholder="نام و نام خانوادگی" />
+        @* ===== اطلاعات کاربر ===== *@
+        <div class="card-panel mb-3">
+            <h6 class="form-section-title"><i class="bi bi-person"></i>اطلاعات کاربر</h6>
+
+            <AppTextField @bind-Value="newUser!.FullName" Label="نام کامل" Required="true"
+                          Placeholder="نام و نام خانوادگی" />
+
+            <div class="row">
+                <div class="col-md-6">
+                    <AppTextField @bind-Value="newUser!.PhoneNumber" Label="شماره موبایل" Required="true"
+                                  Placeholder="مثال: 09123456789" Hint="برای ورود و بازیابی حساب کاربری استفاده می‌شود." />
+                </div>
+                <div class="col-md-6">
+                    <AppTextField @bind-Value="newUser!.Email" Label="ایمیل (اختیاری)"
+                                  Placeholder="example@domain.com" />
+                </div>
+            </div>
+
+            @* فیلد رمز عبور نیاز به type="password" دارد؛ مؤلفه‌های مشترک این ویژگی را ندارند *@
+            <div class="mb-3">
+                <label class="form-label">رمز عبور <span class="text-danger" title="الزامی">*</span></label>
+                <InputText type="password" class="form-control" @bind-Value="newUser!.Password" placeholder="حداقل ۶ کاراکتر" />
+                <ValidationMessage For="() => newUser!.Password" class="text-danger small mt-1 d-block" />
+                <div class="form-text">رمز عبور باید حداقل ۶ کاراکتر باشد.</div>
+            </div>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">شماره موبایل</label>
-            <InputText class="form-control" @bind-Value="newUser!.PhoneNumber" placeholder="مثال: 09123456789" />
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">ایمیل</label>
-            <InputText class="form-control" @bind-Value="newUser!.Email" placeholder="example@domain.com" />
-        </div>
-
-        <div class="mb-4">
-            <label class="form-label">رمز عبور</label>
-            <InputText type="password" class="form-control" @bind-Value="newUser!.Password" placeholder="حداقل ۶ کاراکتر" />
-        </div>
-        <div class="mb-4">
-            <label class="form-label">نقش‌ها</label>
+        @* ===== نقش‌ها ===== *@
+        <div class="card-panel mb-3">
+            <h6 class="form-section-title"><i class="bi bi-shield-lock"></i>نقش‌ها</h6>
             @foreach (var role in roles)
             {
                 <div class="form-check">
@@ -48,14 +64,26 @@
                 </div>
             }
         </div>
+
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-danger">@errorMessage</div>
+            <div class="alert alert-danger mb-0">
+                <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
+            </div>
         }
 
-        <div class="d-flex gap-2">
+        @* ===== نوار عملیات ===== *@
+        <div class="card-panel form-actions mt-3 d-flex align-items-center gap-2">
             <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                @(isSaving ? "در حال ذخیره..." : "ذخیره کاربر")
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-check-lg me-1"></i>
+                }
+                ذخیره کاربر
             </button>
             <a href="/admin/users" class="btn btn-outline-secondary">انصراف</a>
         </div>

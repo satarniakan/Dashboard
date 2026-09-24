@@ -14,23 +14,28 @@
 
 @if (stockCount is null)
 {
-    <p class="text-muted">در حال بارگذاری...</p>
+    <p class="text-body-secondary">در حال بارگذاری...</p>
 }
 else
 {
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="mb-0">انبارگردانی @stockCount.CountNumber — @stockCount.WarehouseName</h3>
-        @if (stockCount.Status == "Open")
-        {
-            <span class="badge bg-warning-subtle text-warning">باز</span>
-        }
-        else
-        {
-            <span class="badge bg-success-subtle text-success">بسته‌شده</span>
-        }
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h3 class="mb-1">انبارگردانی @stockCount.CountNumber</h3>
+            <div class="text-body-secondary small">
+                انبار: @stockCount.WarehouseName
+                <span class="badge @(stockCount.Status == "Open" ? "bg-warning-subtle text-warning" : "bg-success-subtle text-success") ms-2 align-middle">
+                    @(stockCount.Status == "Open" ? "باز" : "بسته‌شده")
+                </span>
+            </div>
+        </div>
+        <a href="/warehouse/stock-counts" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+        </a>
     </div>
 
-    <div class="card-panel">
+    <div class="card-panel mb-3">
+        <h6 class="form-section-title"><i class="bi bi-clipboard-data"></i>اقلام شمارش</h6>
+
         <table class="table mb-0">
             <thead>
                 <tr>
@@ -47,7 +52,7 @@ else
                     var discrepancy = counted - item.SystemQuantity;
                     <tr>
                         <td class="fw-medium">@item.ProductName</td>
-                        <td class="text-muted">@item.SystemQuantity</td>
+                        <td class="text-body-secondary">@item.SystemQuantity</td>
                         <td style="max-width: 160px;">
                             @if (stockCount.Status == "Open")
                             {
@@ -60,7 +65,7 @@ else
                                 @counted
                             }
                         </td>
-                        <td class="@(discrepancy == 0 ? "text-muted" : (discrepancy > 0 ? "text-success" : "text-danger"))">
+                        <td class="@(discrepancy == 0 ? "text-body-secondary" : (discrepancy > 0 ? "text-success" : "text-danger"))">
                             @(discrepancy > 0 ? "+" : "")@discrepancy
                         </td>
                     </tr>

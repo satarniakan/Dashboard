@@ -10,32 +10,58 @@
 @inject ILogger<Dashboard.Web.Components.Pages.Catalog.Units> Logger
 <PageTitle>واحدهای شمارش</PageTitle>
 
-<h3>واحدهای شمارش</h3>
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">واحدهای شمارش</h3>
+        <div class="text-body-secondary small">واحدهای شمارش کالاها (مثل کیلوگرم، بسته، متر) را مدیریت کنید.</div>
+    </div>
+    <a href="/" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به پیشخوان
+    </a>
+</div>
 
-<div class="card-panel mb-4" style="max-width: 480px;">
+<div class="card-panel mb-3" style="max-width: 640px;">
     <EditForm Model="@newUnit" OnValidSubmit="HandleAdd" FormName="AddUnitForm">
+        <h6 class="form-section-title"><i class="bi bi-rulers"></i>افزودن واحد جدید</h6>
+
         <div class="mb-3">
-            <label class="form-label">نام واحد جدید (مثلاً: کیلوگرم، بسته، متر)</label>
-            <InputText class="form-control" @bind-Value="newUnit.Name" maxlength="50" />
+            <label class="form-label">نام واحد جدید</label>
+            <InputText class="form-control" @bind-Value="newUnit.Name" maxlength="50" placeholder="مثلاً: کیلوگرم، بسته، متر" />
         </div>
+
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-danger">@errorMessage</div>
+            <div class="alert alert-danger mb-0">
+                <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
+            </div>
         }
-        <button type="submit" class="btn btn-primary" disabled="@isSaving">
-            @(isSaving ? "در حال ذخیره..." : "افزودن واحد")
-        </button>
+
+        <div class="d-flex mt-3">
+            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-plus-lg me-1"></i>
+                }
+                افزودن واحد
+            </button>
+        </div>
     </EditForm>
 </div>
 
 <div class="card-panel">
+    <h6 class="form-section-title"><i class="bi bi-list-ul"></i>واحدهای ثبت‌شده</h6>
+
     @if (units is null)
     {
-        <p class="text-muted">در حال بارگذاری...</p>
+        <p class="text-body-secondary">در حال بارگذاری...</p>
     }
     else if (!units.Any())
     {
-        <p class="text-muted text-center py-4">هنوز واحدی ثبت نشده است.</p>
+        <p class="text-body-secondary text-center py-4 mb-0">هنوز واحدی ثبت نشده است.</p>
     }
     else
     {
@@ -61,9 +87,11 @@
                                     <div class="text-danger small mt-1">@editError</div>
                                 }
                             </td>
-                            <td class="text-muted">@QuantityFormatter.Format(u.ProductCount) کالا</td>
+                            <td class="text-body-secondary">@QuantityFormatter.Format(u.ProductCount) کالا</td>
                             <td class="text-end">
-                                <button type="button" class="btn btn-sm btn-success" disabled="@isSaving" @onclick="SaveEdit">ذخیره</button>
+                                <button type="button" class="btn btn-sm btn-success" disabled="@isSaving" @onclick="SaveEdit">
+                                    <i class="bi bi-check-lg me-1"></i>ذخیره
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CancelEdit">انصراف</button>
                             </td>
                         </tr>
@@ -72,12 +100,14 @@
                     {
                         <tr>
                             <td class="fw-medium">@u.Name</td>
-                            <td class="text-muted">@QuantityFormatter.Format(u.ProductCount) کالا</td>
+                            <td class="text-body-secondary">@QuantityFormatter.Format(u.ProductCount) کالا</td>
                             <td class="text-end">
-                                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => StartEdit(u)">ویرایش</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => StartEdit(u)">
+                                    <i class="bi bi-pencil me-1"></i>ویرایش
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-danger" title="@(u.ProductCount > 0 ? "این واحد در حال استفاده است" : "حذف واحد")"
                                         @onclick="() => HandleDelete(u)">
-                                    حذف
+                                    <i class="bi bi-trash me-1"></i>حذف
                                 </button>
                             </td>
                         </tr>

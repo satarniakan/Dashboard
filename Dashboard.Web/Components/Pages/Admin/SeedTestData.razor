@@ -10,7 +10,12 @@
 @inject ILogger<Dashboard.Web.Components.Pages.Admin.SeedTestData> Logger
 <PageTitle>تولید دیتای تستی</PageTitle>
 
-<h3>تولید دیتای تستی</h3>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">تولید دیتای تستی</h3>
+        <div class="text-body-secondary small">ابزار ویژه‌ی راه‌اندازی؛ فقط روی دیتابیس خالی اجرا می‌شود</div>
+    </div>
+</div>
 
 <div class="card-panel" style="max-width: 640px;">
     <p>
@@ -22,7 +27,7 @@
 
     @if (isChecking)
     {
-        <p class="text-muted">در حال بررسی وضعیت دیتابیس...</p>
+        <p class="text-body-secondary">در حال بررسی وضعیت دیتابیس...</p>
     }
     else if (!isEmpty)
     {

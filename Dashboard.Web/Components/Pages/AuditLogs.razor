@@ -8,7 +8,12 @@
 
 <PageTitle>گزارش رویدادها</PageTitle>
 
-<h3 class="mb-4">گزارش رویدادها</h3>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">گزارش رویدادها</h3>
+        <div class="text-body-secondary small">ثبت فعالیت‌های کاربران در سیستم</div>
+    </div>
+</div>
 
 <div class="card-panel">
     <div class="mb-3">
@@ -18,11 +23,14 @@
 
     @if (logs is null)
     {
-        <p class="text-muted">در حال بارگذاری...</p>
+        <p class="text-body-secondary">در حال بارگذاری...</p>
     }
     else if (!logs.Any())
     {
-        <p class="text-muted text-center py-4">رویدادی ثبت نشده است.</p>
+        <div class="text-center text-body-secondary py-4">
+            <i class="bi bi-journal-text fs-3 d-block mb-2"></i>
+            <span class="small">رویدادی ثبت نشده است.</span>
+        </div>
     }
     else
     {
@@ -40,7 +48,7 @@
                 {
                     <tr>
                         <td class="text-muted" style="white-space: nowrap;">@log.OccurredAt.ToPersianDateTime()</td>
-                        <td><span class="badge bg-light text-dark">@log.EventType</span></td>
+                        <td><span class="badge bg-body-tertiary text-body border">@log.EventType</span></td>
                         <td>@(log.UserEmail ?? "-")</td>
                         <td class="text-muted">@log.Details</td>
                     </tr>

@@ -10,14 +10,42 @@
 
 @if (entry is null)
 {
-    <p class="text-muted">در حال بارگذاری...</p>
+    <p class="text-body-secondary">در حال بارگذاری...</p>
 }
 else
 {
-    <h3>سند شماره @entry.EntryNumber</h3>
-    <p class="text-muted">@entry.EntryDate.ToPersianDateTime() — @entry.Description</p>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h3 class="mb-1">سند شماره @entry.EntryNumber</h3>
+            <div class="text-body-secondary small">@entry.EntryDate.ToPersianDateTime()</div>
+        </div>
+        <a href="/accounting/journal" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+        </a>
+    </div>
+
+    <div class="card-panel mb-3">
+        <h6 class="form-section-title"><i class="bi bi-journal-text"></i>اطلاعات سند</h6>
+
+        <div class="row">
+            <div class="col-md-3">
+                <div class="small text-body-secondary">شماره سند</div>
+                <div class="fw-bold">@entry.EntryNumber</div>
+            </div>
+            <div class="col-md-3">
+                <div class="small text-body-secondary">تاریخ</div>
+                <div>@entry.EntryDate.ToPersianDateTime()</div>
+            </div>
+            <div class="col-md-6">
+                <div class="small text-body-secondary">شرح</div>
+                <div>@entry.Description</div>
+            </div>
+        </div>
+    </div>
 
     <div class="card-panel">
+        <h6 class="form-section-title"><i class="bi bi-list-check"></i>اقلام سند</h6>
+
         <table class="table mb-0">
             <thead>
                 <tr>
@@ -32,16 +60,16 @@ else
                 @foreach (var line in entry.Lines)
                 {
                     <tr>
-                        <td class="text-muted">@line.AccountCode</td>
+                        <td class="text-body-secondary">@line.AccountCode</td>
                         <td class="fw-medium">@line.AccountName</td>
-                        <td class="text-muted">@line.Description</td>
+                        <td class="text-body-secondary">@line.Description</td>
                         <td>@(line.Debit > 0 ? CurrencyFormatter.ToToman(line.Debit) : "-")</td>
                         <td>@(line.Credit > 0 ? CurrencyFormatter.ToToman(line.Credit) : "-")</td>
                     </tr>
                 }
             </tbody>
             <tfoot>
-                <tr class="fw-bold">
+                <tr class="fw-bold bg-body-tertiary">
                     <td colspan="3">جمع</td>
                     <td>@CurrencyFormatter.ToToman(entry.Lines.Sum(l => l.Debit))</td>
                     <td>@CurrencyFormatter.ToToman(entry.Lines.Sum(l => l.Credit))</td>
@@ -49,8 +77,6 @@ else
             </tfoot>
         </table>
     </div>
-
-    <a href="/accounting/journal" class="btn btn-outline-secondary mt-3">بازگشت</a>
 }
 
 @code {

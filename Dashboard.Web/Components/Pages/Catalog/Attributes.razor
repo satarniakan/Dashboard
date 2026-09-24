@@ -9,30 +9,57 @@
 
 <PageTitle>ویژگی‌های محصول</PageTitle>
 
-<h3>ویژگی‌های محصول (رنگ، سایز و ...)</h3>
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">ویژگی‌های محصول</h3>
+        <div class="text-body-secondary small">ویژگی‌هایی مثل رنگ، سایز و جنس را برای استفاده در تنوع‌های کالا تعریف کنید.</div>
+    </div>
+    <a href="/" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به پیشخوان
+    </a>
+</div>
 
-<div class="card-panel mb-4" style="max-width: 480px;">
+<div class="card-panel mb-3" style="max-width: 640px;">
+    <h6 class="form-section-title"><i class="bi bi-sliders"></i>افزودن ویژگی جدید</h6>
+
     <div class="mb-3">
-        <label class="form-label">نام ویژگی (مثلاً: رنگ)</label>
-        <input class="form-control" @bind="newAttribute.Name" />
+        <label class="form-label">نام ویژگی</label>
+        <input class="form-control" @bind="newAttribute.Name" placeholder="مثلاً: رنگ" />
     </div>
     <div class="mb-3">
-        <label class="form-label">مقادیر (هرکدام در یک خط، مثلاً: قرمز، آبی، سبز)</label>
-        <textarea class="form-control" rows="4" @bind="valuesRaw"></textarea>
+        <label class="form-label">مقادیر</label>
+        <textarea class="form-control" rows="4" @bind="valuesRaw" placeholder="هر مقدار در یک خط؛ مثلاً:&#10;قرمز&#10;آبی&#10;سبز"></textarea>
+        <div class="form-text">هر مقدار را در یک خط جداگانه وارد کنید؛ مثلاً: قرمز، آبی، سبز</div>
     </div>
+
     @if (!string.IsNullOrEmpty(errorMessage))
     {
-        <div class="alert alert-danger">@errorMessage</div>
+        <div class="alert alert-danger mb-0">
+            <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
+        </div>
     }
-    <button class="btn btn-primary" @onclick="HandleAdd" disabled="@isSaving">
-        @(isSaving ? "در حال ذخیره..." : "افزودن ویژگی")
-    </button>
+
+    <div class="d-flex mt-3">
+        <button type="button" class="btn btn-primary" @onclick="HandleAdd" disabled="@isSaving">
+            @if (isSaving)
+            {
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            }
+            else
+            {
+                <i class="bi bi-plus-lg me-1"></i>
+            }
+            افزودن ویژگی
+        </button>
+    </div>
 </div>
 
 <div class="card-panel">
+    <h6 class="form-section-title"><i class="bi bi-tags"></i>ویژگی‌های ثبت‌شده</h6>
+
     @if (attributes is null || !attributes.Any())
     {
-        <p class="text-muted text-center py-4">هنوز ویژگی‌ای ثبت نشده است.</p>
+        <p class="text-body-secondary text-center py-4 mb-0">هنوز ویژگی‌ای ثبت نشده است.</p>
     }
     else
     {
@@ -40,7 +67,7 @@
         {
             <div class="mb-3">
                 <strong>@a.Name:</strong>
-                @string.Join("، ", a.Values.Select(v => v.Value))
+                <span class="text-body-secondary">@string.Join("، ", a.Values.Select(v => v.Value))</span>
             </div>
         }
     }

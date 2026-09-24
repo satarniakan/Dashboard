@@ -9,8 +9,11 @@
 
 <PageTitle>تاریخچه رویدادهای انبار</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="mb-0">تاریخچه رویدادهای انبار</h3>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">تاریخچه رویدادهای انبار</h3>
+        <div class="text-body-secondary small">ورود و خروج کالا در انبارها</div>
+    </div>
     <div class="d-flex align-items-center gap-2">
         <label class="form-label mb-0">انبار:</label>
         <select class="form-select" style="width: auto;" @bind="selectedWarehouseId" @bind:after="LoadAsync">
@@ -29,11 +32,14 @@
 <div class="card-panel">
     @if (history is null)
     {
-        <p class="text-muted">در حال بارگذاری...</p>
+        <p class="text-body-secondary">در حال بارگذاری...</p>
     }
     else if (!history.Any())
     {
-        <p class="text-muted text-center py-4">رویدادی یافت نشد.</p>
+        <div class="text-center text-body-secondary py-5">
+            <i class="bi bi-inbox d-block mb-2" style="font-size: 2rem;"></i>
+            رویدادی یافت نشد.
+        </div>
     }
     else
     {
@@ -54,7 +60,7 @@
                 {
                     <tr>
                         <td class="text-muted" style="white-space: nowrap;">@t.OccurredAt.ToPersianDateTime()</td>
-                        <td><span class="badge bg-light text-dark">@TypeToPersian(t.Type)</span></td>
+                        <td><span class="badge bg-body-tertiary text-body border">@TypeToPersian(t.Type)</span></td>
                         <td class="fw-medium">@t.ProductName</td>
                         <td>@t.WarehouseName</td>
                         <td class="@(t.QuantityChange >= 0 ? "text-success" : "text-danger")">

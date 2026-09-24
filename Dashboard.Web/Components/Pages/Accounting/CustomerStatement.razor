@@ -10,7 +10,12 @@
 
 <PageTitle>گردش حساب مشتری</PageTitle>
 
-<h3>گردش حساب مشتری</h3>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">گردش حساب مشتری</h3>
+        <div class="text-body-secondary small">بدهکار و بستانکار و مانده حساب یک مشتری</div>
+    </div>
+</div>
 
 <div class="card-panel mb-3" style="max-width: 400px;">
     <label class="form-label">انتخاب مشتری</label>
@@ -31,11 +36,14 @@
     <div class="card-panel">
         @if (rows is null)
         {
-            <p class="text-muted">در حال بارگذاری...</p>
+            <p class="text-body-secondary">در حال بارگذاری...</p>
         }
         else if (!rows.Any())
         {
-            <p class="text-muted text-center py-4">این مشتری هنوز تراکنشی ندارد.</p>
+            <div class="text-center text-body-secondary py-5">
+                <i class="bi bi-person-lines-fill fs-1 d-block mb-2"></i>
+                این مشتری هنوز تراکنشی ندارد.
+            </div>
         }
         else
         {

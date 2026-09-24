@@ -9,19 +9,27 @@
 
 <PageTitle>پرداخت به تأمین‌کنندگان</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="mb-0">پرداخت به تأمین‌کنندگان</h3>
-    <a href="/accounting/supplier-payments/add" class="btn btn-primary">+ ثبت پرداخت</a>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">پرداخت به تأمین‌کنندگان</h3>
+        <div class="text-body-secondary small">فهرست پرداخت‌های ثبت‌شده به تأمین‌کنندگان</div>
+    </div>
+    <a href="/accounting/supplier-payments/add" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>ثبت پرداخت
+    </a>
 </div>
 
 <div class="card-panel">
     @if (payments is null)
     {
-        <p class="text-muted">در حال بارگذاری...</p>
+        <p class="text-body-secondary">در حال بارگذاری...</p>
     }
     else if (!payments.Any())
     {
-        <p class="text-muted text-center py-4">هنوز پرداختی ثبت نشده است.</p>
+        <div class="text-center text-body-secondary py-5">
+            <i class="bi bi-cash-coin fs-1 d-block mb-2"></i>
+            هنوز پرداختی ثبت نشده است.
+        </div>
     }
     else
     {

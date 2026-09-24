@@ -11,7 +11,12 @@
 
 <PageTitle>پروفایل کاربری</PageTitle>
 
-<h3>پروفایل کاربری</h3>
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">پروفایل کاربری</h3>
+        <div class="text-body-secondary small">اطلاعات شخصی و آدرس خود را تکمیل یا ویرایش کنید.</div>
+    </div>
+</div>
 
 @if (Welcome)
 {
@@ -32,82 +37,112 @@
 
 @if (profile is null)
 {
-    <p class="text-muted">در حال بارگذاری...</p>
+    <p class="text-body-secondary">در حال بارگذاری...</p>
 }
 else
 {
-    <div class="card-panel" style="max-width: 480px;">
+    <div style="max-width: 560px;">
 
-        <div class="mb-3">
-            <label class="form-label">شماره موبایل</label>
-            <input type="text" class="form-control" value="@profile.PhoneNumber" disabled />
-        </div>
+        @* ===== اطلاعات حساب ===== *@
+        <div class="card-panel mb-3">
+            <h6 class="form-section-title"><i class="bi bi-person"></i>اطلاعات حساب</h6>
 
-        <div class="row">
-            <div class="col-6 mb-3">
-                <label class="form-label">نام</label>
-                <input type="text" class="form-control" @bind="firstName" />
-            </div>
-            <div class="col-6 mb-3">
-                <label class="form-label">نام خانوادگی</label>
-                <input type="text" class="form-control" @bind="lastName" />
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">ایمیل</label>
-            <input type="email" class="form-control" @bind="email" placeholder="ایمیل خود را وارد کنید" />
-        </div>
-
-        <div class="row">
-            <div class="col-6 mb-3">
-                <label class="form-label">استان</label>
-                <select class="form-select" @bind="selectedProvinceId" @bind:after="OnProvinceChanged">
-                    <option value="0">-- انتخاب کنید --</option>
-                    @foreach (var p in provinces)
-                    {
-                        <option value="@p.Id">@p.Name</option>
-                    }
-                </select>
-            </div>
-            <div class="col-6 mb-3">
-                <label class="form-label">شهر</label>
-                <select class="form-select" @bind="selectedCityId">
-                    <option value="0">-- ابتدا استان را انتخاب کنید --</option>
-                    @foreach (var c in cities)
-                    {
-                        <option value="@c.Id">@c.Name</option>
-                    }
-                </select>
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">آدرس</label>
-            <textarea class="form-control" rows="2" @bind="address"></textarea>
-        </div>
-
-        @if (!profile.HasPassword)
-        {
+            @* شماره موبایل فقط نمایشی است و قابل ویرایش نیست *@
             <div class="mb-3">
-                <label class="form-label">رمز عبور</label>
-                <input type="password" class="form-control" @bind="password" placeholder="حداقل ۳ کاراکتر" />
+                <label class="form-label">شماره موبایل</label>
+                <input type="text" class="form-control" value="@profile.PhoneNumber" disabled />
             </div>
-            <div class="mb-4">
-                <label class="form-label">تکرار رمز عبور</label>
-                <input type="password" class="form-control" @bind="confirmPassword" />
-            </div>
-        }
-        else
-        {
-            <div class="alert alert-info" style="font-size: 0.85rem;">
-                رمز عبور شما قبلاً تنظیم شده است.
-            </div>
-        }
 
-        <button class="btn btn-primary w-100" disabled="@isSaving" @onclick="HandleSave">
-            @(isSaving ? "در حال ذخیره..." : "ذخیره تغییرات")
-        </button>
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <label class="form-label">نام</label>
+                    <input type="text" class="form-control" @bind="firstName" />
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label">نام خانوادگی</label>
+                    <input type="text" class="form-control" @bind="lastName" />
+                </div>
+            </div>
+
+            <div class="mb-0">
+                <label class="form-label">ایمیل</label>
+                <input type="email" class="form-control" @bind="email" placeholder="ایمیل خود را وارد کنید" />
+            </div>
+        </div>
+
+        @* ===== آدرس ===== *@
+        <div class="card-panel mb-3">
+            <h6 class="form-section-title"><i class="bi bi-geo-alt"></i>آدرس</h6>
+
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <label class="form-label">استان</label>
+                    <select class="form-select" @bind="selectedProvinceId" @bind:after="OnProvinceChanged">
+                        <option value="0">-- انتخاب کنید --</option>
+                        @foreach (var p in provinces)
+                        {
+                            <option value="@p.Id">@p.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-6 mb-3">
+                    <label class="form-label">شهر</label>
+                    <select class="form-select" @bind="selectedCityId">
+                        <option value="0">-- ابتدا استان را انتخاب کنید --</option>
+                        @foreach (var c in cities)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-0">
+                <label class="form-label">آدرس</label>
+                <textarea class="form-control" rows="2" @bind="address"></textarea>
+            </div>
+        </div>
+
+        @* ===== رمز عبور ===== *@
+        <div class="card-panel mb-3">
+            <h6 class="form-section-title"><i class="bi bi-key"></i>رمز عبور</h6>
+
+            @if (!profile.HasPassword)
+            {
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">رمز عبور</label>
+                        <input type="password" class="form-control" @bind="password" placeholder="حداقل ۳ کاراکتر" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">تکرار رمز عبور</label>
+                        <input type="password" class="form-control" @bind="confirmPassword" />
+                    </div>
+                </div>
+                <div class="form-text mb-0">اگر رمز عبور را تعیین کنید، در ورود بعدی از شما پرسیده می‌شود.</div>
+            }
+            else
+            {
+                <div class="alert alert-info mb-0" style="font-size: 0.85rem;">
+                    رمز عبور شما قبلاً تنظیم شده است.
+                </div>
+            }
+        </div>
+
+        @* ===== نوار عملیات ===== *@
+        <div class="card-panel form-actions mt-3 d-flex align-items-center gap-2">
+            <button class="btn btn-primary" disabled="@isSaving" @onclick="HandleSave">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-check-lg me-1"></i>
+                }
+                ذخیره تغییرات
+            </button>
+        </div>
     </div>
 }
 

@@ -16,7 +16,15 @@
 @inject Dashboard.Web.Services.ToastService ToastService
 <PageTitle>ویرایش محصول</PageTitle>
 
-<h3>ویرایش محصول</h3>
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">ویرایش محصول</h3>
+        <div class="text-body-secondary small">اطلاعات کالا را ویرایش کنید؛ فیلدهای ستاره‌دار الزامی هستند.</div>
+    </div>
+    <a href="/products" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+    </a>
+</div>
 
 @if (notFound)
 {
@@ -24,132 +32,182 @@
 }
 else if (editModel is null)
 {
-    <p class="text-muted">در حال بارگذاری...</p>
+    <p class="text-body-secondary">در حال بارگذاری...</p>
 }
 else
 {
-    <div class="card-panel" style="max-width: 640px;">
-        <EditForm Model="@editModel" OnValidSubmit="HandleValidSubmit" FormName="EditProductForm">
-            <DataAnnotationsValidator />
-            <ValidationSummary class="mb-3" />
+    <EditForm Model="@editModel" OnValidSubmit="HandleValidSubmit" FormName="EditProductForm">
+        <DataAnnotationsValidator />
 
-            <div class="row">
-                <div class="col-md-8">
-                    <div class="mb-3">
-                        <label class="form-label">نام محصول</label>
-                        <InputText class="form-control" @bind-Value="editModel.Name" />
-                    </div>
+        <div class="row g-3">
+            <div class="col-lg-8">
 
-                    <div class="row">
-                        <div class="col-6 mb-3">
-                            <label class="form-label">کد کالا (SKU)</label>
-                            <InputText class="form-control" @bind-Value="editModel.Sku" />
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="form-label">بارکد (اختیاری)</label>
-                            <InputText class="form-control" @bind-Value="editModel.Barcode" />
-                        </div>
-                    </div>
+                @* ===== اطلاعات اصلی ===== *@
+                <div class="card-panel mb-3">
+                    <h6 class="form-section-title"><i class="bi bi-box-seam"></i>اطلاعات اصلی</h6>
+
+                    <AppTextField @bind-Value="editModel.Name" Label="نام محصول" Required="true" />
 
                     <div class="row">
-                        <div class="col-6 mb-3">
-                            <label class="form-label">قیمت فروش (تومان)</label>
-                            <AppPriceField TValue="decimal" @bind-Value="editModel.Price" WrapperClass=""
-                                           ShowWords="true" QuickAmounts="new[] { 100_000L, 500_000L, 1_000_000L }" />
+                        <div class="col-md-6">
+                            <AppTextField @bind-Value="editModel.Sku" Label="کد کالا (SKU)" Required="true" />
                         </div>
-                        <div class="col-6 mb-3">
-                            <label class="form-label">بهای تمام‌شده (تومان)</label>
-                            <AppPriceField TValue="decimal" @bind-Value="editModel.CostPrice" WrapperClass=""
-                                           ShowWords="true" />
+                        <div class="col-md-6">
+                            <AppTextField @bind-Value="editModel.Barcode" Label="بارکد (اختیاری)" />
                         </div>
                     </div>
-
-                    <div class="row">
-                        <div class="col-6 mb-3">
-                            <label class="form-label">واحد شمارش</label>
-                            <select class="form-select" @bind="editModel.Unit">
-                                @* واحد فعلی کالا اگر در فهرست نبود (داده‌ی قدیمی/آزاد)، حفظ می‌شود *@
-                                @if (!string.IsNullOrEmpty(editModel.Unit) && !unitNames.Contains(editModel.Unit))
-                                {
-                                    <option value="@editModel.Unit">@editModel.Unit (فعلی)</option>
-                                }
-                                @foreach (var unit in unitNames)
-                                {
-                                    <option value="@unit">@unit</option>
-                                }
-                            </select>
-                            <div class="form-text">مدیریت واحدها: <a href="/catalog/units">واحدهای شمارش</a></div>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="form-label">نقطه سفارش مجدد</label>
-                            <InputNumber class="form-control" @bind-Value="editModel.ReorderPoint" />
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">دسته‌بندی</label>
-                        <select class="form-select" @bind="editModel.CategoryId">
-                            <option value="">بدون دسته‌بندی</option>
-                            @if (categories is not null)
-                            {
-                                @foreach (var c in categories)
-                                {
-                                    <option value="@c.Id">@c.Name</option>
-                                }
-                            }
-                        </select>
-                    </div>
-
-                    <details class="mb-3">
-                        <summary class="text-muted" style="cursor: pointer;">ابعاد و وزن (اختیاری)</summary>
-                        <div class="row mt-2">
-                            <div class="col-3 mb-2">
-                                <label class="form-label small">وزن (kg)</label>
-                                <InputNumber class="form-control" @bind-Value="editModel.Weight" />
-                            </div>
-                            <div class="col-3 mb-2">
-                                <label class="form-label small">طول (cm)</label>
-                                <InputNumber class="form-control" @bind-Value="editModel.Length" />
-                            </div>
-                            <div class="col-3 mb-2">
-                                <label class="form-label small">عرض (cm)</label>
-                                <InputNumber class="form-control" @bind-Value="editModel.Width" />
-                            </div>
-                            <div class="col-3 mb-2">
-                                <label class="form-label small">ارتفاع (cm)</label>
-                                <InputNumber class="form-control" @bind-Value="editModel.Height" />
-                            </div>
-                        </div>
-                    </details>
                 </div>
 
-                <div class="col-md-4">
-                    <label class="form-label">عکس محصول</label>
-                    @if (!string.IsNullOrEmpty(editModel.ImageUrl))
-                    {
-                        <img src="@editModel.ImageUrl" class="img-fluid rounded mb-2 border" alt="پیش‌نمایش" />
-                    }
-                    <InputFile OnChange="HandleImageUpload" class="form-control" accept="image/*" />
+                @* ===== قیمت‌گذاری ===== *@
+                <div class="card-panel mb-3">
+                    <h6 class="form-section-title"><i class="bi bi-cash-coin"></i>قیمت‌گذاری</h6>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <AppPriceField TValue="decimal" @bind-Value="editModel.Price" Label="قیمت فروش (تومان)"
+                                           Placeholder="0" WrapperClass="" ShowWords="true"
+                                           QuickAmounts="new[] { 100_000L, 500_000L, 1_000_000L }" />
+                        </div>
+                        <div class="col-md-6">
+                            <AppPriceField TValue="decimal" @bind-Value="editModel.CostPrice" Label="بهای تمام‌شده (تومان)"
+                                           Placeholder="0" WrapperClass="" ShowWords="true"
+                                           Hint="قیمت خرید یا تولید؛ مبنای محاسبه‌ی سود" />
+                        </div>
+                    </div>
+                </div>
+
+                @* ===== دسته‌بندی و انبار ===== *@
+                <div class="card-panel mb-3">
+                    <h6 class="form-section-title"><i class="bi bi-clipboard-data"></i>دسته‌بندی و انبار</h6>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <AppDropdown Label="دسته‌بندی" Placeholder="بدون دسته‌بندی" @bind-Value="editModel.CategoryId">
+                                @if (categories is not null)
+                                {
+                                    @foreach (var c in categories)
+                                    {
+                                        <option value="@c.Id">@c.Name</option>
+                                    }
+                                }
+                            </AppDropdown>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">واحد شمارش</label>
+                                <select class="form-select" @bind="editModel.Unit">
+                                    @* واحد فعلی کالا اگر در فهرست نبود (داده‌ی قدیمی/آزاد)، حفظ می‌شود *@
+                                    @if (!string.IsNullOrEmpty(editModel.Unit) && !unitNames.Contains(editModel.Unit))
+                                    {
+                                        <option value="@editModel.Unit">@editModel.Unit (فعلی)</option>
+                                    }
+                                    @foreach (var unit in unitNames)
+                                    {
+                                        <option value="@unit">@unit</option>
+                                    }
+                                </select>
+                                <div class="form-text">مدیریت واحدها: <a href="/catalog/units">واحدهای شمارش</a></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <AppNumberField TValue="int" @bind-Value="editModel.ReorderPoint" Label="نقطه سفارش مجدد"
+                                            Placeholder="0" Hint="وقتی موجودی به این عدد برسد، کالا در گزارش «کم‌موجودی» نمایش داده می‌شود." />
+                        </div>
+                    </div>
+                </div>
+
+                @* ===== ابعاد و وزن (اختیاری) ===== *@
+                <details class="card-panel mb-3" open="@dimsOpen" @ontoggle="() => dimsOpen = !dimsOpen">
+                    <summary class="form-section-title mb-0 border-0">
+                        <i class="bi bi-chevron-down section-caret"></i>
+                        <i class="bi bi-rulers"></i>ابعاد و وزن
+                        <span class="text-body-secondary small fw-normal">(اختیاری)</span>
+                    </summary>
+                    <div class="row mt-3">
+                        <div class="col-6 col-md-3">
+                            <AppNumberField TValue="decimal?" @bind-Value="editModel.Weight" Label="وزن (kg)" Placeholder="0" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <AppNumberField TValue="decimal?" @bind-Value="editModel.Length" Label="طول (cm)" Placeholder="0" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <AppNumberField TValue="decimal?" @bind-Value="editModel.Width" Label="عرض (cm)" Placeholder="0" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <AppNumberField TValue="decimal?" @bind-Value="editModel.Height" Label="ارتفاع (cm)" Placeholder="0" />
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <div class="col-lg-4">
+
+                @* ===== عکس محصول ===== *@
+                <div class="card-panel mb-3">
+                    <h6 class="form-section-title"><i class="bi bi-image"></i>عکس محصول</h6>
+
                     @if (isUploading)
                     {
-                        <p class="text-muted mt-2 small">در حال آپلود...</p>
+                        <div class="image-dropzone">
+                            <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+                            <div class="small mt-2">در حال آپلود…</div>
+                        </div>
                     }
+                    else if (!string.IsNullOrEmpty(editModel.ImageUrl))
+                    {
+                        <div class="image-preview mb-2">
+                            <img src="@editModel.ImageUrl" alt="پیش‌نمایش محصول" />
+                        </div>
+                        <div class="d-flex gap-2">
+                            <label class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-arrow-repeat me-1"></i>تغییر عکس
+                                <InputFile OnChange="HandleImageUpload" accept="image/*" class="d-none" />
+                            </label>
+                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => editModel.ImageUrl = null">
+                                <i class="bi bi-trash me-1"></i>حذف
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <label class="image-dropzone">
+                            <InputFile OnChange="HandleImageUpload" accept="image/*" class="d-none" />
+                            <i class="bi bi-cloud-arrow-up fs-1"></i>
+                            <div>انتخاب عکس</div>
+                            <div class="small">یا فایل را اینجا رها کنید</div>
+                        </label>
+                    }
+                    <div class="form-text mt-2">فرمت‌های تصویری؛ حداکثر ۵ مگابایت.</div>
                 </div>
             </div>
+        </div>
 
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="alert alert-danger mt-3">@errorMessage</div>
-            }
-
-            <div class="d-flex gap-2 mt-3">
-                <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                    @(isSaving ? "در حال ذخیره..." : "ذخیره تغییرات")
-                </button>
-                <a href="/products" class="btn btn-outline-secondary">انصراف</a>
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-3 mb-0">
+                <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
             </div>
-        </EditForm>
-    </div>
+        }
+
+        @* ===== نوار عملیات ===== *@
+        <div class="card-panel form-actions mt-3 d-flex align-items-center gap-2">
+            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-check-lg me-1"></i>
+                }
+                ذخیره تغییرات
+            </button>
+            <a href="/products" class="btn btn-outline-secondary">انصراف</a>
+        </div>
+    </EditForm>
 }
 
 @code {
@@ -161,6 +219,7 @@ else
     private bool isSaving;
     private bool isUploading;
     private bool notFound;
+    private bool dimsOpen;
     private string? errorMessage;
 
     protected override async Task OnInitializedAsync()

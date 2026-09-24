@@ -8,7 +8,29 @@
     --brand-text-muted: #6b7280;
     --brand-danger: #dc2626;
     --brand-success: #16a34a;
+    --brand-thead-bg: #f3f4f6;
+    --brand-row-hover: #f9fafb;
+    --brand-danger-bg: #fef2f2;
+    --brand-focus-ring: rgba(37, 99, 235, 0.1);
     --radius: 10px;
+}
+
+/* تم تاریک: فقط متغیرها عوض می‌شوند؛ بقیه استایل‌ها از همین‌ها تغذیه می‌کنند */
+html[data-theme="dark"] {
+    --brand-primary: #3b82f6;
+    --brand-primary-hover: #60a5fa;
+    --brand-bg: #0f172a;
+    --brand-surface: #1e293b;
+    --brand-border: #334155;
+    --brand-text: #e2e8f0;
+    --brand-text-muted: #94a3b8;
+    --brand-danger: #f87171;
+    --brand-success: #4ade80;
+    --brand-thead-bg: #243247;
+    --brand-row-hover: #26334a;
+    --brand-danger-bg: #2b1618;
+    --brand-focus-ring: rgba(59, 130, 246, 0.25);
+    color-scheme: dark;
 }
 
 html, body {
@@ -61,7 +83,7 @@ h3 {
 
     .form-control:focus {
         border-color: var(--brand-primary);
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        box-shadow: 0 0 0 3px var(--brand-focus-ring);
     }
 
 .form-label {
@@ -75,10 +97,13 @@ h3 {
     background: var(--brand-surface);
     border-radius: var(--radius);
     overflow: hidden;
+    /* جلوگیری از پس‌زمینه سفید پیش‌فرض سلول‌های بوت‌استرپ در تم تاریک */
+    --bs-table-bg: var(--brand-surface);
+    --bs-table-color: var(--brand-text);
 }
 
     .table thead {
-        background-color: #f3f4f6;
+        background-color: var(--brand-thead-bg);
     }
 
         .table thead th {
@@ -96,13 +121,13 @@ h3 {
     }
 
     .table tbody tr:hover {
-        background-color: #f9fafb;
+        background-color: var(--brand-row-hover);
     }
 
 .alert-danger {
     border-radius: 8px;
     border: none;
-    background-color: #fef2f2;
+    background-color: var(--brand-danger-bg);
     color: var(--brand-danger);
 }
 
@@ -115,7 +140,7 @@ a {
 }
 
 #blazor-error-ui {
-    color-scheme: light only;
+    color-scheme: light dark;
     background: lightyellow;
     bottom: 0;
     box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
@@ -257,4 +282,97 @@ a {
     to {
         opacity: 0;
     }
+}
+
+/* ============================================================
+   استایل‌های مشترک فرم‌ها (سبک صفحه‌ی «افزودن محصول»)
+   ============================================================ */
+
+/* عنوان بخش‌های فرم */
+.form-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--brand-text);
+    margin: 0 0 1rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--brand-border);
+}
+
+    .form-section-title i {
+        color: var(--brand-primary);
+        font-size: 1.05rem;
+    }
+
+/* بخش تاشو داخل فرم */
+details > summary.form-section-title {
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+    details > summary.form-section-title .section-caret {
+        font-size: 0.75rem;
+        color: var(--brand-text-muted);
+        transition: transform 0.2s ease;
+    }
+
+details[open] > summary.form-section-title .section-caret {
+    transform: rotate(180deg);
+}
+
+/* ناحیه‌ی انتخاب عکس */
+.image-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 2.25rem 1rem;
+    border: 2px dashed var(--brand-border);
+    border-radius: var(--radius);
+    background-color: var(--brand-bg);
+    color: var(--brand-text-muted);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+    .image-dropzone:hover {
+        border-color: var(--brand-primary);
+        color: var(--brand-primary);
+    }
+
+.image-preview img {
+    display: block;
+    width: 100%;
+    max-height: 260px;
+    object-fit: contain;
+    border: 1px solid var(--brand-border);
+    border-radius: var(--radius);
+    background-color: var(--brand-bg);
+}
+
+/* نمایش حاشیه سود / پیام‌های کوچک کنار قیمت */
+.price-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+/* نوار عملیات چسبان پایین فرم */
+.form-actions {
+    position: sticky;
+    bottom: 0.75rem;
+    z-index: 5;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+/* کارت راهنما */
+.tips-panel ul li::marker {
+    color: var(--brand-primary);
 }

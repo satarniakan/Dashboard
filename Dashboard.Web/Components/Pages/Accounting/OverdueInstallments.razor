@@ -9,16 +9,24 @@
 
 <PageTitle>اقساط معوق</PageTitle>
 
-<h3>اقساط معوق</h3>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">اقساط معوق</h3>
+        <div class="text-body-secondary small">اقساطی که از سررسید آن‌ها گذشته و تسویه نشده‌اند</div>
+    </div>
+</div>
 
 <div class="card-panel">
     @if (overdue is null)
     {
-        <p class="text-muted">در حال بارگذاری...</p>
+        <p class="text-body-secondary">در حال بارگذاری...</p>
     }
     else if (!overdue.Any())
     {
-        <p class="text-success text-center py-4">🎉 هیچ قسط معوقی وجود ندارد.</p>
+        <div class="text-center text-body-secondary py-5">
+            <i class="bi bi-check2-circle fs-1 d-block mb-2"></i>
+            هیچ قسط معوقی وجود ندارد.
+        </div>
     }
     else
     {

@@ -10,7 +10,7 @@
         <div class="top-row px-4">
             <AuthorizeView>
                 <Authorized>
-                    <span class="text-muted small">
+                    <span class="text-body-secondary small">
                         @(context.User.FindFirst("FullName")?.Value ?? context.User.Identity?.Name)
                         @{
                             var roleNames = context.User.FindAll(System.Security.Claims.ClaimTypes.Role)
@@ -19,11 +19,14 @@
                         }
                         @if (!string.IsNullOrWhiteSpace(roleText))
                         {
-                            <span class="badge bg-light text-dark ms-1">@roleText</span>
+                            <span class="badge bg-body-tertiary text-body border ms-1">@roleText</span>
                         }
                     </span>
                 </Authorized>
             </AuthorizeView>
+            <button class="theme-toggle" @onclick="ToggleTheme" title="تغییر تم روشن/تاریک" aria-label="تغییر تم">
+                <i class="bi @(isDark ? "bi-sun-fill" : "bi-moon-stars-fill")"></i>
+            </button>
         </div>
         <article class="content px-4 py-4">
             <AppErrorBoundary @ref="errorBoundary">
@@ -41,7 +44,27 @@
 <ToastContainer />
 @code {
     private AppErrorBoundary? errorBoundary;
+    private bool isDark;
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; } = default!;
+
     private void Recover() => errorBoundary?.Recover();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // تم اولیه را theme.js در head تعیین کرده؛ فقط آیکون را هماهنگ می‌کنیم
+            isDark = await JSRuntime.InvokeAsync<string>("themeInterop.get") == "dark";
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleTheme()
+    {
+        isDark = await JSRuntime.InvokeAsync<string>("themeInterop.toggle") == "dark";
+    }
 }
 </main>
 </div>

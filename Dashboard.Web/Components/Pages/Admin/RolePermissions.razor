@@ -8,7 +8,12 @@
 @inject ILogger<Dashboard.Web.Components.Pages.Admin.RolePermissions> Logger
 <PageTitle>مدیریت مجوز نقش‌ها</PageTitle>
 
-<h3>مدیریت مجوز نقش‌ها</h3>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">مدیریت مجوز نقش‌ها</h3>
+        <div class="text-body-secondary small">تعیین دسترسی هر نقش به بخش‌های مختلف برنامه</div>
+    </div>
+</div>
 
 @if (Success)
 {
@@ -44,7 +49,7 @@
         </div>
 
         <button class="btn btn-primary" @onclick="Save">ذخیره</button>
-        <p class="text-muted mt-3" style="font-size: 0.85rem;">
+        <p class="text-body-secondary mt-3" style="font-size: 0.85rem;">
             توجه: کاربرانی که از قبل وارد شده‌اند باید یک‌بار خارج و دوباره وارد شوند تا تغییرات مجوز روی آن‌ها اعمال شود.
         </p>
     }

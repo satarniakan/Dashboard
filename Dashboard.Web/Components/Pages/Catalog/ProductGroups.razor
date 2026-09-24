@@ -9,14 +9,20 @@
 <PageTitle>گروه‌های محصول</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="mb-0">گروه‌های محصول</h3>
+    <div>
+        <h3 class="mb-1">گروه‌های محصول</h3>
+        <div class="text-body-secondary small">گروه‌بندی کالاها و مدیریت Variantها</div>
+    </div>
     <a href="/catalog/product-groups/add" class="btn btn-primary">+ گروه محصول جدید</a>
 </div>
 
 <div class="card-panel">
     @if (groups is null || !groups.Any())
     {
-        <p class="text-muted text-center py-4">هنوز گروه محصولی ثبت نشده است.</p>
+        <div class="text-center text-body-secondary py-4">
+            <i class="bi bi-diagram-3 fs-3 d-block mb-2"></i>
+            <span class="small">هنوز گروه محصولی ثبت نشده است.</span>
+        </div>
     }
     else
     {

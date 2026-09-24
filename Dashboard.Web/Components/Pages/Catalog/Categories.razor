@@ -8,45 +8,65 @@
 @inject ILogger<Dashboard.Web.Components.Pages.Catalog.Categories> Logger
 <PageTitle>دسته‌بندی‌ها</PageTitle>
 
-<h3>دسته‌بندی‌ها</h3>
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">دسته‌بندی‌ها</h3>
+        <div class="text-body-secondary small">دسته‌ها را برای سازمان‌دهی کالاها مدیریت کنید.</div>
+    </div>
+    <a href="/" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به پیشخوان
+    </a>
+</div>
 
-<div class="card-panel mb-4" style="max-width: 480px;">
+<div class="card-panel mb-3" style="max-width: 640px;">
     <EditForm Model="@newCategory" OnValidSubmit="HandleAdd" FormName="AddCategoryForm">
-        <div class="mb-3">
-            <label class="form-label">نام دسته</label>
-            <InputText class="form-control" @bind-Value="newCategory.Name" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Slug (برای آدرس صفحه، مثلاً: mens-tshirts)</label>
-            <InputText class="form-control" @bind-Value="newCategory.Slug" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">دسته والد (اختیاری)</label>
-            <select class="form-select" @bind="newCategory.ParentCategoryId">
-                <option value="">-- بدون والد (دسته اصلی) --</option>
-                @if (categories is not null)
+        <h6 class="form-section-title"><i class="bi bi-tag"></i>افزودن دسته جدید</h6>
+
+        <AppTextField @bind-Value="newCategory.Name" Label="نام دسته"
+                      Placeholder="مثلاً: پوشاک مردانه" />
+
+        <AppTextField @bind-Value="newCategory.Slug" Label="Slug"
+                      Placeholder="مثلاً: mens-tshirts" Hint="برای آدرس صفحه‌ی دسته" />
+
+        <AppDropdown Label="دسته والد (اختیاری)" Placeholder="-- بدون والد (دسته اصلی) --" @bind-Value="newCategory.ParentCategoryId">
+            @if (categories is not null)
+            {
+                @foreach (var c in categories)
                 {
-                    @foreach (var c in categories)
-                    {
-                        <option value="@c.Id">@c.Name</option>
-                    }
+                    <option value="@c.Id">@c.Name</option>
                 }
-            </select>
-        </div>
+            }
+        </AppDropdown>
+
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-danger">@errorMessage</div>
+            <div class="alert alert-danger mb-0">
+                <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
+            </div>
         }
-        <button type="submit" class="btn btn-primary" disabled="@isSaving">
-            @(isSaving ? "در حال ذخیره..." : "افزودن دسته")
-        </button>
+
+        <div class="d-flex mt-3">
+            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-plus-lg me-1"></i>
+                }
+                افزودن دسته
+            </button>
+        </div>
     </EditForm>
 </div>
 
 <div class="card-panel">
+    <h6 class="form-section-title"><i class="bi bi-diagram-3"></i>دسته‌های ثبت‌شده</h6>
+
     @if (categories is null || !categories.Any())
     {
-        <p class="text-muted text-center py-4">هنوز دسته‌ای ثبت نشده است.</p>
+        <p class="text-body-secondary text-center py-4 mb-0">هنوز دسته‌ای ثبت نشده است.</p>
     }
     else
     {
@@ -57,8 +77,8 @@
                 {
                     <tr>
                         <td class="fw-medium">@c.Name</td>
-                        <td class="text-muted">@c.Slug</td>
-                        <td class="text-muted">@(categories.FirstOrDefault(p => p.Id == c.ParentCategoryId)?.Name ?? "-")</td>
+                        <td class="text-body-secondary">@c.Slug</td>
+                        <td class="text-body-secondary">@(categories.FirstOrDefault(p => p.Id == c.ParentCategoryId)?.Name ?? "-")</td>
                     </tr>
                 }
             </tbody>
