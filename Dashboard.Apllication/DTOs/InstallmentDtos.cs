@@ -1,10 +1,15 @@
-﻿namespace Dashboard.Application.DTOs;
+using System.ComponentModel.DataAnnotations;
+
+namespace Dashboard.Application.DTOs;
 
 public record InstallmentInput(DateTime DueDate, decimal Amount);
 
 public class CreateInstallmentPlanDto
 {
+    [Range(1, int.MaxValue, ErrorMessage = "شناسه فاکتور نامعتبر است.")]
     public int SalesInvoiceId { get; set; }
+
+    [MinLength(1, ErrorMessage = "حداقل یک قسط لازم است.")]
     public List<InstallmentInput> Installments { get; set; } = new();
 }
 

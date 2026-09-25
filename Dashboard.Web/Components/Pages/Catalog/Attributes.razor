@@ -20,38 +20,43 @@
 </div>
 
 <div class="card-panel mb-3" style="max-width: 640px;">
-    <h6 class="form-section-title"><i class="bi bi-sliders"></i>افزودن ویژگی جدید</h6>
+    <EditForm Model="@newAttribute" OnValidSubmit="HandleAdd" FormName="AddAttributeForm">
+        <DataAnnotationsValidator />
 
-    <div class="mb-3">
-        <label class="form-label">نام ویژگی</label>
-        <input class="form-control" @bind="newAttribute.Name" placeholder="مثلاً: رنگ" />
-    </div>
-    <div class="mb-3">
-        <label class="form-label">مقادیر</label>
-        <textarea class="form-control" rows="4" @bind="valuesRaw" placeholder="هر مقدار در یک خط؛ مثلاً:&#10;قرمز&#10;آبی&#10;سبز"></textarea>
-        <div class="form-text">هر مقدار را در یک خط جداگانه وارد کنید؛ مثلاً: قرمز، آبی، سبز</div>
-    </div>
+        <h6 class="form-section-title"><i class="bi bi-sliders"></i>افزودن ویژگی جدید</h6>
 
-    @if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <div class="alert alert-danger mb-0">
-            <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
+        <div class="mb-3">
+            <label class="form-label">نام ویژگی <span class="text-danger" title="الزامی">*</span></label>
+            <InputText class="form-control" @bind-Value="newAttribute.Name" placeholder="مثلاً: رنگ" />
+            <ValidationMessage For="() => newAttribute.Name" class="text-danger small mt-1 d-block" />
         </div>
-    }
+        <div class="mb-3">
+            <label class="form-label">مقادیر</label>
+            <textarea class="form-control" rows="4" @bind="valuesRaw" placeholder="هر مقدار در یک خط؛ مثلاً:&#10;قرمز&#10;آبی&#10;سبز"></textarea>
+            <div class="form-text">هر مقدار را در یک خط جداگانه وارد کنید؛ مثلاً: قرمز، آبی، سبز</div>
+        </div>
 
-    <div class="d-flex mt-3">
-        <button type="button" class="btn btn-primary" @onclick="HandleAdd" disabled="@isSaving">
-            @if (isSaving)
-            {
-                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-            }
-            else
-            {
-                <i class="bi bi-plus-lg me-1"></i>
-            }
-            افزودن ویژگی
-        </button>
-    </div>
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mb-0">
+                <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
+            </div>
+        }
+
+        <div class="d-flex mt-3">
+            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                @if (isSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-plus-lg me-1"></i>
+                }
+                افزودن ویژگی
+            </button>
+        </div>
+    </EditForm>
 </div>
 
 <div class="card-panel">

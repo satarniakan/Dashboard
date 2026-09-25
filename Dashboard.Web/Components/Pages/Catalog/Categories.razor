@@ -20,6 +20,8 @@
 
 <div class="card-panel mb-3" style="max-width: 640px;">
     <EditForm Model="@newCategory" OnValidSubmit="HandleAdd" FormName="AddCategoryForm">
+        <DataAnnotationsValidator />
+
         <h6 class="form-section-title"><i class="bi bi-tag"></i>افزودن دسته جدید</h6>
 
         <AppTextField @bind-Value="newCategory.Name" Label="نام دسته"

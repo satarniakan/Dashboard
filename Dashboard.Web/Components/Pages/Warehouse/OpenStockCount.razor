@@ -84,8 +84,9 @@
 @code {
     private class OpenStockCountFormModel
     {
+        [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue,
+            ErrorMessage = "انتخاب انبار الزامی است.")]
         public int WarehouseId { get; set; }
-
     }
 
     [SupplyParameterFromForm]
@@ -108,12 +109,6 @@
         string? userId = null;
         try
         {
-            if (model.WarehouseId == 0)
-            {
-                errorMessage = "انتخاب انبار الزامی است.";
-                return;
-            }
-
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 

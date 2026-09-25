@@ -26,7 +26,6 @@
 
 <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddSalesInvoiceForm">
     <DataAnnotationsValidator />
-    <ValidationSummary class="mb-3" />
 
     @* ===== اطلاعات سند ===== *@
     <div class="card-panel mb-3">
@@ -66,6 +65,7 @@
         <div class="mb-3">
             <label class="form-label">توضیحات (اختیاری)</label>
             <InputTextArea class="form-control" rows="3" @bind-Value="model.Notes" />
+            <ValidationMessage For="() => model.Notes" class="text-danger small mt-1 d-block" />
         </div>
     </div>
 
@@ -120,6 +120,8 @@
         <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddRow">
             <i class="bi bi-plus-lg me-1"></i>افزودن ردیف
         </button>
+
+        <ValidationMessage For="() => model.Items" class="text-danger small mt-1 d-block" />
 
         @if (model.Items.Any(i => i.Quantity > 0 && i.UnitPrice > 0))
         {
@@ -211,12 +213,6 @@
         string? userId = null;
         try
         {
-            if (model.WarehouseId == 0)
-            {
-                errorMessage = "انتخاب انبار الزامی است.";
-                return;
-            }
-
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 

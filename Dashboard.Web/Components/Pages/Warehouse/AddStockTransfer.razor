@@ -25,7 +25,6 @@
 
 <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddStockTransferForm">
     <DataAnnotationsValidator />
-    <ValidationSummary class="mb-3" />
 
     <div class="row g-3">
         <div class="col-lg-8">
@@ -75,6 +74,7 @@
                 <div class="mb-3">
                     <label class="form-label">توضیحات (اختیاری)</label>
                     <InputTextArea class="form-control" @bind-Value="model.Notes" />
+                    <ValidationMessage For="() => model.Notes" class="text-danger small mt-1 d-block" />
                 </div>
             </div>
 
@@ -84,6 +84,7 @@
                 <div class="form-text mb-2">برای هر ردیف، کالا و مقدار منتقل‌شده را انتخاب کنید؛ مقدار از موجودی انبار مبدأ کسر و به انبار مقصد اضافه می‌شود.</div>
 
                 <StockItemRowsEditor Items="model.Items" Products="@(products ?? Enumerable.Empty<ProductDto>())" />
+                <ValidationMessage For="() => model.Items" class="text-danger small mt-1 d-block" />
             </div>
         </div>
 
@@ -149,12 +150,6 @@
         string? userId = null;
         try
         {
-            if (model.SourceWarehouseId == 0 || model.DestinationWarehouseId == 0)
-            {
-                errorMessage = "انتخاب انبار مبدا و مقصد الزامی است.";
-                return;
-            }
-
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 

@@ -4,7 +4,7 @@
 <div class="mb-3">
     @if (!string.IsNullOrEmpty(Label))
     {
-        <label class="form-label">@Label @if (Required) { <span class="text-danger" title="الزامی">*</span> }</label>
+        <label class="form-label">@Label @if (IsRequired) { <span class="text-danger" title="الزامی">*</span> }</label>
     }
     <InputText class="form-control" Value="@Value" ValueChanged="@ValueChanged"
                ValueExpression="@ValueExpression" placeholder="@Placeholder" disabled="@Disabled" />
@@ -24,4 +24,7 @@
     [Parameter] public string? Value { get; set; }
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
     [Parameter] public Expression<Func<string?>>? ValueExpression { get; set; }
+
+    // ستاره‌ی «الزامی» هم از پارامتر явیِ Required و هم از attribute های DTO مشتق می‌شود.
+    private bool IsRequired => Required || ValidationAttributeInspector.IsRequired(ValueExpression);
 }

@@ -26,7 +26,6 @@
 <div style="max-width: 640px;">
     <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddSupplierPaymentForm">
         <DataAnnotationsValidator />
-        <ValidationSummary class="mb-3" />
 
         @* ===== طرف حساب ===== *@
         <div class="card-panel mb-3">
@@ -116,6 +115,7 @@
             <h6 class="form-section-title"><i class="bi bi-journal-text"></i>توضیحات <span class="text-body-secondary small fw-normal">(اختیاری)</span></h6>
             <div class="mb-0">
                 <InputTextArea class="form-control" @bind-Value="model.Notes" rows="2" placeholder="توضیحات دلخواه درباره این پرداخت…" />
+                <ValidationMessage For="() => model.Notes" class="text-danger small mt-1 d-block" />
             </div>
         </div>
 
@@ -167,17 +167,6 @@
         string? userId = null;
         try
         {
-            if (model.SupplierId == 0)
-            {
-                errorMessage = "انتخاب تأمین‌کننده الزامی است.";
-                return;
-            }
-            if (model.FinancialAccountId == 0)
-            {
-                errorMessage = "انتخاب صندوق/بانک الزامی است.";
-                return;
-            }
-
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 

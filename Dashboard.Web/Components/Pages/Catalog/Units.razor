@@ -22,13 +22,12 @@
 
 <div class="card-panel mb-3" style="max-width: 640px;">
     <EditForm Model="@newUnit" OnValidSubmit="HandleAdd" FormName="AddUnitForm">
-        <h6 class="form-section-title"><i class="bi bi-rulers"></i>افزودن واحد جدید</h6>
+    <DataAnnotationsValidator />
 
-        <div class="mb-3">
-            <label class="form-label">نام واحد جدید</label>
-            <InputText class="form-control" @bind-Value="newUnit.Name" maxlength="50" placeholder="مثلاً: کیلوگرم، بسته، متر" />
-        </div>
+    <h6 class="form-section-title"><i class="bi bi-rulers"></i>افزودن واحد جدید</h6>
 
+    <AppTextField @bind-Value="newUnit.Name" Label="نام واحد جدید"
+                  Placeholder="مثلاً: کیلوگرم، بسته، متر" />
         @if (!string.IsNullOrEmpty(errorMessage))
         {
             <div class="alert alert-danger mb-0">

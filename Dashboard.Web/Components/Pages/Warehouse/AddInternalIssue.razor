@@ -25,7 +25,6 @@
 
 <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddInternalIssueForm">
     <DataAnnotationsValidator />
-    <ValidationSummary class="mb-3" />
 
     <div class="row g-3">
         <div class="col-lg-8">
@@ -62,6 +61,7 @@
                 <div class="mb-3">
                     <label class="form-label">توضیحات (اختیاری)</label>
                     <InputTextArea class="form-control" @bind-Value="model.Notes" />
+                    <ValidationMessage For="() => model.Notes" class="text-danger small mt-1 d-block" />
                 </div>
             </div>
 
@@ -71,6 +71,7 @@
                 <div class="form-text mb-2">برای هر ردیف، کالا و مقدار مصرفی را انتخاب کنید؛ مقدار از موجودی انبار انتخاب‌شده کسر می‌شود.</div>
 
                 <StockItemRowsEditor Items="model.Items" Products="@(products ?? Enumerable.Empty<ProductDto>())" />
+                <ValidationMessage For="() => model.Items" class="text-danger small mt-1 d-block" />
             </div>
         </div>
 
@@ -141,12 +142,6 @@
         string? userId = null;
         try
         {
-            if (model.WarehouseId == 0)
-            {
-                errorMessage = "انتخاب انبار الزامی است.";
-                return;
-            }
-
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 

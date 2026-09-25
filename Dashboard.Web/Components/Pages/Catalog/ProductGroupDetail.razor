@@ -64,21 +64,15 @@ else
 
         <div class="col-md-6">
             @* ===== افزودن Variant ===== *@
-            <div class="card-panel mb-3">
+            <EditForm Model="@newVariant" OnValidSubmit="HandleAddVariant" FormName="AddVariantForm" class="card-panel mb-3">
+                <DataAnnotationsValidator />
+
                 <h6 class="form-section-title"><i class="bi bi-plus-square"></i>افزودن Variant جدید</h6>
 
-                <div class="mb-3">
-                    <label class="form-label">کد کالا (SKU)</label>
-                    <input class="form-control" @bind="newVariant.Sku" />
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">بارکد (اختیاری)</label>
-                    <input class="form-control" @bind="newVariant.Barcode" />
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">نام نمایشی (مثلاً: قرمز - L)</label>
-                    <input class="form-control" @bind="newVariant.VariantName" />
-                </div>
+                <AppTextField @bind-Value="newVariant.Sku" Label="کد کالا (SKU)" />
+                <AppTextField @bind-Value="newVariant.Barcode" Label="بارکد (اختیاری)" />
+                <AppTextField @bind-Value="newVariant.VariantName" Label="نام نمایشی"
+                              Placeholder="مثلاً: قرمز - L" />
 
                 <div class="row">
                     <div class="col-6">
@@ -114,7 +108,21 @@ else
                         <i class="bi bi-exclamation-octagon me-1"></i>@variantError
                     </div>
                 }
-            </div>
+
+                <div class="d-flex mt-3">
+                    <button type="submit" class="btn btn-primary" disabled="@isSavingVariant">
+                        @if (isSavingVariant)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-plus-lg me-1"></i>
+                        }
+                        افزودن Variant
+                    </button>
+                </div>
+            </EditForm>
         </div>
     </div>
 
@@ -143,19 +151,7 @@ else
             </table>
         }
 
-        <div class="d-flex mt-3">
-            <button type="button" class="btn btn-primary" disabled="@isSavingVariant" @onclick="HandleAddVariant">
-                @if (isSavingVariant)
-                {
-                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                }
-                else
-                {
-                    <i class="bi bi-plus-lg me-1"></i>
-                }
-                افزودن Variant
-            </button>
-        </div>
+        @* دکمه‌ی ثبت به فرمِ بالای همین صفحه منتقل شد تا Validation آن اجرا شود. *@
     </div>
 }
 

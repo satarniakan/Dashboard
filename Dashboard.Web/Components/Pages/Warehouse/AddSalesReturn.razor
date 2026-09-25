@@ -27,7 +27,6 @@
 
 <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddSalesReturnForm">
     <DataAnnotationsValidator />
-    <ValidationSummary class="mb-3" />
 
     @* ===== جستجوی فاکتور ===== *@
     <div class="card-panel mb-3">
@@ -40,6 +39,7 @@
                        value="@(selectedInvoice?.WarehouseName ?? "")"
                        disabled="@(selectedInvoice is not null)" />
                 <div class="form-text">پس از جستجوی فاکتور، انبار به‌صورت خودکار تعیین می‌شود.</div>
+                <ValidationMessage For="() => model.WarehouseId" class="text-danger small mt-1 d-block" />
             </div>
             <div class="col-md-6 mb-3">
                 <label class="form-label">مشتری</label>
@@ -98,6 +98,7 @@
         <div class="mb-3">
             <label class="form-label">توضیحات (اختیاری)</label>
             <InputTextArea class="form-control" rows="3" @bind-Value="model.Notes" />
+            <ValidationMessage For="() => model.Notes" class="text-danger small mt-1 d-block" />
         </div>
     </div>
 
@@ -109,6 +110,7 @@
         <StockItemRowsEditor Items="model.Items"
                              Products="@(products ?? Enumerable.Empty<ProductDto>())"
                              ReadOnlyProducts="@(selectedInvoice is not null)" />
+        <ValidationMessage For="() => model.Items" class="text-danger small mt-1 d-block" />
     </div>
 
     @if (!string.IsNullOrEmpty(errorMessage))
@@ -161,12 +163,6 @@
         string? userId = null;
         try
         {
-            if (model.WarehouseId == 0)
-            {
-                errorMessage = "انتخاب انبار الزامی است.";
-                return;
-            }
-
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
 
