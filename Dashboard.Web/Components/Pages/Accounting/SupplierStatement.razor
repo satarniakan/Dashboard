@@ -15,9 +15,16 @@
         <h3 class="mb-1">گردش حساب تأمین‌کننده</h3>
         <div class="text-body-secondary small">بدهکار و بستانکار و مانده حساب یک تأمین‌کننده</div>
     </div>
+    @if (rows is not null && rows.Any())
+    {
+        <PrintButton />
+    }
 </div>
 
-<div class="card-panel mb-3" style="max-width: 400px;">
+<ReportPrintHeader Title="گردش حساب تأمین‌کننده"
+                   Subtitle="@(SelectedSupplierName is not null ? $"تأمین‌کننده: {SelectedSupplierName}" : null)" />
+
+<div class="card-panel mb-3 no-print" style="max-width: 400px;">
     <label class="form-label">انتخاب تأمین‌کننده</label>
     <select class="form-select" @bind="selectedSupplierId" @bind:after="LoadStatement">
         <option value="0">-- انتخاب کنید --</option>
@@ -36,7 +43,7 @@
     <div class="card-panel">
         @if (rows is null)
         {
-            <p class="text-body-secondary">در حال بارگذاری...</p>
+            <LoadingSkeleton />
         }
         else if (!rows.Any())
         {
@@ -83,6 +90,9 @@
     private IEnumerable<SupplierDto>? suppliers;
     private List<AccountStatementRowDto>? rows;
     private int selectedSupplierId;
+
+    private string? SelectedSupplierName =>
+        suppliers?.FirstOrDefault(s => s.Id == selectedSupplierId)?.Name;
 
     protected override async Task OnInitializedAsync()
     {

@@ -56,7 +56,7 @@
 
     @if (units is null)
     {
-        <p class="text-body-secondary">در حال بارگذاری...</p>
+        <LoadingSkeleton />
     }
     else if (!units.Any())
     {
@@ -117,9 +117,12 @@
     }
 </div>
 
+<AppConfirmDialog @ref="confirmDialog" />
+
 @code {
     private List<UnitDto>? units;
     private CreateUnitDto newUnit = new();
+    private AppConfirmDialog confirmDialog = default!;
     private bool isSaving;
     private string? errorMessage;
 
@@ -197,6 +200,10 @@
             ToastService.ShowInfo($"{unit.ProductCount} کالا از واحد «{unit.Name}» استفاده می‌کند؛ اول واحد آن کالاها را تغییر دهید.");
             return;
         }
+        if (!await confirmDialog.ShowAsync("حذف واحد شمارش",
+                $"واحد «{unit.Name}» حذف شود؟ این عمل قابل بازگشت نیست.",
+                confirmText: "بله، حذف شود"))
+            return;
         try
         {
             await CatalogService.DeleteUnitAsync(unit.Id);

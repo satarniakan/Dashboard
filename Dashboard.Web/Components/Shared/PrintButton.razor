@@ -1,0 +1,17 @@
+@* Dashboard.Web/Components/Shared/PrintButton.razor *@
+@* دکمه‌ی چاپ مشترک گزارش‌ها: خود دکمه در چاپ پنهان است (no-print) و window.print را صدا می‌زند *@
+@inject IJSRuntime JS
+
+<button type="button" class="@CssClass" @onclick="PrintAsync" title="چاپ گزارش">
+    <i class="bi bi-printer me-1"></i>@Text
+</button>
+
+@code {
+    [Parameter] public string Text { get; set; } = "چاپ";
+    [Parameter] public string CssClass { get; set; } = "btn btn-outline-secondary btn-sm no-print";
+
+    private async Task PrintAsync()
+    {
+        await JS.InvokeVoidAsync("print");
+    }
+}

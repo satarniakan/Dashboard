@@ -28,7 +28,7 @@
     </div>
     @if (invoices is null)
     {
-        <p class="text-body-secondary">در حال بارگذاری...</p>
+        <LoadingSkeleton />
     }
     else if (!invoices.Any())
     {

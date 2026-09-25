@@ -29,12 +29,13 @@
             <h6 class="form-section-title"><i class="bi bi-wallet2"></i>اطلاعات حساب</h6>
 
             <AppDropdown Label="نوع" @bind-Value="model.Type"
+                         Required="true"
                          Hint="اگر حساب بانکی انتخاب کنید، فیلدهای بانکی نمایش داده می‌شوند.">
                 <option value="Cash">صندوق نقدی</option>
                 <option value="Bank">حساب بانکی</option>
             </AppDropdown>
 
-            <AppTextField @bind-Value="model.Name" Label="نام"
+            <AppTextField @bind-Value="model.Name" Label="نام" Required="true"
                           Placeholder="مثلاً: صندوق اصلی، بانک ملت" />
         </div>
 

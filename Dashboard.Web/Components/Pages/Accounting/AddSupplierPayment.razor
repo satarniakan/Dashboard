@@ -33,7 +33,7 @@
 
             <div class="row">
                 <div class="col-md-6">
-                    <AppDropdown TValue="int" Label="تأمین‌کننده" @bind-Value="model.SupplierId">
+                    <AppDropdown TValue="int" Label="تأمین‌کننده" @bind-Value="model.SupplierId" Required="true">
                         <option value="0">-- انتخاب کنید --</option>
                         @if (suppliers is not null)
                         {
@@ -46,6 +46,7 @@
                 </div>
                 <div class="col-md-6">
                     <AppDropdown TValue="int" Label="پرداخت از صندوق/بانک" @bind-Value="model.FinancialAccountId"
+                                 Required="true"
                                  Hint="صندوق یا حساب بانکی که مبلغ پرداخت از آن کسر می‌شود.">
                         <option value="0">-- انتخاب کنید --</option>
                         @if (financialAccounts is not null)
@@ -67,11 +68,12 @@
             <div class="row">
                 <div class="col-md-6">
                     <AppPriceField TValue="decimal" @bind-Value="model.Amount" Label="مبلغ (تومان)"
+                                   Required="true"
                                    Placeholder="0" WrapperClass="" ShowWords="true"
                                    QuickAmounts="new[] { 100_000L, 500_000L, 1_000_000L }" />
                 </div>
                 <div class="col-md-6">
-                    <AppDropdown Label="روش پرداخت" @bind-Value="model.Method">
+                    <AppDropdown Label="روش پرداخت" @bind-Value="model.Method" Required="true">
                         <option value="Cash">نقدی</option>
                         <option value="CardTransfer">کارت به کارت</option>
                         <option value="Cheque">چک</option>

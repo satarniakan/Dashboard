@@ -14,12 +14,18 @@
         <h3 class="mb-1">دفتر روزنامه</h3>
         <div class="text-body-secondary small">سندهای حسابداری ثبت‌شده</div>
     </div>
+    @if (entries is not null && entries.Any())
+    {
+        <PrintButton />
+    }
 </div>
+
+<ReportPrintHeader Title="دفتر روزنامه" />
 
 <div class="card-panel">
     @if (entries is null)
     {
-        <p class="text-body-secondary">در حال بارگذاری...</p>
+        <LoadingSkeleton />
     }
     else if (!entries.Any())
     {
@@ -37,7 +43,7 @@
                     <th>تاریخ</th>
                     <th>شرح</th>
                     <th>مبلغ سند</th>
-                    <th></th>
+                    <th class="no-print"></th>
                 </tr>
             </thead>
             <tbody>
@@ -48,7 +54,7 @@
                         <td class="text-muted">@e.EntryDate.ToPersianDateTime()</td>
                         <td>@e.Description</td>
                         <td>@CurrencyFormatter.ToToman(e.Lines.Sum(l => l.Debit))</td>
-                        <td class="text-end">
+                        <td class="text-end no-print">
                             <a href="/accounting/journal/@e.Id" class="btn btn-sm btn-outline-primary">جزئیات</a>
                         </td>
                     </tr>

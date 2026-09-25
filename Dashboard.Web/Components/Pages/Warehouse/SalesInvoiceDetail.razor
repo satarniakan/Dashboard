@@ -9,7 +9,6 @@
 @inject ISalesService SalesService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
-@inject IJSRuntime JS
 @inject IInstallmentService InstallmentService
 @inject ILogger<Dashboard.Web.Components.Pages.Warehouse.SalesInvoiceDetail> Logger
 @inject Dashboard.Web.Services.ToastService ToastService
@@ -17,7 +16,7 @@
 
 @if (invoice is null)
 {
-    <p class="text-body-secondary">در حال بارگذاری...</p>
+    <LoadingSkeleton />
 }
 else
 {
@@ -33,9 +32,7 @@ else
             <a href="/warehouse/sales" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
             </a>
-            <button class="btn btn-outline-secondary" @onclick="Print">
-                <i class="bi bi-printer me-1"></i>چاپ
-            </button>
+            <PrintButton CssClass="btn btn-outline-secondary" />
 
             @if (invoice.Status == "Draft")
             {
@@ -326,10 +323,6 @@ else
         }
     }
 
-    private async Task Print()
-    {
-        await JS.InvokeVoidAsync("print");
-    }
     private InstallmentPlanDto? installmentPlan;
     private bool showPlanForm;
     private bool isSavingPlan;

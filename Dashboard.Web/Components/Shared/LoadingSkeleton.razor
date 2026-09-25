@@ -1,0 +1,33 @@
+@* Dashboard.Web/Components/Shared/LoadingSkeleton.razor *@
+@* جایگزین متن «در حال بارگذاری...» در فهرست‌ها *@
+@if (Table)
+{
+    <div class="p-3" aria-busy="true" aria-live="polite">
+        @for (var i = 0; i < Rows; i++)
+        {
+            <div class="d-flex gap-2 align-items-center mb-2">
+                <div class="skeleton" style="width: 8%; height: 2.2rem;"></div>
+                <div class="skeleton flex-grow-1" style="height: 2.2rem;"></div>
+                <div class="skeleton" style="width: 18%; height: 2.2rem;"></div>
+                <div class="skeleton" style="width: 10%; height: 2.2rem;"></div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div aria-busy="true" aria-live="polite">
+        @for (var i = 0; i < Rows; i++)
+        {
+            <div class="skeleton mb-2" style="height: 2.2rem;"></div>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>تعداد ردیف‌های اسکلت.</summary>
+    [Parameter] public int Rows { get; set; } = 5;
+
+    /// <summary>اگر true باشد، شبیه ردیف‌های جدول (چند ستون) رندر می‌شود.</summary>
+    [Parameter] public bool Table { get; set; } = true;
+}

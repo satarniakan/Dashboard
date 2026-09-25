@@ -59,6 +59,7 @@
                     <label class="form-check-label" for="@("role_" + role.Name)">@role.PersianName</label>
                 </div>
             }
+            <ValidationMessage For="() => newUser!.RoleNames" class="text-danger small d-block" />
         </div>
 
         @if (!string.IsNullOrEmpty(errorMessage))

@@ -1,0 +1,57 @@
+@* Dashboard.Web/Components/Shared/AppConfirmDialog.razor *@
+@* دیالوگ تایید مشترک برای عملیات حساس (حذف و ...). استفاده:
+   <AppConfirmDialog @ref="confirmDialog" />
+   if (await confirmDialog.ShowAsync("حذف محصول", $"«{name}» حذف شود؟")) { ... } *@
+
+@if (_visible)
+{
+    <div class="confirm-overlay" tabindex="-1">
+        <div class="confirm-dialog" role="alertdialog" aria-modal="true">
+            <div class="confirm-icon @(_danger ? "text-danger" : "text-primary")">
+                <i class="bi @(_danger ? "bi-exclamation-triangle-fill" : "bi-question-circle-fill")"></i>
+            </div>
+            <h5 class="confirm-title">@_title</h5>
+            <p class="confirm-message">@_message</p>
+            <div class="d-flex gap-2 justify-content-center mt-3">
+                <button type="button" class="btn btn-outline-secondary" @onclick="Cancel">@_cancelText</button>
+                <button type="button" class="btn @(_danger ? "btn-danger" : "btn-primary")" @onclick="Confirm">@_confirmText</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _visible;
+    private string _title = "";
+    private string _message = "";
+    private string _confirmText = "بله، انجام بده";
+    private string _cancelText = "انصراف";
+    private bool _danger = true;
+    private TaskCompletionSource<bool>? _tcs;
+
+    /// <summary>نمایش دیالوگ و انتظار برای پاسخ کاربر؛ خروجی true یعنی تأیید شد.</summary>
+    public Task<bool> ShowAsync(string title, string message, string? confirmText = null, string? cancelText = null, bool danger = true)
+    {
+        _title = title;
+        _message = message;
+        _confirmText = confirmText ?? "بله، انجام بده";
+        _cancelText = cancelText ?? "انصراف";
+        _danger = danger;
+        _visible = true;
+        _tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        StateHasChanged();
+        return _tcs.Task;
+    }
+
+    private void Confirm()
+    {
+        _visible = false;
+        _tcs?.TrySetResult(true);
+    }
+
+    private void Cancel()
+    {
+        _visible = false;
+        _tcs?.TrySetResult(false);
+    }
+}

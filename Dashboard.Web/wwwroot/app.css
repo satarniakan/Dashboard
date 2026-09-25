@@ -166,15 +166,35 @@ a {
         display: none !important;
     }
 
-    main, .content {
+    main, .content, article.content {
         padding: 0 !important;
         margin: 0 !important;
     }
 
     .card-panel {
         box-shadow: none !important;
-        border: none !important;
+        border: 1px solid #ddd !important;
+        break-inside: avoid;
     }
+
+    /* سربرگ چاپ مشترک گزارش‌ها فقط هنگام چاپ دیده می‌شود */
+    .print-header {
+        display: block !important;
+    }
+
+    table {
+        font-size: 0.85rem;
+    }
+
+    a {
+        text-decoration: none !important;
+        color: inherit !important;
+    }
+}
+
+/* سربرگ چاپ در حالت عادی صفحه پنهان است */
+.print-header {
+    display: none;
 }
 /* احترام به کاربرهایی که ترجیح می‌دن حرکت کمتری ببینن */
 @media (prefers-reduced-motion: reduce) {
@@ -375,4 +395,74 @@ details[open] > summary.form-section-title .section-caret {
 /* کارت راهنما */
 .tips-panel ul li::marker {
     color: var(--brand-primary);
+}
+
+/* ===== دیالوگ تایید مشترک ===== */
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.confirm-dialog {
+    background: var(--brand-surface);
+    border: 1px solid var(--brand-border);
+    border-radius: var(--radius);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+    padding: 1.75rem 1.5rem 1.5rem;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    animation: fadeIn 0.15s ease;
+}
+
+.confirm-icon {
+    font-size: 2.25rem;
+    line-height: 1;
+    margin-bottom: 0.75rem;
+}
+
+.confirm-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--brand-text);
+}
+
+.confirm-message {
+    color: var(--brand-text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 0;
+}
+
+/* ===== Skeleton loading ===== */
+.skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--brand-border);
+    border-radius: 6px;
+    pointer-events: none;
+}
+
+    .skeleton::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        transform: translateX(-100%);
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+        animation: skeletonShimmer 1.4s infinite;
+    }
+
+html[data-theme="dark"] .skeleton::after {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+}
+
+@keyframes skeletonShimmer {
+    100% {
+        transform: translateX(100%);
+    }
 }

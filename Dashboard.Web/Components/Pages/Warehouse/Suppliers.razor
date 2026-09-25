@@ -19,7 +19,7 @@
 <div class="card-panel">
     @if (suppliers is null)
     {
-        <p class="text-body-secondary">در حال بارگذاری...</p>
+        <LoadingSkeleton />
     }
     else if (!suppliers.Any())
     {

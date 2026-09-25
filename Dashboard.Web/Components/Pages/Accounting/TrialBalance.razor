@@ -13,12 +13,18 @@
         <h3 class="mb-1">تراز آزمایشی</h3>
         <div class="text-body-secondary small">جمع بدهکار و بستانکار و مانده هر حساب</div>
     </div>
+    @if (rows is not null && rows.Any())
+    {
+        <PrintButton />
+    }
 </div>
+
+<ReportPrintHeader Title="تراز آزمایشی" />
 
 <div class="card-panel">
     @if (rows is null)
     {
-        <p class="text-body-secondary">در حال بارگذاری...</p>
+        <LoadingSkeleton />
     }
     else if (!rows.Any())
     {
@@ -66,7 +72,7 @@
         </table>
         @if (rows.Sum(r => r.TotalDebit) != rows.Sum(r => r.TotalCredit))
         {
-            <div class="alert alert-danger mt-3">
+            <div class="alert alert-danger mt-3 no-print">
                 ⚠️ تراز نامتوازن است! این نباید اتفاق بیفتد — لطفاً بررسی کنید.
             </div>
         }

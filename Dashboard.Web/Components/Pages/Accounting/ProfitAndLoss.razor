@@ -13,9 +13,16 @@
         <h3 class="mb-1">صورت سود و زیان</h3>
         <div class="text-body-secondary small">خلاصه درآمدها و هزینه‌ها در بازه انتخابی</div>
     </div>
+    @if (report is not null)
+    {
+        <PrintButton />
+    }
 </div>
 
-<div class="card-panel mb-3">
+<ReportPrintHeader Title="صورت سود و زیان"
+                   Subtitle="@ReportSubtitle" />
+
+<div class="card-panel mb-3 no-print">
     <div class="row align-items-end">
         <div class="col-md-4">
             <label class="form-label">از تاریخ</label>
@@ -92,6 +99,11 @@ else
     private DateTime? fromDate;
     private DateTime? toDate;
     private Dashboard.Application.DTOs.ProfitAndLossDto? report;
+
+    private string? ReportSubtitle =>
+        fromDate.HasValue || toDate.HasValue
+            ? $"بازه: {(fromDate.HasValue ? fromDate.Value.ToPersianDate() : "…")} تا {(toDate.HasValue ? toDate.Value.ToPersianDate() : "…")}"
+            : null;
 
     private async Task LoadReport()
     {

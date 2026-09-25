@@ -22,7 +22,7 @@
 <div class="card-panel">
     @if (users is null)
     {
-        <p class="text-body-secondary">در حال بارگذاری...</p>
+        <LoadingSkeleton />
     }
     else if (!users.Any())
     {

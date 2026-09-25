@@ -24,7 +24,7 @@
 <div class="card-panel">
     @if (issues is null)
     {
-        <p class="text-body-secondary">در حال بارگذاری...</p>
+        <LoadingSkeleton />
     }
     else if (!issues.Any())
     {

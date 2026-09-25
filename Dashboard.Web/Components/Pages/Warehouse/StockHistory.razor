@@ -32,7 +32,7 @@
 <div class="card-panel">
     @if (history is null)
     {
-        <p class="text-body-secondary">در حال بارگذاری...</p>
+        <LoadingSkeleton />
     }
     else if (!history.Any())
     {

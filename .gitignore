@@ -362,3 +362,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Graphify index output (tool artifacts)
+graphify-out/
+.DS_Store

@@ -11,10 +11,14 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILogger<Dashboard.Web.Components.Pages.Products> Logger
 @inject Dashboard.Web.Services.ToastService ToastService
+@using Dashboard.Web.Components.Shared
 <PageTitle>محصولات</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="mb-0">محصولات</h3>
+    <div>
+        <h3 class="mb-1">محصولات</h3>
+        <div class="text-body-secondary small">فهرست کالاها با قیمت و دسته‌بندی؛ برای ویرایش یا حذف از ستون عملیات استفاده کنید.</div>
+    </div>
     <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.ProductsManage" Context="manageContext">
         <Authorized>
             <a href="/products/add" class="btn btn-primary">+ افزودن محصول</a>
@@ -33,11 +37,14 @@
     }
     @if (products is null)
     {
-        <p class="text-muted">در حال بارگذاری...</p>
+        <LoadingSkeleton />
     }
     else if (!products.Any())
     {
-        <p class="text-muted text-center py-4">هنوز محصولی ثبت نشده است.</p>
+        <div class="text-center text-body-secondary py-5">
+            <i class="bi bi-inbox d-block mb-2" style="font-size: 2rem;"></i>
+            هنوز محصولی ثبت نشده است.
+        </div>
     }
     else
     {
@@ -88,26 +95,11 @@
                                             TotalCount="totalCount" OnPageChanged="OnPageChanged" />
 </div>
 
-@if (productToDelete is not null)
-{
-    <div class="modal show d-block" style="background-color: rgba(0,0,0,0.4);" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-body p-4">
-                    <p class="mb-4">آیا از حذف محصول «<strong>@productToDelete.Value.Name</strong>» مطمئن هستید؟</p>
-                    <div class="d-flex gap-2 justify-content-end">
-                        <button class="btn btn-outline-secondary" @onclick="CancelDelete">انصراف</button>
-                        <button class="btn btn-danger" @onclick="DeleteConfirmed">حذف</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-}
+<AppConfirmDialog @ref="confirmDialog" />
 
 @code {
     private IEnumerable<ProductDto>? products;
-    private (int Id, string Name)? productToDelete;
+    private AppConfirmDialog confirmDialog = default!;
     private string? errorMessage;
 
     private string searchTerm = string.Empty;
@@ -142,19 +134,12 @@
         await LoadProducts();
     }
 
-    private void ConfirmDelete(int id, string name)
+    private async Task ConfirmDelete(int id, string name)
     {
-        productToDelete = (id, name);
-    }
-
-    private void CancelDelete()
-    {
-        productToDelete = null;
-    }
-
-    private async Task DeleteConfirmed()
-    {
-        if (productToDelete is null) return;
+        if (!await confirmDialog.ShowAsync("حذف محصول",
+                $"آیا از حذف محصول «{name}» مطمئن هستید؟ این عمل قابل بازگشت نیست.",
+                confirmText: "بله، حذف شود"))
+            return;
 
         errorMessage = null;
 
@@ -164,7 +149,7 @@
             var userEmail = authState.User.FindFirstValue(ClaimTypes.Email)
                              ?? authState.User.Identity?.Name;
 
-            await ProductService.DeleteProductAsync(productToDelete.Value.Id, userEmail);
+            await ProductService.DeleteProductAsync(id, userEmail);
             ToastService.ShowSuccess("محصول با موفقیت حذف شد.");
 
             // اگر آخرین محصول همین صفحه حذف شد و صفحه‌ی خالی موند، یکی برو عقب
@@ -175,12 +160,8 @@
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "خطا در حذف محصول {ProductId}", productToDelete.Value.Id);
+            Logger.LogError(ex, "خطا در حذف محصول {ProductId}", id);
             errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
-        }
-        finally
-        {
-            productToDelete = null;
         }
     }
 }

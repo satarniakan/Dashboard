@@ -35,7 +35,7 @@
 <div class="card-panel">
     @if (stockLevels is null)
     {
-        <p class="text-body-secondary">در حال بارگذاری...</p>
+        <LoadingSkeleton />
     }
     else if (!stockLevels.Any())
     {
