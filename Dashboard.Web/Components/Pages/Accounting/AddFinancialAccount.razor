@@ -91,7 +91,9 @@
 
 @code {
     [SupplyParameterFromForm]
-    private CreateFinancialAccountDto model { get; set; } = new();
+    private CreateFinancialAccountDto? _model { get; set; }
+
+    private CreateFinancialAccountDto model => _model ??= new();
 
     private bool isSaving;
     private string? errorMessage;

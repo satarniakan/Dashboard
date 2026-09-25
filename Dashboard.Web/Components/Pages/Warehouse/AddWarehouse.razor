@@ -85,7 +85,9 @@
 
 @code {
     [SupplyParameterFromForm]
-    private CreateWarehouseDto model { get; set; } = new();
+    private CreateWarehouseDto? _model { get; set; }
+
+    private CreateWarehouseDto model => _model ??= new();
 
     private bool isSaving;
     private string? errorMessage;

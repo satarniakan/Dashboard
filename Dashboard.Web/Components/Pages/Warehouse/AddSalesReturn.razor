@@ -97,8 +97,8 @@
 
         <div class="mb-3">
             <label class="form-label">توضیحات (اختیاری)</label>
-            <InputTextArea class="form-control" rows="3" @bind-Value="model.Notes" />
-            <ValidationMessage For="() => model.Notes" class="text-danger small mt-1 d-block" />
+            <AppTextArea @bind-Value="model.Notes" Label="توضیحات (اختیاری)" Rows="3"
+                         ShowCount="true" />
         </div>
     </div>
 
@@ -139,7 +139,9 @@
 
 @code {
     [SupplyParameterFromForm]
-    private CreateSalesReturnDto model { get; set; } = new();
+    private CreateSalesReturnDto? _model { get; set; }
+
+    private CreateSalesReturnDto model => _model ??= new();
 
     private IEnumerable<ProductDto>? products;
     private IEnumerable<WarehouseDto>? warehouses;

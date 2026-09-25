@@ -27,14 +27,13 @@
 
         <div class="mb-3">
             <label class="form-label">نام ویژگی <span class="text-danger" title="الزامی">*</span></label>
-            <InputText class="form-control" @bind-Value="newAttribute.Name" placeholder="مثلاً: رنگ" />
-            <ValidationMessage For="() => newAttribute.Name" class="text-danger small mt-1 d-block" />
+            <AppTextField @bind-Value="newAttribute.Name" Placeholder="مثلاً: رنگ"
+                          WrapperClass="" CssClass="form-control" />
         </div>
-        <div class="mb-3">
-            <label class="form-label">مقادیر</label>
-            <textarea class="form-control" rows="4" @bind="valuesRaw" placeholder="هر مقدار در یک خط؛ مثلاً:&#10;قرمز&#10;آبی&#10;سبز"></textarea>
-            <div class="form-text">هر مقدار را در یک خط جداگانه وارد کنید؛ مثلاً: قرمز، آبی، سبز</div>
-        </div>
+        <AppTextArea @bind-Value="valuesRaw" Label="مقادیر" Rows="4"
+                     Placeholder="هر مقدار در یک خط؛ مثلاً:"
+                     Hint="هر مقدار را در یک خط جداگانه وارد کنید؛ مثلاً: قرمز، آبی، سبز"
+                     WrapperClass="mb-3" />
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {

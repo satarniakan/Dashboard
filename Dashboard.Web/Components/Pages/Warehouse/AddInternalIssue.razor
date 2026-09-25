@@ -55,14 +55,11 @@
                     </div>
                 </div>
 
-                <AppTextField @bind-Value="model.Purpose" Label="هدف مصرف (اختیاری)"
-                              Placeholder="مثلاً: مصرف داخلی خط تولید" />
+                <AppTextArea @bind-Value="model.Purpose" Label="هدف مصرف (اختیاری)"
+                               Placeholder="مثلاً: مصرف داخلی خط تولید" ShowCount="true" />
 
-                <div class="mb-3">
-                    <label class="form-label">توضیحات (اختیاری)</label>
-                    <InputTextArea class="form-control" @bind-Value="model.Notes" />
-                    <ValidationMessage For="() => model.Notes" class="text-danger small mt-1 d-block" />
-                </div>
+                <AppTextArea @bind-Value="model.Notes" Label="توضیحات (اختیاری)"
+                             WrapperClass="mb-3" ShowCount="true" />
             </div>
 
             @* ===== اقلام حواله ===== *@
@@ -116,11 +113,9 @@
 @code {
     [SupplyParameterFromForm]
 
-    private CreateInternalIssueDto? model { get; set; } = new();
-    protected override void OnInitialized()
-    {
-        model ??= new();
-    }
+    private CreateInternalIssueDto? _model { get; set; }
+
+    private CreateInternalIssueDto model => _model ??= new();
 
     private IEnumerable<ProductDto>? products;
     private IEnumerable<WarehouseDto>? warehouses;

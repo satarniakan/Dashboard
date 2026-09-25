@@ -55,19 +55,18 @@ else
 
             <div class="row">
                 <div class="col-6 mb-3">
-                    <label class="form-label">نام</label>
-                    <input type="text" class="form-control" @bind="firstName" />
+                    <AppTextField Value="@firstName" ValueChanged="@((string? v) => firstName = v ?? string.Empty)"
+                                  Label="نام" WrapperClass="" />
                 </div>
                 <div class="col-6 mb-3">
-                    <label class="form-label">نام خانوادگی</label>
-                    <input type="text" class="form-control" @bind="lastName" />
+                    <AppTextField Value="@lastName" ValueChanged="@((string? v) => lastName = v ?? string.Empty)"
+                                  Label="نام خانوادگی" WrapperClass="" />
                 </div>
             </div>
 
-            <div class="mb-0">
-                <label class="form-label">ایمیل</label>
-                <input type="email" class="form-control" @bind="email" placeholder="ایمیل خود را وارد کنید" />
-            </div>
+            <AppTextField Value="@email" ValueChanged="@((string? v) => email = v)"
+                          Label="ایمیل" InputType="email" Placeholder="ایمیل خود را وارد کنید"
+                          WrapperClass="mb-0" />
         </div>
 
         @* ===== آدرس ===== *@
@@ -98,8 +97,8 @@ else
             </div>
 
             <div class="mb-0">
-                <label class="form-label">آدرس</label>
-                <textarea class="form-control" rows="2" @bind="address"></textarea>
+                <AppTextArea Value="@address" ValueChanged="@((string? v) => address = v)"
+                             Label="آدرس" Rows="2" WrapperClass="" />
             </div>
         </div>
 
@@ -111,12 +110,12 @@ else
             {
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">رمز عبور</label>
-                        <input type="password" class="form-control" @bind="password" placeholder="حداقل ۳ کاراکتر" />
+                        <AppTextField Value="@password" ValueChanged="@((string? v) => password = v)"
+                                      Label="رمز عبور" InputType="password" Placeholder="حداقل ۳ کاراکتر" WrapperClass="" />
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">تکرار رمز عبور</label>
-                        <input type="password" class="form-control" @bind="confirmPassword" />
+                        <AppTextField Value="@confirmPassword" ValueChanged="@((string? v) => confirmPassword = v)"
+                                      Label="تکرار رمز عبور" InputType="password" WrapperClass="" />
                     </div>
                 </div>
                 <div class="form-text mb-0">اگر رمز عبور را تعیین کنید، در ورود بعدی از شما پرسیده می‌شود.</div>

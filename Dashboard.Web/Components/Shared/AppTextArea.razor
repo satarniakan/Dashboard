@@ -1,4 +1,5 @@
-@* Dashboard.Web/Components/Shared/AppTextField.razor *@
+@* Dashboard.Web/Components/Shared/AppTextArea.razor *@
+@* ناحیه متنی چندخطی مشترک با الگوی AppTextField (maxlength خودکار + شمارنده + اعتبارسنجی) *@
 @using System.Linq.Expressions
 
 <div class="@WrapperClass">
@@ -6,9 +7,9 @@
     {
         <label class="form-label">@Label @if (IsRequired) { <span class="text-danger" title="الزامی">*</span> }</label>
     }
-    <InputText class="@CssClass" Value="@Value" ValueChanged="@ValueChanged"
-               ValueExpression="@ValueExpression" placeholder="@Placeholder" disabled="@Disabled"
-               AdditionalAttributes="@ExtraAttributes" />
+    <InputTextArea class="@CssClass" Value="@Value" ValueChanged="@ValueChanged"
+                   ValueExpression="@ValueExpression" placeholder="@Placeholder" disabled="@Disabled"
+                   rows="@Rows" AdditionalAttributes="@ExtraAttributes" />
     <ValidationMessage For="@ValueExpression" class="text-danger small mt-1 d-block" />
     @if (!string.IsNullOrEmpty(Hint))
     {
@@ -28,8 +29,7 @@
     [Parameter] public string? Hint { get; set; }
     [Parameter] public string WrapperClass { get; set; } = "mb-3";
     [Parameter] public string CssClass { get; set; } = "form-control";
-    /// <summary>نوع input (مثل text، password، email). پیش‌فرض text.</summary>
-    [Parameter] public string InputType { get; set; } = "text";
+    [Parameter] public int Rows { get; set; } = 3;
     /// <summary>سقف طول دستی؛ اگر null باشد از StringLength/MaxLength روی DTO خوانده می‌شود.</summary>
     [Parameter] public int? MaxLength { get; set; }
     /// <summary>نمایش شمارنده «n / max» زیر فیلد.</summary>
@@ -38,28 +38,12 @@
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
     [Parameter] public Expression<Func<string?>>? ValueExpression { get; set; }
 
-    // ستاره‌ی «الزامی» هم از پارامتر явیِ Required و هم از attribute های DTO مشتق می‌شود.
     private bool IsRequired => Required || ValidationAttributeInspector.IsRequired(ValueExpression);
 
     private int? ResolvedMaxLength => MaxLength ?? ValidationAttributeInspector.GetMaxLength(ValueExpression);
 
-    private IReadOnlyDictionary<string, object?>? ExtraAttributes
-    {
-        get
-        {
-            Dictionary<string, object?>? attrs = null;
-            if (!string.IsNullOrWhiteSpace(InputType) && !string.Equals(InputType, "text", StringComparison.OrdinalIgnoreCase))
-            {
-                attrs = new() { ["type"] = InputType };
-            }
-            if (ResolvedMaxLength is not null)
-            {
-                attrs ??= new();
-                attrs["maxlength"] = ResolvedMaxLength.Value;
-            }
-            return attrs;
-        }
-    }
+    private IReadOnlyDictionary<string, object?>? ExtraAttributes =>
+        ResolvedMaxLength is not null
+            ? new Dictionary<string, object?> { ["maxlength"] = ResolvedMaxLength.Value }
+            : null;
 }
-
-

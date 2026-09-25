@@ -79,8 +79,8 @@
                     {
                         <tr>
                             <td>
-                                <input class="form-control form-control-sm" @bind="editName" maxlength="50"
-                                       @bind:after="() => editError = null" />
+                                <AppTextField Value="@editName" ValueChanged="@((string? v) => { editName = v ?? string.Empty; editError = null; })"
+                                              WrapperClass="" CssClass="form-control form-control-sm" MaxLength="50" />
                                 @if (!string.IsNullOrEmpty(editError))
                                 {
                                     <div class="text-danger small mt-1">@editError</div>

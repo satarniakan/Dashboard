@@ -90,7 +90,9 @@
     }
 
     [SupplyParameterFromForm]
-    private OpenStockCountFormModel model { get; set; } = new();
+    private OpenStockCountFormModel? _model { get; set; }
+
+    private OpenStockCountFormModel model => _model ??= new();
 
     private IEnumerable<WarehouseDto>? warehouses;
 

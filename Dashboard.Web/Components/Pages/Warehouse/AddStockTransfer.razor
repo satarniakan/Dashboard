@@ -71,11 +71,8 @@
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">توضیحات (اختیاری)</label>
-                    <InputTextArea class="form-control" @bind-Value="model.Notes" />
-                    <ValidationMessage For="() => model.Notes" class="text-danger small mt-1 d-block" />
-                </div>
+                <AppTextArea @bind-Value="model.Notes" Label="توضیحات (اختیاری)"
+                             WrapperClass="mb-3" ShowCount="true" />
             </div>
 
             @* ===== اقلام انتقالی ===== *@
@@ -128,7 +125,9 @@
 
 @code {
     [SupplyParameterFromForm]
-    private CreateStockTransferDto model { get; set; } = new();
+    private CreateStockTransferDto? _model { get; set; }
+
+    private CreateStockTransferDto model => _model ??= new();
 
     private IEnumerable<ProductDto>? products;
     private IEnumerable<WarehouseDto>? warehouses;

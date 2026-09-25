@@ -43,11 +43,8 @@
             }
         </AppDropdown>
 
-        <div class="mb-3">
-            <label class="form-label">توضیحات</label>
-            <InputTextArea class="form-control" rows="3" @bind-Value="model.Description" />
-            <ValidationMessage For="() => model.Description" class="text-danger small mt-1 d-block" />
-        </div>
+        <AppTextArea @bind-Value="model.Description" Label="توضیحات" Rows="3"
+                     ShowCount="true" />
     </div>
 
     @if (!string.IsNullOrEmpty(errorMessage))
@@ -76,7 +73,9 @@
 
 @code {
     [SupplyParameterFromForm]
-    private CreateProductGroupDto model { get; set; } = new();
+    private CreateProductGroupDto? _model { get; set; }
+
+    private CreateProductGroupDto model => _model ??= new();
 
     private List<CategoryDto>? categories;
     private bool isSaving;

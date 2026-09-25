@@ -55,14 +55,11 @@
                     </div>
                 </div>
 
-                <AppTextField @bind-Value="model.Reason" Label="دلیل (اختیاری)"
-                              Placeholder="مثلاً: آسیب‌دیدگی، انقضا" />
+                <AppTextArea @bind-Value="model.Reason" Label="دلیل (اختیاری)"
+                               Placeholder="مثلاً: آسیب‌دیدگی، انقضا" ShowCount="true" />
 
-                <div class="mb-3">
-                    <label class="form-label">توضیحات (اختیاری)</label>
-                    <InputTextArea class="form-control" @bind-Value="model.Notes" />
-                    <ValidationMessage For="() => model.Notes" class="text-danger small mt-1 d-block" />
-                </div>
+                <AppTextArea @bind-Value="model.Notes" Label="توضیحات (اختیاری)"
+                             WrapperClass="mb-3" ShowCount="true" />
             </div>
 
             @* ===== اقلام ضایعاتی ===== *@
@@ -115,7 +112,9 @@
 
 @code {
     [SupplyParameterFromForm]
-    private CreateScrapRecordDto model { get; set; } = new();
+    private CreateScrapRecordDto? _model { get; set; }
+
+    private CreateScrapRecordDto model => _model ??= new();
 
     private IEnumerable<ProductDto>? products;
     private IEnumerable<WarehouseDto>? warehouses;

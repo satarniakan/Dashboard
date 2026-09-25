@@ -113,10 +113,8 @@
         @* ===== توضیحات ===== *@
         <div class="card-panel mb-3">
             <h6 class="form-section-title"><i class="bi bi-journal-text"></i>توضیحات <span class="text-body-secondary small fw-normal">(اختیاری)</span></h6>
-            <div class="mb-0">
-                <InputTextArea class="form-control" @bind-Value="model.Notes" rows="2" placeholder="توضیحات دلخواه درباره این دریافت…" />
-                <ValidationMessage For="() => model.Notes" class="text-danger small mt-1 d-block" />
-            </div>
+            <AppTextArea @bind-Value="model.Notes" Rows="2" Placeholder="توضیحات دلخواه درباره این دریافت…"
+                         WrapperClass="mb-0" ShowCount="true" />
         </div>
 
         @if (!string.IsNullOrEmpty(errorMessage))
@@ -146,7 +144,9 @@
 
 @code {
     [SupplyParameterFromForm]
-    private CreateCustomerReceiptDto model { get; set; } = new();
+    private CreateCustomerReceiptDto? _model { get; set; }
+
+    private CreateCustomerReceiptDto model => _model ??= new();
 
     private IEnumerable<CustomerDto>? customers;
     private IEnumerable<FinancialAccountDto>? financialAccounts;

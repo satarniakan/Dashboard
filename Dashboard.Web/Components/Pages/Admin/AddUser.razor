@@ -42,13 +42,9 @@
                 </div>
             </div>
 
-            @* فیلد رمز عبور نیاز به type="password" دارد؛ مؤلفه‌های مشترک این ویژگی را ندارند *@
-            <div class="mb-3">
-                <label class="form-label">رمز عبور <span class="text-danger" title="الزامی">*</span></label>
-                <InputText type="password" class="form-control" @bind-Value="newUser!.Password" placeholder="حداقل ۶ کاراکتر" />
-                <ValidationMessage For="() => newUser!.Password" class="text-danger small mt-1 d-block" />
-                <div class="form-text">رمز عبور باید حداقل ۶ کاراکتر باشد.</div>
-            </div>
+            @* فیلد رمز عبور هم از کامپوننت مشترک استفاده می‌کند (حالت password) *@
+            <AppTextField @bind-Value="newUser!.Password" Label="رمز عبور" Required="true" InputType="password"
+                          Placeholder="حداقل ۶ کاراکتر" Hint="رمز عبور باید حداقل ۶ کاراکتر باشد." />
         </div>
 
         @* ===== نقش‌ها ===== *@

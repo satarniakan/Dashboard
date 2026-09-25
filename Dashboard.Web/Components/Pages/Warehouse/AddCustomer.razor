@@ -85,7 +85,9 @@
 
 @code {
     [SupplyParameterFromForm]
-    private CreateCustomerDto model { get; set; } = new();
+    private CreateCustomerDto? _model { get; set; }
+
+    private CreateCustomerDto model => _model ??= new();
 
     private bool isSaving;
     private string? errorMessage;

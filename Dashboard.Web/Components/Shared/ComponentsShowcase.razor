@@ -11,7 +11,14 @@
         <DataAnnotationsValidator />
         <ValidationSummary class="mb-3" />
 
-        <AppTextField Label="نام کاربری" @bind-Value="sample.Username" Placeholder="مثلاً: علی محمدی" />
+        <AppTextField Label="نام کاربری" @bind-Value="sample.Username" Placeholder="مثلاً: علی محمدی"
+                      ShowCount="true" />
+
+        <AppTextField Label="رمز عبور" @bind-Value="sample.Password" InputType="password"
+                      Placeholder="حداقل ۶ کاراکتر" Hint="نمونه type=password در کامپوننت مشترک" />
+
+        <AppTextArea Label="درباره من" @bind-Value="sample.Bio" Rows="3" MaxLength="200"
+                     Placeholder="چند خط بنویسید…" ShowCount="true" />
 
         <AppNumberField Label="سن" @bind-Value="sample.Age" Placeholder="0" />
 
@@ -73,7 +80,14 @@
     public class SampleModel
     {
         [Required(ErrorMessage = "نام کاربری الزامی است.")]
+        [StringLength(50, ErrorMessage = "نام کاربری نمی‌تواند بیشتر از ۵۰ کاراکتر باشد.")]
         public string Username { get; set; } = string.Empty;
+
+        [StringLength(100)]
+        public string? Password { get; set; }
+
+        [StringLength(200)]
+        public string? Bio { get; set; }
 
         [Range(1, 120, ErrorMessage = "سن باید بین ۱ تا ۱۲۰ باشد.")]
         public int Age { get; set; }
