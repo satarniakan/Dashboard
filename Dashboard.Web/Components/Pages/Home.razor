@@ -14,7 +14,20 @@
             <Authorized>
                 @if (data is null)
                 {
-                    <LoadingSkeleton />
+                    <div aria-busy="true" aria-live="polite">
+                        <div class="row g-3 mb-4">
+                            @for (var i = 0; i < 4; i++)
+                            {
+                                <div class="col-md-3 col-6">
+                                    <div class="card-panel"><div class="skeleton" style="height: 4.5rem;"></div></div>
+                                </div>
+                            }
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-lg-8"><div class="card-panel"><div class="skeleton" style="height: 16rem;"></div></div></div>
+                            <div class="col-lg-4"><div class="card-panel"><div class="skeleton" style="height: 16rem;"></div></div></div>
+                        </div>
+                    </div>
                 }
                 else
                 {
