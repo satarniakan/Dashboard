@@ -86,12 +86,8 @@ public class DashboardService : IDashboardService
         return result;
     }
 
-    private async Task<decimal> GetTotalReceivableAsync()
-    {
-        var lines = await _unitOfWork.JournalEntries.GetAllLinesAsync();
-        return lines.Where(l => l.Account!.Code == SystemAccountCodes.AccountsReceivable)
-            .Sum(l => l.DebitAmount - l.CreditAmount);
-    }
+    private async Task<decimal> GetTotalReceivableAsync() =>
+        await _unitOfWork.JournalEntries.GetAccountNetBalanceAsync(SystemAccountCodes.AccountsReceivable);
 
     private async Task<List<LowStockItemDto>> GetAllStockLevelsWithLowFlagAsync()
     {

@@ -33,4 +33,10 @@ public interface IOrderRepository
 
     /// <summary>سفارش‌های PendingPayment قدیمی‌تر از عمر مشخص — برای انقضای خودکار</summary>
     Task<List<Order>> GetStalePendingPaymentAsync(TimeSpan maxAge);
+
+    /// <summary>
+    /// تعداد دفعاتی که این کاربر از این کد تخفیف استفاده کرده (سفارش‌های لغوشده حذف می‌شوند)
+    /// — برای اعمال سقف «مصرف هر مشتری» (MaxUsagePerCustomer)
+    /// </summary>
+    Task<int> CountUserDiscountUsagesAsync(string userId, string discountCode);
 }

@@ -1,4 +1,5 @@
 // Dashboard.Web/Endpoints/ShopCartEndpoints.cs
+using System.Security.Claims;
 using Dashboard.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -62,7 +63,8 @@ public static class ShopCartEndpoints
             if (string.IsNullOrEmpty(cookieId))
                 return Results.Redirect("/shop/cart");
 
-            var result = await cartService.ApplyDiscountCodeAsync(cookieId, code);
+            var result = await cartService.ApplyDiscountCodeAsync(cookieId, code,
+                httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier));
             var message = result.Message is null ? "" : $"?msg={Uri.EscapeDataString(result.Message)}";
             return Results.Redirect("/shop/cart" + message);
         });

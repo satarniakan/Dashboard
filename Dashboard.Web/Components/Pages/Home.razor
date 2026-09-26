@@ -31,7 +31,7 @@
                 }
                 else
                 {
-                    <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-4">
                         <div>
                             <h3 class="mb-1">داشبورد مدیریتی</h3>
                             <div class="text-body-secondary small">نمای کلی فروش، سود و مطالبات</div>
@@ -151,6 +151,7 @@
                                 }
                                 else
                                 {
+                                    <div class="table-responsive">
                                     <table class="table table-sm mb-0">
                                         <tbody>
                                             @foreach (var p in data.TopProducts)
@@ -163,6 +164,7 @@
                                             }
                                         </tbody>
                                     </table>
+                                    </div>
                                 }
                             </div>
                         </div>
@@ -180,6 +182,7 @@
                         }
                         else
                         {
+                            <div class="table-responsive">
                             <table class="table table-sm mb-0">
                                 <thead>
                                     <tr><th>شماره</th><th>تاریخ</th><th>مشتری</th><th>مبلغ</th><th>وضعیت</th></tr>
@@ -197,6 +200,7 @@
                                     }
                                 </tbody>
                             </table>
+                            </div>
                         }
                     </div>
                 }

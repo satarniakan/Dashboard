@@ -23,6 +23,9 @@ public class StockServiceTests
         _unitOfWork.Setup(u => u.StockLevels).Returns(_stockLevels.Object);
         _unitOfWork.Setup(u => u.StockCounts).Returns(_stockCounts.Object);
         _unitOfWork.Setup(u => u.CompleteAsync()).ReturnsAsync(1);
+        // تراکنش در تست واقعی نیست؛ فقط عملیات را مستقیم اجرا می‌کند
+        _unitOfWork.Setup(u => u.ExecuteInTransactionAsync(It.IsAny<Func<Task>>()))
+            .Returns((Func<Task> action) => action());
 
         _sut = new StockService(_unitOfWork.Object, Mock.Of<ILogger<StockService>>(), Mock.Of<IJournalService>(), _stockValidator.Object, Mock.Of<INotificationService>());
     }

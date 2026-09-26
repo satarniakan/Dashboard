@@ -311,6 +311,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             e.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
             e.Property(s => s.DiscountAmount).HasColumnType("decimal(18,2)");
+            e.Property(s => s.ShippingAmount).HasColumnType("decimal(18,2)");
             e.Property(s => s.TotalAmount).HasColumnType("decimal(18,2)");
             e.Property(s => s.InvoiceNumber).HasMaxLength(50).IsRequired();
             e.HasIndex(s => s.InvoiceNumber).IsUnique();

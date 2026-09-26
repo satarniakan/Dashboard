@@ -25,6 +25,9 @@ public static class SystemAccountCodes
     /// <summary>درآمد فروش کالا</summary>
     public const string SalesRevenue = "4000";
 
+    /// <summary>درآمد خدمات/حمل‌ونقل — هزینهٔ ارسال سفارش که مشتری جدا از کالا پرداخت می‌کند</summary>
+    public const string ShippingRevenue = "4100";
+
     /// <summary>بهای تمام‌شده‌ی کالای فروش‌رفته (COGS)</summary>
     public const string CostOfGoodsSold = "5000";
 }

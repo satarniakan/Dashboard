@@ -199,3 +199,73 @@
     .store-description img {
         max-width: 100%;
     }
+
+/* ============================================================
+   تنظیمات موبایل (تا ۶۴۰px)
+   ============================================================ */
+@media (max-width: 640.98px) {
+    .store-container {
+        width: calc(100% - 1.5rem);
+    }
+
+    /* هدر: آیتم‌ها کوچک‌تر تا در یک ردیف جا شوند */
+    .store-header {
+        padding: 0.5rem 0;
+    }
+
+    .store-brand {
+        font-size: 1rem;
+    }
+
+    .store-header nav {
+        gap: 0.65rem !important;
+    }
+
+        .store-header nav a {
+            font-size: 0.85rem;
+            padding: 0.35rem 0.1rem;
+        }
+
+    /* بنر اصلی: پدینگ و اندازه عنوان متناسب با صفحه کوچک */
+    .store-hero {
+        padding: 2rem 1.25rem;
+        margin-bottom: 1.5rem;
+        border-radius: var(--radius);
+    }
+
+        .store-hero h1 {
+            font-size: 1.4rem;
+        }
+
+        .store-hero p {
+            font-size: 0.9rem;
+        }
+
+    .store-main {
+        padding: 1rem 0 2rem;
+    }
+
+    /* فوتر: دو ستون زیر هم */
+    .store-footer .store-container {
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+
+    /* کارت محصول در گرید دو ستونه */
+    .product-card .name {
+        font-size: 0.85rem;
+    }
+
+    .product-card .price {
+        font-size: 0.85rem;
+    }
+
+    .product-card .body {
+        padding: 0.65rem 0.75rem 0.75rem;
+    }
+
+    .store-description {
+        padding: 1rem;
+        line-height: 1.8;
+    }
+}

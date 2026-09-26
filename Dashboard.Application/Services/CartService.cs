@@ -21,7 +21,8 @@ public interface ICartService
     Task<CartOperationResult> RemoveItemAsync(string cookieId, int itemId);
 
     /// <summary>اعمال کد تخفیف روی سبد — قواعد کد همین‌جا اعتبارسنجی می‌شود؛ مصرف نهایی هنگام ثبت سفارش شمرده می‌شود</summary>
-    Task<CartOperationResult> ApplyDiscountCodeAsync(string cookieId, string code);
+    /// <param name="userId">شناسهٔ کاربر واردشده — برای اعمال سقف «مصرف هر مشتری» (Null یعنی مهمان)</param>
+    Task<CartOperationResult> ApplyDiscountCodeAsync(string cookieId, string code, string? userId = null);
 
     Task<CartOperationResult> RemoveDiscountCodeAsync(string cookieId);
 
@@ -146,7 +147,7 @@ public class CartService : ICartService
         return new CartOperationResult(true);
     }
 
-    public async Task<CartOperationResult> ApplyDiscountCodeAsync(string cookieId, string code)
+    public async Task<CartOperationResult> ApplyDiscountCodeAsync(string cookieId, string code, string? userId = null)
     {
         var cart = await _unitOfWork.Carts.GetByCookieIdAsync(cookieId);
         if (cart is null || cart.Items.Count == 0)
@@ -160,6 +161,15 @@ public class CartService : ICartService
         var validationError = ValidateDiscountCode(discountCode, subtotal);
         if (validationError is not null)
             return new CartOperationResult(false, validationError);
+
+        // سقف «مصرف هر مشتری» — فقط برای کاربر واردشده قابل بررسی است؛ مهمان هنگام ثبت سفارش کنترل می‌شود
+        if (userId is not null && discountCode.MaxUsagePerCustomer is int maxPerCustomer && maxPerCustomer > 0)
+        {
+            var usedCount = await _unitOfWork.Orders.CountUserDiscountUsagesAsync(userId, discountCode.Code);
+            if (usedCount >= maxPerCustomer)
+                return new CartOperationResult(false,
+                    $"سقف مصرف این کد تخفیف برای شما پر شده است ({usedCount} از {maxPerCustomer} بار).");
+        }
 
         cart.DiscountCodeId = discountCode.Id;
         await _unitOfWork.Carts.UpdateAsync(cart);
@@ -181,11 +191,12 @@ public class CartService : ICartService
         return new CartOperationResult(true, "کد تخفیف حذف شد.");
     }
 
-    // جمع سبد قبل از تخفیف
+    // جمع سبد قبل از تخفیف — فقط کالاهای منتشرشده، دقیقاً همان چیزی که هنگام ثبت سفارش محاسبه می‌شود
     private async Task<decimal> GetCartSubtotalAsync(Cart cart)
     {
         var productIds = cart.Items.Select(i => i.ProductId).ToList();
         var products = (await _unitOfWork.Products.GetByIdsAsync(productIds))
+            .Where(p => p.IsPublished)
             .ToDictionary(p => p.Id);
         return cart.Items.Sum(i => i.Quantity * (products.GetValueOrDefault(i.ProductId)?.Price ?? 0));
     }

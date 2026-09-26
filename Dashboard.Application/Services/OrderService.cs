@@ -5,6 +5,7 @@ using Dashboard.Domain.Enums;
 using Dashboard.Domain.Identity;
 using Dashboard.Domain.Exceptions;
 using Dashboard.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace Dashboard.Application.Services;
 
@@ -51,15 +52,20 @@ public class OrderService : IOrderService
     private readonly ISalesService _salesService;
     private readonly IOutboxService _smsQueue;
     private readonly INotificationService _notifications;
+    private readonly ITreasuryService _treasury;
+    private readonly Microsoft.Extensions.Logging.ILogger<OrderService> _logger;
     private readonly StoreOptions _store;
 
     public OrderService(IUnitOfWork unitOfWork, ISalesService salesService, IOutboxService smsQueue,
-        INotificationService notifications, Microsoft.Extensions.Options.IOptions<StoreOptions> storeOptions)
+        INotificationService notifications, Microsoft.Extensions.Options.IOptions<StoreOptions> storeOptions,
+        ITreasuryService treasury, Microsoft.Extensions.Logging.ILogger<OrderService> logger)
     {
         _unitOfWork = unitOfWork;
         _salesService = salesService;
         _smsQueue = smsQueue;
         _notifications = notifications;
+        _treasury = treasury;
+        _logger = logger;
         _store = storeOptions.Value;
     }
 
@@ -72,9 +78,21 @@ public class OrderService : IOrderService
         if (cart is null || cart.Items.Count == 0)
             return (default!, "سبد خرید شما خالی است.");
 
-        var products = (await _unitOfWork.Products.GetByIdsAsync(cart.Items.Select(i => i.ProductId).ToList()))
-            .Where(p => p.IsPublished)
+        // همهٔ کالاهای سبد خوانده می‌شوند تا برای کالای حذف‌شده/مخفی‌شده پیام دقیق داده شود
+        // (فقط کالاهای منتشرشده قابل خریدند و جمع زیرمجموعه باید با سبد یکی باشد)
+        var allProducts = (await _unitOfWork.Products.GetByIdsAsync(cart.Items.Select(i => i.ProductId).ToList()))
             .ToDictionary(p => p.Id);
+        var products = allProducts.Values.Where(p => p.IsPublished).ToDictionary(p => p.Id);
+
+        var unavailableItem = cart.Items.FirstOrDefault(i =>
+            !allProducts.TryGetValue(i.ProductId, out var p) || !p.IsPublished);
+        if (unavailableItem is not null)
+        {
+            var name = allProducts.GetValueOrDefault(unavailableItem.ProductId)?.Name;
+            return (default!, name is null
+                ? "یکی از کالاهای سبد شما دیگر در فروشگاه وجود ندارد؛ لطفاً آن را از سبد حذف کنید."
+                : $"کالای «{name}» دیگر برای خرید موجود نیست؛ لطفاً آن را از سبد حذف کنید.");
+        }
 
         if (products.Count == 0)
             return (default!, "کالاهای سبد شما دیگر قابل خرید نیستند.");
@@ -107,6 +125,15 @@ public class OrderService : IOrderService
                 && (appliedCode.MaxUsageCount is null || appliedCode.UsageCount < appliedCode.MaxUsageCount)
                 && appliedCode.CalculateDiscount(subtotal) > 0)
             {
+                // سقف «مصرف هر مشتری» — اگر پر شده باشد کد اعمال نمی‌شود و کاربر باید آن را از سبد حذف کند
+                if (appliedCode.MaxUsagePerCustomer is int maxPerCustomer && maxPerCustomer > 0)
+                {
+                    var usedCount = await _unitOfWork.Orders.CountUserDiscountUsagesAsync(userId, appliedCode.Code);
+                    if (usedCount >= maxPerCustomer)
+                        return (default!,
+                            $"سقف مصرف این کد تخفیف برای شما پر شده است ({usedCount} از {maxPerCustomer} بار). کد را از سبد خرید حذف کنید.");
+                }
+
                 discountAmount = Math.Round(appliedCode.CalculateDiscount(subtotal), 2, MidpointRounding.AwayFromZero);
                 discountCodeText = appliedCode.Code;
             }
@@ -215,7 +242,15 @@ public class OrderService : IOrderService
                     order.AdminNote = "سقف مصرف کد تخفیف بین ثبت سفارش و پرداخت پر شد؛ تخفیف این سفارش حفظ شد.";
             }
 
+            // ⚠️ ایجاد فاکتور ممکن است به‌دلیل تصادم همزمانی، change tracker را پاک کرده باشد
+            // (SalesService.ClearChangeTracker) و این انتیتی را detach کرده باشد؛ بدون Update زیر،
+            // SalesInvoiceId/AdminNote بی‌صدا ذخیره نمی‌شدند و بعداً لغو سفارش، فاکتور را برنمی‌گرداند.
+            await _unitOfWork.Orders.UpdateAsync(order);
             await _unitOfWork.CompleteAsync();
+
+            // رسید دریافت (بدهکار صندوق/بانک انتخاب‌شده، بستانکار حساب‌های دریافتنی) —
+            // فقط اگر «Store:OnlinePaymentFinancialAccountId» تنظیم شده باشد؛ خطا هرگز پرداخت را از کار نمی‌اندازد
+            await TryRegisterOnlinePaymentReceiptAsync(order, invoiceId, refId);
 
             // ۵. پاک‌کردن سبد به عهده‌ی callback است (کوکی سبد آنجا در دسترس است)؛
             // اینجا اطلاع‌رسانی پیامکی ثبت می‌شود
@@ -247,6 +282,8 @@ public class OrderService : IOrderService
             }
             order.Status = OrderStatus.Canceled;
             order.AdminNote = $"پرداخت موفق اما ثبت سفارش ناموفق: {ex.Message} — نیازمند بازگشت وجه.";
+            // ممکن است tracker در مسیر تأیید فاکتور پاک شده باشد — دوباره متصل می‌شود تا ذخیره واقعاً انجام شود
+            await _unitOfWork.Orders.UpdateAsync(order);
             await _unitOfWork.CompleteAsync();
 
             await _notifications.NotifyRoleAsync(Roles.Admin, $"پرداخت موفق، ثبت ناموفق — سفارش {order.OrderNumber}",
@@ -260,6 +297,8 @@ public class OrderService : IOrderService
             // خطای سیستمی موقتی: سفارش Paid می‌ماند (claim قبلاً commit شده) ولی بدون فاکتور؛
             // با یادداشت برای ادمین علامت می‌خورد تا بررسی/تلاش مجدد دستی انجام شود
             order.AdminNote = $"پرداخت موفق؛ خطای سیستمی در صدور فاکتور: {ex.Message}";
+            // ممکن است tracker در مسیر تأیید فاکتور پاک شده باشد — دوباره متصل می‌شود تا یادداشت ذخیره شود
+            await _unitOfWork.Orders.UpdateAsync(order);
             await _unitOfWork.CompleteAsync();
             return (false, $"پرداخت انجام شد اما صدور فاکتور با خطا مواجه شد؛ سفارش برای بررسی ادمین علامت خورد.");
         }
@@ -360,7 +399,9 @@ public class OrderService : IOrderService
         }
 
         // لغو سفارشِ دارای فاکتور تأییدشده: برگشت موجودی و سند معکوس حسابداری
-        if (status == OrderStatus.Canceled && order.SalesInvoiceId is not null)
+        // فقط هنگام گذار واقعی به «لغوشده» — ذخیرهٔ مجدد روی سفارش لغوشده (مثلاً برای افزودن یادداشت)
+        // نباید فاکتور قبلاً لغوشده را دوباره لغو کند و خطای «این فاکتور قبلاً لغو شده» بدهد
+        if (status == OrderStatus.Canceled && order.Status != OrderStatus.Canceled && order.SalesInvoiceId is not null)
         {
             await _salesService.CancelInvoiceAsync(order.SalesInvoiceId.Value, "admin");
         }
@@ -393,6 +434,8 @@ public class OrderService : IOrderService
             CustomerId = customerId,
             WarehouseId = _store.WarehouseId,
             DiscountAmount = order.DiscountAmount,
+            // حمل‌ونقل باید در فاکتور هم باشد تا TotalAmount دقیقاً برابر مبلغ پرداختی مشتری (Order.Total) شود
+            ShippingAmount = order.ShippingCost,
             Notes = $"سفارش آنلاین {order.OrderNumber}" + (refId is null ? "" : $" — شماره پیگیری: {refId}") + noteSuffix,
             Items = order.Items.Select(i => new SalesInvoiceItemInput
             {
@@ -402,8 +445,59 @@ public class OrderService : IOrderService
             }).ToList()
         }, "store");
 
-        await _salesService.ConfirmInvoiceAsync(invoiceId, "store");
+        try
+        {
+            await _salesService.ConfirmInvoiceAsync(invoiceId, "store");
+        }
+        catch
+        {
+            // تأیید ناموفق (مثلاً اتمام موجودی بین ثبت سفارش و پرداخت) نباید پیش‌نویس را یتیم بگذارد؛
+            // لغوشدنِ پیش‌نویس اثر انباری/حسابداری ندارد و شمارهٔ سفارش برای پیگیری می‌ماند
+            try { await _salesService.CancelInvoiceAsync(invoiceId, "store"); }
+            catch { /* بهترین‌تلاش */ }
+            throw;
+        }
+
         return invoiceId;
+    }
+
+    /// <summary>
+    /// ثبت خودکار رسید دریافت پس از پرداخت آنلاین (بدهکار صندوق/بانک انتخابی، بستانکار حساب‌های دریافتنی).
+    /// فقط وقتی «Store:OnlinePaymentFinancialAccountId» تنظیم شده انجام می‌شود و هیچ‌وقت خطا را به پرداخت تزریق نمی‌کند.
+    /// </summary>
+    private async Task TryRegisterOnlinePaymentReceiptAsync(Order order, int? invoiceId, string? refId)
+    {
+        if (_store.OnlinePaymentFinancialAccountId is not int accountId)
+            return;
+
+        if (invoiceId is null)
+        {
+            _logger.LogWarning("Automatic payment receipt skipped for order {OrderNumber}: invoice was not created", order.OrderNumber);
+            return;
+        }
+
+        try
+        {
+            var invoice = await _salesService.GetInvoiceAsync(invoiceId.Value);
+            var amount = invoice?.TotalAmount ?? order.Total;
+            if (invoice is not null && invoice.TotalAmount != order.Total)
+                _logger.LogWarning("Invoice total {InvoiceTotal} differs from order total {OrderTotal} for {OrderNumber}",
+                    invoice.TotalAmount, order.Total, order.OrderNumber);
+
+            await _treasury.RegisterCustomerReceiptAsync(new CreateCustomerReceiptDto
+            {
+                CustomerId = invoice?.CustomerId,
+                FinancialAccountId = accountId,
+                Amount = amount,
+                Method = nameof(PaymentMethod.BankTransfer),
+                ReceiptDate = DateTime.UtcNow,
+                Notes = $"پرداخت آنلاین — سفارش {order.OrderNumber}" + (refId is null ? "" : $" — پیگیری: {refId}")
+            }, "system");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to register automatic receipt for order {OrderNumber}", order.OrderNumber);
+        }
     }
 
     public async Task<int> ExpireStalePendingOrdersAsync(TimeSpan maxAge)

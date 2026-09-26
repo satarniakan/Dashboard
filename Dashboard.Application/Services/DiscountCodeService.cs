@@ -38,7 +38,11 @@ public class DiscountCodeService : IDiscountCodeService
         if (dto.Type == DiscountType.Percentage && dto.Value > 100)
             throw new BusinessRuleException("درصد تخفیف نمی‌تواند بیشتر از ۱۰۰ باشد.");
 
-        if (dto.StartsAt is not null && dto.ExpiresAt is not null && dto.StartsAt > dto.ExpiresAt)
+        // مقایسه بعد از نرمال‌سازی پایان‌روز: ورود «شروع ۰۸:۰۰ / انقضا همان روز بدون ساعت» معتبر است
+        var startsAt = ToUtc(dto.StartsAt);
+        var expiresAt = ToUtc(EndOfDayIfMidnight(dto.ExpiresAt));
+
+        if (startsAt is not null && expiresAt is not null && startsAt > expiresAt)
             throw new BusinessRuleException("تاریخ شروع نمی‌تواند بعد از تاریخ انقضا باشد.");
 
         var code = new DiscountCode
@@ -51,8 +55,8 @@ public class DiscountCodeService : IDiscountCodeService
             MaxUsageCount = dto.MaxUsageCount,
             // تاریخ‌های واردشده در پنل مدیریت Kind ندارند و به وقت تهران تعبیر می‌شوند؛
             // اعتبارسنجی IsValidNow با UtcNow مقایسه می‌کند، پس این‌جا به UTC نرمال می‌شوند.
-            StartsAt = ToUtc(dto.StartsAt),
-            ExpiresAt = ToUtc(dto.ExpiresAt)
+            StartsAt = startsAt,
+            ExpiresAt = expiresAt
         };
 
         await _unitOfWork.DiscountCodes.AddAsync(code);
@@ -91,4 +95,11 @@ public class DiscountCodeService : IDiscountCodeService
         // تاریخ بدون Kind (ورودی فرم) به وقت تهران تعبیر می‌شود
         { } unspecified => DateTime.SpecifyKind(unspecified - TehranOffset, DateTimeKind.Utc)
     };
+
+    // ورودی فقط-تاریخ در پنل مدیریت ساعت ۰۰:۰۰ دارد؛ قصد ادمین «تا پایان همان روز» است،
+    // وگرنه کد دقیقاً در لحظه‌ی شروع روز انتخابی منقضی می‌شود.
+    private static DateTime? EndOfDayIfMidnight(DateTime? value) =>
+        value is { Kind: DateTimeKind.Unspecified } v && v.TimeOfDay == TimeSpan.Zero
+            ? v.Date.Add(new TimeSpan(23, 59, 59))
+            : value;
 }

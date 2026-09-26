@@ -1,15 +1,34 @@
 name: Build and Test
 
-# هر بار push به main یا هر Pull Request که به main باز می‌شود، این workflow اجرا می‌شود
+# هر بار push به master/main یا هر Pull Request که به این شاخه‌ها باز می‌شود، این workflow اجرا می‌شود
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master", "main" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "master", "main" ]
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "YourStrong@Passw0rd"
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -Q 'SELECT 1' || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # TestDatabaseFixture از این متغیر برای اتصال به SQL Server استفاده می‌کند؛
+      # بدون آن، تست‌های یکپارچگی به‌جای شکست Skip می‌شوند.
+      TEST_MSSQL_CONNECTION: "Server=localhost,1433;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=true"
 
     steps:
       - name: Checkout کد

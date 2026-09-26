@@ -8,7 +8,9 @@
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+@* منو فقط وقتی بسته می‌شود که روی لینک/دکمه‌ی واقعی کلیک شده باشد —
+   کلیک روی سربرگ بخش‌های کشویی باید زیرمنو را باز کند، نه اینکه منو را ببندد *@
+<div class="nav-scrollable" onclick="if (event.target.closest('a.nav-link, button.nav-link')) { document.querySelector('.navbar-toggler').click(); }">
     <nav class="flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All"><i class="bi bi-house-door"></i>خانه</NavLink>

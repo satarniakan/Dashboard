@@ -9,7 +9,7 @@
 
 <PageTitle>فاکتورهای فروش</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
     <div>
         <h3 class="mb-1">فاکتورهای فروش</h3>
         <div class="text-body-secondary small">مشاهده و پیگیری فاکتورهای فروش ثبت‌شده</div>
@@ -39,6 +39,7 @@
     }
     else
     {
+        <div class="table-responsive">
         <table class="table mb-0">
             <thead>
                 <tr>
@@ -68,6 +69,7 @@
                 }
             </tbody>
         </table>
+        </div>
     }
 
     <Dashboard.Web.Components.Shared.Pager CurrentPage="currentPage" TotalPages="totalPages"

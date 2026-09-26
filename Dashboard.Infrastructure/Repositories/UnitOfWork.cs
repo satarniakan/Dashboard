@@ -9,7 +9,7 @@ namespace Dashboard.Infrastructure.Repositories;
 public class UnitOfWork : IUnitOfWork
 {
     private readonly AppDbContext _context;
-    private IDbContextTransaction? _transaction;
+    private int _transactionDepth;
 
     // در اینجا، مخازن (Repositoryها) را تعریف می‌کنیم
     public IProductRepository Products { get; private set; }
@@ -139,32 +139,40 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
-    public async Task BeginTransactionAsync()
+    /// <summary>
+    /// اجرای عملیات در یک تراکنش دیتابیس، سازگار با EnableRetryOnFailure:
+    /// با استراتژی retry، «همه‌ی» دستورات تراکنش باید داخل ExecutionStrategy اجرا شوند —
+    /// فقط BeginTransaction را داخل strategy گذاشتن کافی نیست و EF روی اولین کوئری
+    /// InvalidOperationException می‌اندازد. فراخوانی تو‌در‌تو در همان تراکنش بیرونی ادغام می‌شود.
+    /// </summary>
+    public async Task ExecuteInTransactionAsync(Func<Task> action)
     {
-        // تراکنش تو‌در‌تو مجاز نیست: تراکنش قبلی بدون Dispose بازنویسی می‌شد (نشت اتصال).
-        if (_transaction is not null)
-            throw new InvalidOperationException("یک تراکنش باز از قبل وجود دارد؛ BeginTransactionAsync تو‌در‌تو پشتیبانی نمی‌شود.");
+        if (_transactionDepth > 0)
+        {
+            await action();
+            return;
+        }
 
-        // با EnableRetryOnFailure، شروع تراکنش دستی باید داخل ExecutionStrategy انجام شود،
-        // وگرنه EF بلافاصله InvalidOperationException می‌اندازد.
         var strategy = _context.Database.CreateExecutionStrategy();
-        _transaction = await strategy.ExecuteAsync(() => _context.Database.BeginTransactionAsync());
-    }
-
-    public async Task CommitTransactionAsync()
-    {
-        if (_transaction is null) return;
-        await _transaction.CommitAsync();
-        await _transaction.DisposeAsync();
-        _transaction = null;
-    }
-
-    public async Task RollbackTransactionAsync()
-    {
-        if (_transaction is null) return;
-        await _transaction.RollbackAsync();
-        await _transaction.DisposeAsync();
-        _transaction = null;
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            _transactionDepth = 1;
+            try
+            {
+                await action();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+            finally
+            {
+                _transactionDepth = 0;
+            }
+        });
     }
 
     public void ClearChangeTracker() => _context.ChangeTracker.Clear();

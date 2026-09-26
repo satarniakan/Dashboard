@@ -63,18 +63,10 @@ public class TestDataSeederService : ITestDataSeederService
         // همه‌ی این عملیات داخل یک تراکنش واحدند: یا همه‌شون با موفقیت ثبت می‌شن،
         // یا اگه وسط کار به هر مشکلی خوردیم، هیچ‌کدوم ذخیره نمی‌شه — تا دیگه هیچ‌وقت
         // یه‌سری رکورد نصفه‌کاره (مثلاً چندتا انبار بدون بقیه‌ی داده‌ها) توی دیتابیس نمونه.
-        await _unitOfWork.BeginTransactionAsync();
-        try
-        {
-            await SeedInternalAsync(userId);
-            await _unitOfWork.CommitTransactionAsync();
-            _logger.LogInformation("Demo data seed completed successfully.");
-        }
-        catch
-        {
-            await _unitOfWork.RollbackTransactionAsync();
-            throw;
-        }
+        // سرویس‌های صدا زده شده در SeedInternal (فروش/انبار) خودشان ExecuteInTransactionAsync
+        // دارند که در همین تراکنش بیرونی ادغام می‌شود.
+        await _unitOfWork.ExecuteInTransactionAsync(() => SeedInternalAsync(userId));
+        _logger.LogInformation("Demo data seed completed successfully.");
     }
 
     private async Task SeedInternalAsync(string? userId)

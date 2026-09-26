@@ -26,6 +26,7 @@ public static class ChartOfAccountsSeeder
             (SystemAccountCodes.Inventory, "موجودی کالا", AccountType.Asset),
             (SystemAccountCodes.AccountsPayable, "حساب‌های پرداختنی (تأمین‌کنندگان)", AccountType.Liability),
             (SystemAccountCodes.SalesRevenue, "فروش کالا", AccountType.Revenue),
+            (SystemAccountCodes.ShippingRevenue, "درآمد حمل‌ونقل", AccountType.Revenue),
             (SystemAccountCodes.CostOfGoodsSold, "بهای تمام‌شده کالای فروش‌رفته", AccountType.Expense),
         };
 

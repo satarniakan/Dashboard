@@ -33,8 +33,9 @@ public class OtpService : IOtpService
         var otp = new OtpCode
         {
             PhoneNumber = phoneNumber,
-            Code = code,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(2),
+            // فقط هش کد ذخیره می‌شود نه خود کد — دسترسی مستقیم به دیتابیس دیگر امکان ورود نمی‌دهد
+            Code = HashOtp(phoneNumber, code),
+            ExpiresAt = DateTime.UtcNow.AddMinutes(5),
             IsUsed = false
         };
 
@@ -49,7 +50,8 @@ public class OtpService : IOtpService
 
     public async Task<bool> VerifyOtpAsync(string phoneNumber, string code)
     {
-        var otp = await _otpRepository.GetLatestValidAsync(phoneNumber, code);
+        // همان هشِ لحظهٔ ساخت اعمال می‌شود تا بدون ذخیرهٔ کد خام در دیتابیس، کد پیدا شود
+        var otp = await _otpRepository.GetLatestValidAsync(phoneNumber, HashOtp(phoneNumber, code));
 
         if (otp is null)
         {
@@ -67,4 +69,12 @@ public class OtpService : IOtpService
         await _unitOfWork.CompleteAsync();
         return true;
     }
+
+    /// <summary>
+    /// هش کد یک‌بارمصرف — کد خام هرگز در دیتابیس ذخیره نمی‌شود.
+    /// شمارهٔ موبایل در هش لحاظ می‌شود تا هش یک کد رایج (مثل ۱۲۳۴۵۶) برای همه یکسان نباشد؛
+    /// یادآوری: فضای کد ۶ رقمی است، پس محافظت اصلی در برابر حدس، محدودیت نرخ درخواست‌هاست.
+    /// </summary>
+    private static string HashOtp(string phoneNumber, string code)
+        => Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes($"{phoneNumber}:{code}")));
 }

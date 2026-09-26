@@ -38,20 +38,8 @@ public class TreasuryService : ITreasuryService
     /// اجرای عملیات چندمرحله‌ای (رسید + قسط + شماره‌گذاری + سند حسابداری) در یک تراکنش —
     /// اگر سند حسابداری شکست بخورد، رسید و تغییر قسط هم commit نمی‌شوند (دفتر کل ناراست نمی‌شود).
     /// </summary>
-    private async Task RunInTransactionAsync(Func<Task> action)
-    {
-        await _unitOfWork.BeginTransactionAsync();
-        try
-        {
-            await action();
-            await _unitOfWork.CommitTransactionAsync();
-        }
-        catch
-        {
-            await _unitOfWork.RollbackTransactionAsync();
-            throw;
-        }
-    }
+    private async Task RunInTransactionAsync(Func<Task> action) =>
+        await _unitOfWork.ExecuteInTransactionAsync(action);
 
     // هر صندوق/بانک جدید، خودش هم یک سرفصل حساب معادل در دفتر کل می‌سازد؛ چون اگر موجودی
     // چند صندوق را زیر یک سرفصل مشترک بگذاریم، تراز آزمایشی دیگر نمی‌تواند موجودی هرکدام

@@ -93,4 +93,14 @@ public class OrderRepository : IOrderRepository
                      && !o.Payments.Any(pmt => pmt.Status == Domain.Entities.PaymentStatus.Success))
             .ToListAsync();
     }
+
+    public async Task<int> CountUserDiscountUsagesAsync(string userId, string discountCode)
+    {
+        // سفارش لغوشده سهمیهٔ مصرف را آزاد می‌کند؛ سفارش در انتظار پرداخت هم شمرده می‌شود
+        return await _context.Orders
+            .CountAsync(o => o.UserId == userId
+                          && o.DiscountCodeText == discountCode
+                          && o.DiscountAmount > 0
+                          && o.Status != OrderStatus.Canceled);
+    }
 }

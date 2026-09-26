@@ -63,8 +63,10 @@ public static class ShopOrderEndpoints
             return Results.Redirect(payment.RedirectUrl!);
         }).RequireRateLimiting("order");
 
-        // بازگشت از درگاه: Authority و Status در کوئری‌استرینگ
-        app.MapGet("/shop/payment/callback", async (
+        // بازگشت از درگاه: Authority و Status در کوئری‌استرینگ.
+        // [Authorize] + بررسی مالکیت: ریدایرکت درگاه همان مرورگر کاربرِ سفارش است؛ این‌طوری هیچ‌کس
+        // نمی‌تواند با دانستن Authority، سفارش دیگری را لغو کند یا پرداختش را جلو بیندازد
+        app.MapGet("/shop/payment/callback", [Authorize] async (
             HttpContext httpContext,
             [FromServices] IOrderService orderService,
             [FromServices] ICartService cartService,
@@ -75,15 +77,19 @@ public static class ShopOrderEndpoints
             if (string.IsNullOrEmpty(Authority))
                 return Results.Redirect("/shop/cart");
 
+            var order = await orderService.GetByAuthorityAsync(Authority);
+            if (order is null)
+                return Results.Redirect("/shop/cart?msg=" + Uri.EscapeDataString("سفارش مرتبط با این پرداخت یافت نشد."));
+
+            var userId = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId) || await orderService.GetForUserAsync(order.Id, userId) is null)
+                return Results.Redirect("/shop/cart?msg=" + Uri.EscapeDataString("دسترسی به این پرداخت مجاز نیست."));
+
             if (!string.Equals(Status, "OK", StringComparison.OrdinalIgnoreCase))
             {
                 await orderService.MarkPaymentFailedAsync(Authority, "کاربر پرداخت را لغو کرد یا درگاه خطا داد");
                 return Results.Redirect("/shop/checkout?error=پرداخت انجام نشد.");
             }
-
-            var order = await orderService.GetByAuthorityAsync(Authority);
-            if (order is null)
-                return Results.Redirect("/shop/cart?msg=" + Uri.EscapeDataString("سفارش مرتبط با این پرداخت یافت نشد."));
 
             var verification = await gateway.VerifyPaymentAsync(order.Total, Authority);
             if (!verification.Success)

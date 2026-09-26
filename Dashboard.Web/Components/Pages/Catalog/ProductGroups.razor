@@ -8,7 +8,7 @@
 
 <PageTitle>گروه‌های محصول</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-4">
     <div>
         <h3 class="mb-1">گروه‌های محصول</h3>
         <div class="text-body-secondary small">گروه‌بندی کالاها و مدیریت Variantها</div>
@@ -26,6 +26,7 @@
     }
     else
     {
+        <div class="table-responsive">
         <table class="table mb-0">
             <thead><tr><th>نام</th><th>دسته</th><th>تعداد Variant</th><th></th></tr></thead>
             <tbody>
@@ -40,6 +41,7 @@
                 }
             </tbody>
         </table>
+        </div>
     }
 </div>
 

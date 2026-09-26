@@ -178,87 +178,81 @@ public class StockService : IStockService
     /// <exception cref="BusinessRuleException">در صورت نبود اقلام یا مقادیر نامعتبر</exception>
     public async Task<int> RegisterPurchaseReceiptAsync(CreatePurchaseReceiptDto dto, string? userId)
     {
-        await _unitOfWork.BeginTransactionAsync();
-        try
-        {
-            CommonValidations.ValidateItemsNotEmpty(dto.Items);
+        CommonValidations.ValidateItemsNotEmpty(dto.Items);
 
-        var receipt = new PurchaseReceipt
+        PurchaseReceipt receipt = null!;
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
-            SupplierId = dto.SupplierId,
-            WarehouseId = dto.WarehouseId,
-            ReceiptNumber = $"TEMP-{Guid.NewGuid():N}",
-            ReceiptDate = dto.ReceiptDate,
-            Notes = dto.Notes,
-            CreatedByUserId = userId
-        };
-
-        foreach (var item in dto.Items)
-        {
-            CommonValidations.ValidateQuantityPositive(item.Quantity);
-
-            receipt.Items.Add(new PurchaseReceiptItem
+            receipt = new PurchaseReceipt
             {
-                ProductId = item.ProductId,
-                Quantity = item.Quantity,
-                UnitCost = item.UnitCost
-            });
-
-            await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, dto.WarehouseId, item.Quantity);
-        }
-
-        await _unitOfWork.PurchaseReceipts.AddAsync(receipt);
-        await _unitOfWork.CompleteAsync(); // اینجا receipt.Id واقعی ساخته می‌شود
-
-        // تراکنش‌های موجودی بعد از ساخت Id ثبت می‌شوند تا ReferenceId به سند مبدا قابل ردیابی باشد
-        foreach (var item in dto.Items)
-        {
-            await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
-            {
-                ProductId = item.ProductId,
+                SupplierId = dto.SupplierId,
                 WarehouseId = dto.WarehouseId,
-                Type = StockTransactionType.PurchaseReceipt,
-                QuantityChange = item.Quantity,
-                UnitCost = item.UnitCost,
-                ReferenceType = nameof(PurchaseReceipt),
-                ReferenceId = receipt.Id,
+                ReceiptNumber = $"TEMP-{Guid.NewGuid():N}",
+                ReceiptDate = dto.ReceiptDate,
+                Notes = dto.Notes,
                 CreatedByUserId = userId
-            });
-        }
+            };
 
-        receipt.ReceiptNumber = DocumentNumberGenerator.Generate(receipt.ReceiptDate, receipt.SupplierId, receipt.Id);
-        await _unitOfWork.PurchaseReceipts.UpdateAsync(receipt);
-        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("PurchaseReceiptRegistered", userId, $"رسید خرید {receipt.ReceiptNumber} ثبت شد."));
-        await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.WarehouseUser,
-            "رسید خرید ثبت شد", $"رسید {receipt.ReceiptNumber} با {dto.Items.Count} قلم کالا",
-            NotificationType.System, "/warehouse/purchase-receipts");
-        await _unitOfWork.CompleteAsync();
+            foreach (var item in dto.Items)
+            {
+                CommonValidations.ValidateQuantityPositive(item.Quantity);
 
-        var totalAmount = receipt.Items.Sum(i => i.Quantity * i.UnitCost);
-
-        if (totalAmount > 0)
-        {
-            await _journalService.PostEntryAsync(
-                description: $"خرید طبق رسید {receipt.ReceiptNumber}",
-                lines: new List<JournalLineInput>
+                receipt.Items.Add(new PurchaseReceiptItem
                 {
-            new("1300", totalAmount, 0, "افزایش موجودی کالا"),
-            new("2100", 0, totalAmount, "بدهی به تأمین‌کننده", "Supplier", dto.SupplierId)
-                },
-                referenceType: nameof(PurchaseReceipt),
-                referenceId: receipt.Id,
-                userId: userId);
-        }
-        _logger.LogInformation("Purchase receipt {ReceiptNumber} registered by {UserId}", receipt.ReceiptNumber, userId);
-            
-            await _unitOfWork.CommitTransactionAsync();
-            return receipt.Id;
-        }
-        catch
-        {
-            await _unitOfWork.RollbackTransactionAsync();
-            throw;
-        }
+                    ProductId = item.ProductId,
+                    Quantity = item.Quantity,
+                    UnitCost = item.UnitCost
+                });
+
+                await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, dto.WarehouseId, item.Quantity);
+            }
+
+            await _unitOfWork.PurchaseReceipts.AddAsync(receipt);
+            await _unitOfWork.CompleteAsync(); // اینجا receipt.Id واقعی ساخته می‌شود
+
+            // تراکنش‌های موجودی بعد از ساخت Id ثبت می‌شوند تا ReferenceId به سند مبدا قابل ردیابی باشد
+            foreach (var item in dto.Items)
+            {
+                await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
+                {
+                    ProductId = item.ProductId,
+                    WarehouseId = dto.WarehouseId,
+                    Type = StockTransactionType.PurchaseReceipt,
+                    QuantityChange = item.Quantity,
+                    UnitCost = item.UnitCost,
+                    ReferenceType = nameof(PurchaseReceipt),
+                    ReferenceId = receipt.Id,
+                    CreatedByUserId = userId
+                });
+            }
+
+            receipt.ReceiptNumber = DocumentNumberGenerator.Generate(receipt.ReceiptDate, receipt.SupplierId, receipt.Id);
+            await _unitOfWork.PurchaseReceipts.UpdateAsync(receipt);
+            await _unitOfWork.AuditLogs.AddAsync(new AuditLog("PurchaseReceiptRegistered", userId, $"رسید خرید {receipt.ReceiptNumber} ثبت شد."));
+            await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.WarehouseUser,
+                "رسید خرید ثبت شد", $"رسید {receipt.ReceiptNumber} با {dto.Items.Count} قلم کالا",
+                NotificationType.System, "/warehouse/purchase-receipts");
+            await _unitOfWork.CompleteAsync();
+
+            var totalAmount = receipt.Items.Sum(i => i.Quantity * i.UnitCost);
+
+            if (totalAmount > 0)
+            {
+                await _journalService.PostEntryAsync(
+                    description: $"خرید طبق رسید {receipt.ReceiptNumber}",
+                    lines: new List<JournalLineInput>
+                    {
+                        new("1300", totalAmount, 0, "افزایش موجودی کالا"),
+                        new("2100", 0, totalAmount, "بدهی به تأمین‌کننده", "Supplier", dto.SupplierId)
+                    },
+                    referenceType: nameof(PurchaseReceipt),
+                    referenceId: receipt.Id,
+                    userId: userId);
+            }
+            _logger.LogInformation("Purchase receipt {ReceiptNumber} registered by {UserId}", receipt.ReceiptNumber, userId);
+        });
+
+        return receipt.Id;
     }
 
     /// <summary>
@@ -304,9 +298,15 @@ public class StockService : IStockService
             };
 
             foreach (var item in dto.Items)
-            {
                 issue.Items.Add(new InternalIssueItem { ProductId = item.ProductId, Quantity = item.Quantity });
 
+            // ابتدا سند ثبت و Id واقعی ساخته می‌شود تا تراکنش‌های موجودی بتوانند ReferenceId داشته باشند
+            await _unitOfWork.InternalIssues.AddAsync(issue);
+            await _unitOfWork.CompleteAsync(); // اینجا Id واقعی ساخته می‌شود
+            issueId = issue.Id;
+
+            foreach (var item in dto.Items)
+            {
                 await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
                 {
                     ProductId = item.ProductId,
@@ -314,16 +314,13 @@ public class StockService : IStockService
                     Type = StockTransactionType.InternalIssue,
                     QuantityChange = -item.Quantity,
                     ReferenceType = nameof(InternalIssue),
+                    ReferenceId = issue.Id,
                     CreatedByUserId = userId
                 });
 
                 // کسر اتمیک با بررسی کفایت + RowVersion — جایگزین check-then-decrement غیراتمی
                 await _unitOfWork.StockLevels.DecreaseWithCheckAsync(item.ProductId, dto.WarehouseId, item.Quantity);
             }
-
-            await _unitOfWork.InternalIssues.AddAsync(issue);
-            await _unitOfWork.CompleteAsync(); // اینجا Id واقعی ساخته می‌شود
-            issueId = issue.Id;
 
             issue.IssueNumber = DocumentNumberGenerator.Generate(issue.IssueDate, issue.WarehouseId, issue.Id);
             await _unitOfWork.InternalIssues.UpdateAsync(issue);
@@ -375,9 +372,15 @@ public class StockService : IStockService
             };
 
             foreach (var item in dto.Items)
-            {
                 salesReturn.Items.Add(new SalesReturnItem { ProductId = item.ProductId, Quantity = item.Quantity });
 
+            // ابتدا سند ثبت و Id واقعی ساخته می‌شود تا تراکنش‌های موجودی بتوانند ReferenceId داشته باشند
+            await _unitOfWork.SalesReturns.AddAsync(salesReturn);
+            await _unitOfWork.CompleteAsync(); // اینجا Id واقعی ساخته می‌شود
+            salesReturnId = salesReturn.Id;
+
+            foreach (var item in dto.Items)
+            {
                 await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
                 {
                     ProductId = item.ProductId,
@@ -385,15 +388,12 @@ public class StockService : IStockService
                     Type = StockTransactionType.SalesReturn,
                     QuantityChange = item.Quantity,
                     ReferenceType = nameof(SalesReturn),
+                    ReferenceId = salesReturn.Id,
                     CreatedByUserId = userId
                 });
 
                 await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, dto.WarehouseId, item.Quantity);
             }
-
-            await _unitOfWork.SalesReturns.AddAsync(salesReturn);
-            await _unitOfWork.CompleteAsync(); // اینجا Id واقعی ساخته می‌شود
-            salesReturnId = salesReturn.Id;
 
             salesReturn.ReturnNumber = DocumentNumberGenerator.Generate(salesReturn.ReturnDate, salesReturn.WarehouseId, salesReturn.Id);
             await _unitOfWork.SalesReturns.UpdateAsync(salesReturn);
@@ -448,9 +448,15 @@ public class StockService : IStockService
             };
 
             foreach (var item in dto.Items)
-            {
                 scrap.Items.Add(new ScrapRecordItem { ProductId = item.ProductId, Quantity = item.Quantity });
 
+            // ابتدا سند ثبت و Id واقعی ساخته می‌شود تا تراکنش‌های موجودی بتوانند ReferenceId داشته باشند
+            await _unitOfWork.ScrapRecords.AddAsync(scrap);
+            await _unitOfWork.CompleteAsync();
+            scrapId = scrap.Id;
+
+            foreach (var item in dto.Items)
+            {
                 await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
                 {
                     ProductId = item.ProductId,
@@ -458,16 +464,13 @@ public class StockService : IStockService
                     Type = StockTransactionType.Scrap,
                     QuantityChange = -item.Quantity,
                     ReferenceType = nameof(ScrapRecord),
+                    ReferenceId = scrap.Id,
                     CreatedByUserId = userId
                 });
 
                 // کسر اتمیک با بررسی کفایت + RowVersion
                 await _unitOfWork.StockLevels.DecreaseWithCheckAsync(item.ProductId, dto.WarehouseId, item.Quantity);
             }
-
-            await _unitOfWork.ScrapRecords.AddAsync(scrap);
-            await _unitOfWork.CompleteAsync();
-            scrapId = scrap.Id;
 
             scrap.RecordNumber = DocumentNumberGenerator.Generate(scrap.RecordDate, scrap.WarehouseId, scrap.Id);
             await _unitOfWork.ScrapRecords.UpdateAsync(scrap);
@@ -525,9 +528,15 @@ public class StockService : IStockService
             };
 
             foreach (var item in dto.Items)
-            {
                 transfer.Items.Add(new StockTransferItem { ProductId = item.ProductId, Quantity = item.Quantity });
 
+            // ابتدا سند ثبت و Id واقعی ساخته می‌شود تا تراکنش‌های موجودی بتوانند ReferenceId داشته باشند
+            await _unitOfWork.StockTransfers.AddAsync(transfer);
+            await _unitOfWork.CompleteAsync();
+            transferId = transfer.Id;
+
+            foreach (var item in dto.Items)
+            {
                 await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
                 {
                     ProductId = item.ProductId,
@@ -535,6 +544,7 @@ public class StockService : IStockService
                     Type = StockTransactionType.TransferOut,
                     QuantityChange = -item.Quantity,
                     ReferenceType = nameof(StockTransfer),
+                    ReferenceId = transfer.Id,
                     CreatedByUserId = userId
                 });
                 // کسر اتمیک از مبدا با بررسی کفایت + RowVersion
@@ -547,14 +557,11 @@ public class StockService : IStockService
                     Type = StockTransactionType.TransferIn,
                     QuantityChange = item.Quantity,
                     ReferenceType = nameof(StockTransfer),
+                    ReferenceId = transfer.Id,
                     CreatedByUserId = userId
                 });
                 await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, dto.DestinationWarehouseId, item.Quantity);
             }
-
-            await _unitOfWork.StockTransfers.AddAsync(transfer);
-            await _unitOfWork.CompleteAsync();
-            transferId = transfer.Id;
 
             transfer.TransferNumber = DocumentNumberGenerator.Generate(transfer.TransferDate, transfer.SourceWarehouseId, transfer.Id);
             await _unitOfWork.StockTransfers.UpdateAsync(transfer);
@@ -729,23 +736,15 @@ public class StockService : IStockService
         const int maxRetries = 3;
         for (var attempt = 1; ; attempt++)
         {
-            await _unitOfWork.BeginTransactionAsync();
             try
             {
-                await action();
-                await _unitOfWork.CommitTransactionAsync();
+                await _unitOfWork.ExecuteInTransactionAsync(action);
                 return;
             }
             catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException) when (attempt < maxRetries)
             {
-                await _unitOfWork.RollbackTransactionAsync();
                 _unitOfWork.ClearChangeTracker();
                 _logger.LogWarning("Concurrency conflict in stock operation, retrying (attempt {Attempt})", attempt);
-            }
-            catch
-            {
-                await _unitOfWork.RollbackTransactionAsync();
-                throw;
             }
         }
     }

@@ -61,11 +61,29 @@ main {
 @media (max-width: 640.98px) {
     .top-row {
         justify-content: space-between;
+        gap: 0.5rem;
+        padding-inline: 1rem !important;
     }
+
+        /* نام کاربر و نقش در صفحه‌ی باریک کوتاه می‌شود تا زنگ و کلید تم جا بیفتند */
+        .top-row > span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
+        }
+
+        .top-row ::deep .notification-bell {
+            flex-shrink: 0;
+        }
 
         .top-row ::deep a, .top-row ::deep .btn-link {
             margin-inline-end: 0;
         }
+
+    article.content {
+        padding: 1rem !important;
+    }
 }
 
 @media (min-width: 641px) {

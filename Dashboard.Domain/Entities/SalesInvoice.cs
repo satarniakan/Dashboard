@@ -18,6 +18,10 @@ public class SalesInvoice
     public SalesInvoiceStatus Status { get; set; } = SalesInvoiceStatus.Draft;
 
     public decimal DiscountAmount { get; set; }
+
+    /// <summary>هزینهٔ حمل‌ونقل — از سفارش فروشگاه می‌آید تا مبلغ فاکتور دقیقاً برابر مبلغ پرداختی مشتری باشد</summary>
+    public decimal ShippingAmount { get; set; }
+
     public decimal TotalAmount { get; set; }
 
     public string? Notes { get; set; }

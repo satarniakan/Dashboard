@@ -186,6 +186,11 @@ a {
         font-size: 0.85rem;
     }
 
+    /* در چاپ، اسکرول افقی معنا ندارد؛ جدول کامل روی کاغذ بیاید */
+    .table-responsive {
+        overflow: visible !important;
+    }
+
     a {
         text-decoration: none !important;
         color: inherit !important;
@@ -467,6 +472,10 @@ html[data-theme="dark"] .skeleton::after {
     }
 }
 /* ===== زنگ اعلان‌ها (سبک Tabler) ===== */
+.notification-bell {
+    position: relative;
+}
+
 .bell-btn {
     appearance: none;
     background: none;
@@ -642,3 +651,83 @@ html[data-theme="dark"] .skeleton::after {
         color: var(--brand-primary);
         text-decoration: none;
     }
+
+/* ============================================================
+   تنظیمات موبایل (تا ۶۴۰px — هم‌راستا با breakpoint چیدمان)
+   ============================================================ */
+@media (max-width: 640.98px) {
+    /* عناوین و فاصله‌ها جمع‌وجورتر */
+    h3 {
+        font-size: 1.3rem;
+        margin-bottom: 1rem;
+    }
+
+    .card-panel {
+        padding: 1rem;
+    }
+
+    /* اعداد بزرگ KPI در کارت‌های نصفه‌موبایل سرریز نکنند */
+    .card-panel .fs-4.fw-bold {
+        font-size: 1.05rem !important;
+        overflow-wrap: anywhere;
+    }
+
+    /* جدول‌ها: سلول‌های فشرده‌تر؛ اسکرول افقی را .table-responsive تأمین می‌کند */
+    .table thead th {
+        padding: 0.6rem 0.65rem;
+        font-size: 0.78rem;
+        white-space: nowrap;
+    }
+
+    .table tbody td {
+        padding: 0.6rem 0.65rem;
+        font-size: 0.85rem;
+    }
+
+    /* پنل اعلان‌ها از عرض صفحه بیرون نزند */
+    .notification-panel {
+        width: min(22rem, calc(100vw - 2rem));
+    }
+
+    /* هدف لمسی بزرگ‌تر برای زنگ و کلید تم (حداقل ~۴۲px) */
+    .bell-btn {
+        padding: 0.65rem;
+        font-size: 1.2rem;
+    }
+
+    .theme-toggle {
+        width: 2.6rem;
+        height: 2.6rem;
+        margin-inline-start: 0.75rem;
+    }
+
+    /* تست‌ها: تمام عرض، چسبیده به پایین صفحه */
+    .toast-container {
+        left: 1rem;
+        right: 1rem;
+        bottom: 1rem;
+    }
+
+    .toast-item {
+        min-width: 0;
+        width: 100%;
+    }
+
+    /* دیالوگ تایید و نوار عملیات چسبان */
+    .confirm-dialog {
+        padding: 1.25rem 1rem 1rem;
+    }
+
+    .form-actions {
+        bottom: 0.5rem;
+    }
+
+    .form-actions .btn {
+        flex: 1 1 auto;
+    }
+
+    /* ناحیه‌ی انتخاب عکس کوتاه‌تر */
+    .image-dropzone {
+        padding: 1.5rem 0.75rem;
+    }
+}

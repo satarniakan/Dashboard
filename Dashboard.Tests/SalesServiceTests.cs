@@ -1,5 +1,6 @@
 ﻿using Dashboard.Application.DTOs;
 using Dashboard.Application.Services;
+using Dashboard.Domain.Accounting;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
 using Dashboard.Domain.Exceptions;
@@ -28,6 +29,9 @@ public class SalesServiceTests
         _unitOfWork.Setup(u => u.StockTransactions).Returns(_stockTransactions.Object);
         _unitOfWork.Setup(u => u.AuditLogs).Returns(_auditLogs.Object);
         _unitOfWork.Setup(u => u.CompleteAsync()).ReturnsAsync(1);
+        // تراکنش در تست واقعی نیست؛ فقط عملیات را مستقیم اجرا می‌کند
+        _unitOfWork.Setup(u => u.ExecuteInTransactionAsync(It.IsAny<Func<Task>>()))
+            .Returns((Func<Task> action) => action());
 
         _sut = new SalesService(_unitOfWork.Object, Mock.Of<IJournalService>(), Mock.Of<ILogger<SalesService>>(), Mock.Of<IStockValidator>(), Mock.Of<INotificationService>());
     }
@@ -148,6 +152,121 @@ public class SalesServiceTests
         _salesInvoices.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(invoice);
 
         await Assert.ThrowsAsync<BusinessRuleException>(() => _sut.CancelInvoiceAsync(1, "user1"));
+    }
+
+    [Fact]
+    public async Task CreateDraftInvoiceAsync_WithShippingAmount_IncludesShippingInTotal()
+    {
+        var dto = new CreateSalesInvoiceDto
+        {
+            WarehouseId = 1,
+            DiscountAmount = 50,
+            ShippingAmount = 80_000,
+            Items = new()
+            {
+                new SalesInvoiceItemInput { ProductId = 1, Quantity = 2, UnitPrice = 100 } // 200
+            }
+        };
+
+        SalesInvoice? savedInvoice = null;
+        _salesInvoices.Setup(r => r.AddAsync(It.IsAny<SalesInvoice>()))
+            .Callback<SalesInvoice>(inv =>
+            {
+                inv.Id = 42;
+                savedInvoice = inv;
+            })
+            .Returns(Task.CompletedTask);
+
+        await _sut.CreateDraftInvoiceAsync(dto, "user1");
+
+        Assert.NotNull(savedInvoice);
+        Assert.Equal(80_000m, savedInvoice!.ShippingAmount);
+        // 200 − 50 + 80000 = 80150 → دقیقاً برابر مبلغی که مشتری به درگاه می‌پردازد
+        Assert.Equal(80_150m, savedInvoice.TotalAmount);
+    }
+
+    [Fact]
+    public async Task ConfirmInvoiceAsync_WithShippingAmount_PostsShippingRevenueAndKeepsEntryBalanced()
+    {
+        var invoice = new SalesInvoice
+        {
+            Id = 1,
+            Status = SalesInvoiceStatus.Draft,
+            WarehouseId = 1,
+            DiscountAmount = 50,
+            ShippingAmount = 80_000,
+            TotalAmount = 80_150,
+            Items = new List<SalesInvoiceItem>
+            {
+                new() { ProductId = 10, Quantity = 2, UnitPrice = 100, Product = new Product("کالای تست", 100) }
+            }
+        };
+        _salesInvoices.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(invoice);
+
+        List<JournalLineInput>? lines = null;
+        var journal = new Mock<IJournalService>();
+        journal.Setup(j => j.PostEntryAsync(It.IsAny<string>(), It.IsAny<List<JournalLineInput>>(),
+                It.IsAny<string?>(), It.IsAny<int?>(), It.IsAny<string?>()))
+            .Callback<string, List<JournalLineInput>, string?, int?, string?>((_, captured, _, _, _) => lines = captured)
+            .ReturnsAsync(1);
+
+        var sut = new SalesService(_unitOfWork.Object, journal.Object,
+            Mock.Of<ILogger<SalesService>>(), Mock.Of<IStockValidator>(), Mock.Of<INotificationService>());
+
+        await sut.ConfirmInvoiceAsync(1, "user1");
+
+        Assert.NotNull(lines);
+
+        // حمل‌ونقل باید سرفصل جدا (4100) به‌عنوان درآمد شناسایی شود
+        var shippingLine = lines!.Single(l => l.AccountCode == SystemAccountCodes.ShippingRevenue);
+        Assert.Equal(80_000m, shippingLine.Credit);
+
+        // درآمد کالا = فاکتور منهای حمل‌ونقل (150 = 200 − 50)
+        var revenueLine = lines.Single(l => l.AccountCode == SystemAccountCodes.SalesRevenue);
+        Assert.Equal(150m, revenueLine.Credit);
+
+        // قانون طلایی حسابداری: سند باید تراز بماند
+        Assert.Equal(lines.Sum(l => l.Debit), lines.Sum(l => l.Credit));
+
+        // بدهکاری حساب مشتری = مبلغ کامل پرداختی (کالا + حمل‌ونقل)
+        var arLine = lines.Single(l => l.AccountCode == SystemAccountCodes.AccountsReceivable);
+        Assert.Equal(80_150m, arLine.Debit);
+    }
+
+    [Fact]
+    public async Task CancelInvoiceAsync_WithShippingAmount_ReversesShippingRevenue()
+    {
+        var invoice = new SalesInvoice
+        {
+            Id = 1,
+            Status = SalesInvoiceStatus.Confirmed,
+            WarehouseId = 1,
+            DiscountAmount = 50,
+            ShippingAmount = 80_000,
+            TotalAmount = 80_150,
+            Items = new List<SalesInvoiceItem>
+            {
+                new() { ProductId = 10, Quantity = 2, UnitPrice = 100, Product = new Product("کالای تست", 100) }
+            }
+        };
+        _salesInvoices.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(invoice);
+
+        List<JournalLineInput>? lines = null;
+        var journal = new Mock<IJournalService>();
+        journal.Setup(j => j.PostEntryAsync(It.IsAny<string>(), It.IsAny<List<JournalLineInput>>(),
+                It.IsAny<string?>(), It.IsAny<int?>(), It.IsAny<string?>()))
+            .Callback<string, List<JournalLineInput>, string?, int?, string?>((_, captured, _, _, _) => lines = captured)
+            .ReturnsAsync(1);
+
+        var sut = new SalesService(_unitOfWork.Object, journal.Object,
+            Mock.Of<ILogger<SalesService>>(), Mock.Of<IStockValidator>(), Mock.Of<INotificationService>());
+
+        await sut.CancelInvoiceAsync(1, "user1");
+
+        Assert.NotNull(lines);
+        var shippingLine = lines!.Single(l => l.AccountCode == SystemAccountCodes.ShippingRevenue);
+        Assert.Equal(80_000m, shippingLine.Debit);
+        Assert.Equal(lines.Sum(l => l.Debit), lines.Sum(l => l.Credit));
     }
 }
 

@@ -43,11 +43,11 @@ public interface IUnitOfWork
     // این همان متد جادویی است که در پایان، همه تغییرات را یک‌باره ذخیره می‌کند
     Task<int> CompleteAsync();
 
-    // برای عملیات‌های چندمرحله‌ای (مثل تولید دیتای تستی) که یا باید کامل انجام بشن یا اصلاً
-    // هیچی ثبت نشه — وگرنه یه شکست وسط‌کار، یه‌سری رکورد نصفه‌کاره تو دیتابیس جا می‌ذاره.
-    Task BeginTransactionAsync();
-    Task CommitTransactionAsync();
-    Task RollbackTransactionAsync();
+    // برای عملیات‌های چندمرحله‌ای (مثل تأیید فاکتور یا تولید دیتای تستی) که یا باید کامل
+    // انجام بشن یا اصلاً هیچی ثبت نشه. کل عملیات داخل ExecutionStrategy و یک تراکنش اجرا
+    // می‌شود (سازگار با EnableRetryOnFailure)؛ در صورت استثنا تراکنش رول‌بک می‌شود.
+    // فراخوانی تو‌در‌تو مجاز است: لایه‌ی داخلی در همان تراکنش بیرونی اجرا می‌شود.
+    Task ExecuteInTransactionAsync(Func<Task> action);
 
     /// <summary>
     /// پاک‌کردن change tracker — بعد از rollback و قبل از تلاش مجدد لازم است تا

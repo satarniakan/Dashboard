@@ -26,6 +26,10 @@ public class CreateSalesInvoiceDto : IValidatableObject
     [Range(0, double.MaxValue, ErrorMessage = "تخفیف نمی‌تواند منفی باشد.")]
     public decimal DiscountAmount { get; set; }
 
+    /// <summary>هزینهٔ حمل‌ونقل — در سفارش فروشگاه اینترنتی از Order.ShippingCost می‌آید</summary>
+    [Range(0, double.MaxValue, ErrorMessage = "هزینهٔ حمل‌ونقل نمی‌تواند منفی باشد.")]
+    public decimal ShippingAmount { get; set; }
+
     [StringLength(500, ErrorMessage = "توضیحات نمی‌تواند بیشتر از ۵۰۰ کاراکتر باشد.")]
     public string? Notes { get; set; }
 
@@ -50,6 +54,7 @@ public record SalesInvoiceDto(
     int? CustomerId,
     string Status,
     decimal DiscountAmount,
+    decimal ShippingAmount,
     decimal TotalAmount,
     string? Notes,
     List<SalesInvoiceItemDto> Items);

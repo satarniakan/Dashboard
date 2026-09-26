@@ -8,7 +8,7 @@
 
 <PageTitle>تراز آزمایشی</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
     <div>
         <h3 class="mb-1">تراز آزمایشی</h3>
         <div class="text-body-secondary small">جمع بدهکار و بستانکار و مانده هر حساب</div>
@@ -35,6 +35,7 @@
     }
     else
     {
+        <div class="table-responsive">
         <table class="table mb-0">
             <thead>
                 <tr>
@@ -70,6 +71,7 @@
             </tfoot>
 
         </table>
+        </div>
         @if (rows.Sum(r => r.TotalDebit) != rows.Sum(r => r.TotalCredit))
         {
             <div class="alert alert-danger mt-3 no-print">

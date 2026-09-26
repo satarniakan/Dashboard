@@ -95,18 +95,16 @@ public class JournalService : IJournalService
 
     public async Task<IEnumerable<TrialBalanceRowDto>> GetTrialBalanceAsync()
     {
-        var lines = await _unitOfWork.JournalEntries.GetAllLinesAsync();
+        var rows = await _unitOfWork.JournalEntries.GetTrialBalanceRowsAsync();
 
-        return lines
-            .GroupBy(l => l.Account!)
-            .Select(g => new TrialBalanceRowDto(
-                g.Key.Code,
-                g.Key.Name,
-                g.Key.Type.ToString(),
-                g.Sum(l => l.DebitAmount),
-                g.Sum(l => l.CreditAmount),
-                g.Sum(l => l.DebitAmount) - g.Sum(l => l.CreditAmount)))
-            .OrderBy(r => r.AccountCode)
+        return rows
+            .Select(r => new TrialBalanceRowDto(
+                r.AccountCode,
+                r.AccountName,
+                r.AccountType.ToString(),
+                r.TotalDebit,
+                r.TotalCredit,
+                r.TotalDebit - r.TotalCredit))
             .ToList();
     }
 
@@ -123,23 +121,18 @@ public class JournalService : IJournalService
 
     private async Task<List<AccountStatementRowDto>> BuildSubsidiaryStatementAsync(string subsidiaryType, int subsidiaryId)
     {
-        var allLines = await _unitOfWork.JournalEntries.GetAllLinesAsync();
-
-        var relevantLines = allLines
-            .Where(l => l.SubsidiaryType == subsidiaryType && l.SubsidiaryId == subsidiaryId)
-            .OrderBy(l => l.JournalEntry!.EntryDate)
-            .ToList();
+        var lines = await _unitOfWork.JournalEntries.GetSubsidiaryLinesAsync(subsidiaryType, subsidiaryId);
 
         var result = new List<AccountStatementRowDto>();
         decimal runningBalance = 0;
 
-        foreach (var line in relevantLines)
+        foreach (var line in lines)
         {
             runningBalance += line.DebitAmount - line.CreditAmount;
             result.Add(new AccountStatementRowDto(
-                line.JournalEntry!.EntryDate,
-                line.JournalEntry.EntryNumber,
-                line.Description ?? line.JournalEntry.Description,
+                line.EntryDate,
+                line.EntryNumber,
+                line.LineDescription ?? line.EntryDescription,
                 line.DebitAmount,
                 line.CreditAmount,
                 runningBalance));
@@ -150,27 +143,20 @@ public class JournalService : IJournalService
 
     public async Task<ProfitAndLossDto> GetProfitAndLossAsync(DateTime? from = null, DateTime? to = null)
     {
-        var allLines = await _unitOfWork.JournalEntries.GetAllLinesAsync();
+        var sums = (await _unitOfWork.JournalEntries.GetRevenueExpenseSumsAsync(from, to)).ToList();
 
-        var filtered = allLines.Where(l =>
-            (!from.HasValue || l.JournalEntry!.EntryDate >= from.Value) &&
-            (!to.HasValue || l.JournalEntry!.EntryDate <= to.Value));
-
-        var revenueLines = filtered.Where(l => l.Account!.Type == Domain.Enums.AccountType.Revenue).ToList();
-        var expenseLines = filtered.Where(l => l.Account!.Type == Domain.Enums.AccountType.Expense).ToList();
-
-        var revenueBreakdown = revenueLines
-            .GroupBy(l => l.Account!.Name)
-            .Select(g => (g.Key, g.Sum(l => l.CreditAmount - l.DebitAmount)))
+        var revenueBreakdown = sums
+            .Where(s => s.AccountType == Domain.Enums.AccountType.Revenue)
+            .Select(s => (AccountName: s.AccountName, Amount: s.TotalCredit - s.TotalDebit))
             .ToList();
 
-        var expenseBreakdown = expenseLines
-            .GroupBy(l => l.Account!.Name)
-            .Select(g => (g.Key, g.Sum(l => l.DebitAmount - l.CreditAmount)))
+        var expenseBreakdown = sums
+            .Where(s => s.AccountType == Domain.Enums.AccountType.Expense)
+            .Select(s => (AccountName: s.AccountName, Amount: s.TotalDebit - s.TotalCredit))
             .ToList();
 
-        var totalRevenue = revenueBreakdown.Sum(r => r.Item2);
-        var totalExpense = expenseBreakdown.Sum(e => e.Item2);
+        var totalRevenue = revenueBreakdown.Sum(r => r.Amount);
+        var totalExpense = expenseBreakdown.Sum(e => e.Amount);
 
         return new ProfitAndLossDto(totalRevenue, totalExpense, totalRevenue - totalExpense, revenueBreakdown, expenseBreakdown);
     }

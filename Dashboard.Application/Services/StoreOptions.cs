@@ -29,4 +29,11 @@ public class StoreOptions
         Domain.Enums.ShippingMethod.InPerson => InPersonShippingCost,
         _ => 0m
     };
+
+    /// <summary>
+    /// شناسهٔ صندوق/بانکِ پرداخت آنلاین — اگر تنظیم شود، پس از پرداخت موفق سفارش،
+    /// رسید دریافت به‌صورت خودکار ثبت می‌شود (بدهکار این صندوق/بانک، بستانکار حساب‌های دریافتنی).
+    /// خالی یعنی مثل قبل رسیدها دستی ثبت می‌شوند.
+    /// </summary>
+    public int? OnlinePaymentFinancialAccountId { get; set; }
 }

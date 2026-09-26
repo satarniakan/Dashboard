@@ -113,7 +113,10 @@ public class SalesService : ISalesService
         if (dto.DiscountAmount > total)
             throw new BusinessRuleException($"تخفیف ({dto.DiscountAmount:0.##}) نمی‌تواند از جمع اقلام فاکتور ({total:0.##}) بیشتر باشد.");
 
-        invoice.TotalAmount = Math.Round(total - dto.DiscountAmount, 2, MidpointRounding.AwayFromZero);
+        // مبلغ فاکتور باید دقیقاً برابر مبلغ پرداختی مشتری باشد:
+        // جمع اقلام − تخفیف + حمل‌ونقل (حمل‌ونقل در سند فروش جداگانه شناسایی می‌شود)
+        invoice.ShippingAmount = dto.ShippingAmount;
+        invoice.TotalAmount = Math.Round(total - dto.DiscountAmount + dto.ShippingAmount, 2, MidpointRounding.AwayFromZero);
 
         await _unitOfWork.SalesInvoices.AddAsync(invoice);
         await _unitOfWork.CompleteAsync(); // اینجا Id واقعی ساخته می‌شود
@@ -142,68 +145,76 @@ public class SalesService : ISalesService
         // همان رکورد را بخوانند، به‌جای Validate جداگانه از DecreaseWithCheckAsync (اتمیک) استفاده
         // می‌کنیم و با تکیه بر RowVersion (همزمانی خوش‌بینانه) در صورت تصادم، عملیات را از نو تلاش می‌کنیم.
         const int maxRetries = 3;
-        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        for (var attempt = 1; ; attempt++)
         {
-            await _unitOfWork.BeginTransactionAsync();
             try
             {
-                var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
-                ?? throw new NotFoundException("فاکتور", invoiceId);
-
-                if (invoice.Status != SalesInvoiceStatus.Draft)
-                    throw new BusinessRuleException("فقط فاکتور پیش‌نویس قابل تأیید است.");
-
-                // کسر اتمیک موجودی برای هر قلم؛ اگر کافی نباشد استثنا پرتاب می‌شود
-                // و کل تراکنش رول‌بک می‌شود (بنابراین اگر یکی کم بود، هیچ‌کدام کسر نمی‌شود)
-                foreach (var item in invoice.Items)
+                await _unitOfWork.ExecuteInTransactionAsync(async () =>
                 {
-                    await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
+                    var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
+                    ?? throw new NotFoundException("فاکتور", invoiceId);
+
+                    if (invoice.Status != SalesInvoiceStatus.Draft)
+                        throw new BusinessRuleException("فقط فاکتور پیش‌نویس قابل تأیید است.");
+
+                    // کسر اتمیک موجودی برای هر قلم؛ اگر کافی نباشد استثنا پرتاب می‌شود
+                    // و کل تراکنش رول‌بک می‌شود (بنابراین اگر یکی کم بود، هیچ‌کدام کسر نمی‌شود)
+                    foreach (var item in invoice.Items)
                     {
-                        ProductId = item.ProductId,
-                        WarehouseId = invoice.WarehouseId,
-                        Type = StockTransactionType.Sale,
-                        QuantityChange = -item.Quantity,
-                        ReferenceType = nameof(SalesInvoice),
-                        ReferenceId = invoice.Id,
-                        CreatedByUserId = userId
-                    });
+                        await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
+                        {
+                            ProductId = item.ProductId,
+                            WarehouseId = invoice.WarehouseId,
+                            Type = StockTransactionType.Sale,
+                            QuantityChange = -item.Quantity,
+                            ReferenceType = nameof(SalesInvoice),
+                            ReferenceId = invoice.Id,
+                            CreatedByUserId = userId
+                        });
 
-                    await _unitOfWork.StockLevels.DecreaseWithCheckAsync(item.ProductId, invoice.WarehouseId, item.Quantity);
-                }
+                        await _unitOfWork.StockLevels.DecreaseWithCheckAsync(item.ProductId, invoice.WarehouseId, item.Quantity);
+                    }
 
-                // هشدار کم‌موجودی برای کالاهایی که به نقطه‌ی سفارش رسیده‌اند
-                foreach (var productId in invoice.Items.Select(i => i.ProductId).Distinct())
-                    await _notifications.NotifyLowStockIfBelowReorderPointAsync(productId);
+                    // هشدار کم‌موجودی برای کالاهایی که به نقطه‌ی سفارش رسیده‌اند
+                    foreach (var productId in invoice.Items.Select(i => i.ProductId).Distinct())
+                        await _notifications.NotifyLowStockIfBelowReorderPointAsync(productId);
 
-                invoice.Status = SalesInvoiceStatus.Confirmed;
-                invoice.ConfirmedAt = DateTime.UtcNow;
+                    invoice.Status = SalesInvoiceStatus.Confirmed;
+                    invoice.ConfirmedAt = DateTime.UtcNow;
 
-                await _unitOfWork.SalesInvoices.UpdateAsync(invoice);
-                await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesInvoiceConfirmed", userId, $"فاکتور {invoice.InvoiceNumber} تأیید و موجودی کسر شد."));
-                await _unitOfWork.CompleteAsync();
+                    await _unitOfWork.SalesInvoices.UpdateAsync(invoice);
+                    await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesInvoiceConfirmed", userId, $"فاکتور {invoice.InvoiceNumber} تأیید و موجودی کسر شد."));
+                    await _unitOfWork.CompleteAsync();
 
-                // بهای تمام‌شده از روی CostPrice لحظه‌ای کالا محاسبه می‌شود (نه میانگین موزون واقعی)؛
-                // برای فاز اول کافی است، اما اگر کنترل دقیق‌تر سود ناخالص لازم شد باید این را
-                // به یک روش هزینه‌یابی واقعی (FIFO/میانگین موزون) ارتقا داد.
-                var totalCost = invoice.Items.Sum(i => i.Quantity * (i.Product?.CostPrice ?? 0));
+                    // بهای تمام‌شده از روی CostPrice لحظه‌ای کالا محاسبه می‌شود (نه میانگین موزون واقعی)؛
+                    // برای فاز اول کافی است، اما اگر کنترل دقیق‌تر سود ناخالص لازم شد باید این را
+                    // به یک روش هزینه‌یابی واقعی (FIFO/میانگین موزون) ارتقا داد.
+                    var totalCost = invoice.Items.Sum(i => i.Quantity * (i.Product?.CostPrice ?? 0));
 
-                // سند فروش: بدهکار مشتری (طلب) و بدهکار COGS، بستانکار درآمد فروش و بستانکار موجودی کالا
-                await _journalService.PostEntryAsync(
-                    description: $"فروش طبق فاکتور {invoice.InvoiceNumber}",
-                    lines: new List<JournalLineInput>
+                    // درآمد کالا = مبلغ فاکتور منهای حمل‌ونقل؛ حمل‌ونقل سرفصل جدا دارد
+                    var goodsRevenue = invoice.TotalAmount - invoice.ShippingAmount;
+
+                    var salesLines = new List<JournalLineInput>
                     {
+                        // بدهکار حساب مشتری = مبلغ واقعی دریافت‌شده (کالا + حمل‌ونقل)
                         new(SystemAccountCodes.AccountsReceivable, invoice.TotalAmount, 0, "بدهکار شدن حساب مشتری", "Customer", invoice.CustomerId),
-                        new(SystemAccountCodes.SalesRevenue, 0, invoice.TotalAmount, "شناسایی درآمد فروش"),
+                        new(SystemAccountCodes.SalesRevenue, 0, goodsRevenue, "شناسایی درآمد فروش"),
                         new(SystemAccountCodes.CostOfGoodsSold, totalCost, 0, "بهای تمام‌شده کالای فروش‌رفته"),
                         new(SystemAccountCodes.Inventory, 0, totalCost, "کاهش موجودی کالا")
-                    },
-                    referenceType: nameof(SalesInvoice),
-                    referenceId: invoice.Id,
-                    userId: userId);
+                    };
+                    if (invoice.ShippingAmount > 0)
+                        salesLines.Add(new JournalLineInput(SystemAccountCodes.ShippingRevenue, 0, invoice.ShippingAmount, "شناسایی درآمد حمل‌ونقل"));
 
-                _logger.LogInformation("Sales invoice {InvoiceNumber} confirmed by {UserId}", invoice.InvoiceNumber, userId);
+                    // سند فروش: بدهکار مشتری (طلب) و بدهکار COGS، بستانکار درآمد فروش/حمل‌ونقل و بستانکار موجودی کالا
+                    await _journalService.PostEntryAsync(
+                        description: $"فروش طبق فاکتور {invoice.InvoiceNumber}",
+                        lines: salesLines,
+                        referenceType: nameof(SalesInvoice),
+                        referenceId: invoice.Id,
+                        userId: userId);
 
-                await _unitOfWork.CommitTransactionAsync();
+                    _logger.LogInformation("Sales invoice {InvoiceNumber} confirmed by {UserId}", invoice.InvoiceNumber, userId);
+                });
                 return;
             }
             catch (DbUpdateConcurrencyException) when (attempt < maxRetries)
@@ -211,14 +222,8 @@ public class SalesService : ISalesService
                 // رکورد موجودی توسط یک درخواست همزمان دیگر تغییر کرده است؛ رول‌بک و تلاش دوباره از ابتدا.
                 // پاک‌کردن tracker ضروری است: انتیتی‌های Added/Modified مانده از attempt قبلی
                 // در غیر این صورت دوباره (تکراری) ذخیره می‌شدند.
-                await _unitOfWork.RollbackTransactionAsync();
                 _unitOfWork.ClearChangeTracker();
                 _logger.LogWarning("Concurrency conflict while confirming invoice {InvoiceId}, retrying (attempt {Attempt})", invoiceId, attempt);
-            }
-            catch
-            {
-                await _unitOfWork.RollbackTransactionAsync();
-                throw;
             }
         }
     }
@@ -238,76 +243,75 @@ public class SalesService : ISalesService
         // مانند ConfirmInvoiceAsync، برگشت موجودی هم روی رکورد StockLevel با RowVersion محافظت می‌شود؛
         // در صورت تصادم همزمانی، تراکنش رول‌بک و از نو تلاش می‌شود.
         const int maxRetries = 3;
-        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        for (var attempt = 1; ; attempt++)
         {
-            await _unitOfWork.BeginTransactionAsync();
             try
             {
-                var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
-                ?? throw new NotFoundException("فاکتور", invoiceId);
-
-                if (invoice.Status == SalesInvoiceStatus.Canceled)
-                    throw new BusinessRuleException("این فاکتور قبلاً لغو شده است.");
-
-                var wasConfirmed = invoice.Status == SalesInvoiceStatus.Confirmed;
-
-                if (wasConfirmed)
+                await _unitOfWork.ExecuteInTransactionAsync(async () =>
                 {
-                    foreach (var item in invoice.Items)
+                    var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
+                    ?? throw new NotFoundException("فاکتور", invoiceId);
+
+                    if (invoice.Status == SalesInvoiceStatus.Canceled)
+                        throw new BusinessRuleException("این فاکتور قبلاً لغو شده است.");
+
+                    var wasConfirmed = invoice.Status == SalesInvoiceStatus.Confirmed;
+
+                    if (wasConfirmed)
                     {
-                        await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
+                        foreach (var item in invoice.Items)
                         {
-                            ProductId = item.ProductId,
-                            WarehouseId = invoice.WarehouseId,
-                            Type = StockTransactionType.SaleCancellation,
-                            QuantityChange = item.Quantity,
-                            ReferenceType = nameof(SalesInvoice),
-                            ReferenceId = invoice.Id,
-                            CreatedByUserId = userId
-                        });
+                            await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
+                            {
+                                ProductId = item.ProductId,
+                                WarehouseId = invoice.WarehouseId,
+                                Type = StockTransactionType.SaleCancellation,
+                                QuantityChange = item.Quantity,
+                                ReferenceType = nameof(SalesInvoice),
+                                ReferenceId = invoice.Id,
+                                CreatedByUserId = userId
+                            });
 
-                        await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, invoice.WarehouseId, item.Quantity);
+                            await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, invoice.WarehouseId, item.Quantity);
+                        }
                     }
-                }
 
-                invoice.Status = SalesInvoiceStatus.Canceled;
-                invoice.CanceledAt = DateTime.UtcNow;
+                    invoice.Status = SalesInvoiceStatus.Canceled;
+                    invoice.CanceledAt = DateTime.UtcNow;
 
-                await _unitOfWork.SalesInvoices.UpdateAsync(invoice);
-                await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesInvoiceCanceled", userId, $"فاکتور {invoice.InvoiceNumber} لغو شد."));
-                await _unitOfWork.CompleteAsync();
-                if (wasConfirmed)
-                {
-                    var totalCost = invoice.Items.Sum(i => i.Quantity * (i.Product?.CostPrice ?? 0));
+                    await _unitOfWork.SalesInvoices.UpdateAsync(invoice);
+                    await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesInvoiceCanceled", userId, $"فاکتور {invoice.InvoiceNumber} لغو شد."));
+                    await _unitOfWork.CompleteAsync();
+                    if (wasConfirmed)
+                    {
+                        var totalCost = invoice.Items.Sum(i => i.Quantity * (i.Product?.CostPrice ?? 0));
+                        var goodsRevenue = invoice.TotalAmount - invoice.ShippingAmount;
 
-                    // سند برگشت، دقیقاً برعکس سند فروش اصلی است تا اثر آن به‌طور کامل خنثی شود
-                    await _journalService.PostEntryAsync(
-                        description: $"برگشت از فروش طبق لغو فاکتور {invoice.InvoiceNumber}",
-                        lines: new List<JournalLineInput>
+                        var reversalLines = new List<JournalLineInput>
                         {
-                            new(SystemAccountCodes.SalesRevenue, invoice.TotalAmount, 0, "برگشت درآمد فروش"),
+                            new(SystemAccountCodes.SalesRevenue, goodsRevenue, 0, "برگشت درآمد فروش"),
                             new(SystemAccountCodes.AccountsReceivable, 0, invoice.TotalAmount, "بستانکار شدن حساب مشتری", "Customer", invoice.CustomerId),
                             new(SystemAccountCodes.Inventory, totalCost, 0, "برگشت موجودی کالا"),
                             new(SystemAccountCodes.CostOfGoodsSold, 0, totalCost, "برگشت بهای تمام‌شده")
-                        },
-                        referenceType: nameof(SalesInvoice),
-                        referenceId: invoice.Id,
-                        userId: userId);
-                }
+                        };
+                        if (invoice.ShippingAmount > 0)
+                            reversalLines.Add(new JournalLineInput(SystemAccountCodes.ShippingRevenue, invoice.ShippingAmount, 0, "برگشت درآمد حمل‌ونقل"));
 
-                await _unitOfWork.CommitTransactionAsync();
+                        // سند برگشت، دقیقاً برعکس سند فروش اصلی است تا اثر آن به‌طور کامل خنثی شود
+                        await _journalService.PostEntryAsync(
+                            description: $"برگشت از فروش طبق لغو فاکتور {invoice.InvoiceNumber}",
+                            lines: reversalLines,
+                            referenceType: nameof(SalesInvoice),
+                            referenceId: invoice.Id,
+                            userId: userId);
+                    }
+                });
                 return;
             }
             catch (DbUpdateConcurrencyException) when (attempt < maxRetries)
             {
-                await _unitOfWork.RollbackTransactionAsync();
                 _unitOfWork.ClearChangeTracker();
                 _logger.LogWarning("Concurrency conflict while canceling invoice {InvoiceId}, retrying (attempt {Attempt})", invoiceId, attempt);
-            }
-            catch
-            {
-                await _unitOfWork.RollbackTransactionAsync();
-                throw;
             }
         }
     }
@@ -327,7 +331,7 @@ public class SalesService : ISalesService
         return new SalesInvoiceDto(
             invoice.Id, invoice.InvoiceNumber, invoice.InvoiceDate,
             invoice.Customer?.Name, invoice.Warehouse?.Name ?? "-", invoice.WarehouseId,invoice.CustomerId, invoice.Status.ToString(),
-            invoice.DiscountAmount, invoice.TotalAmount, invoice.Notes,
+            invoice.DiscountAmount, invoice.ShippingAmount, invoice.TotalAmount, invoice.Notes,
             invoice.Items.Select(i => new SalesInvoiceItemDto(
                 i.ProductId, i.Product?.Name ?? "-", i.Quantity, i.UnitPrice, i.LineTotal)).ToList());
     }
@@ -367,6 +371,7 @@ public class SalesService : ISalesService
             invoice.CustomerId,
             invoice.Status.ToString(),
             invoice.DiscountAmount,
+            invoice.ShippingAmount,
             invoice.TotalAmount,
             invoice.Notes,
             invoice.Items.Select(i => new SalesInvoiceItemDto(

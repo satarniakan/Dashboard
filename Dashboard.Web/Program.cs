@@ -145,7 +145,9 @@ builder.Services.AddScoped<IOrderService>(sp =>
         sp.GetRequiredService<ISalesService>(),
         sp.GetRequiredService<IOutboxService>(),
         sp.GetRequiredService<INotificationService>(),
-        store);
+        store,
+        sp.GetRequiredService<ITreasuryService>(),
+        sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<OrderService>>());
 });
 // AddIdentity به‌صورت پیش‌فرض مسیر "/Account/Login" را برای صفحه‌ی ورود در نظر می‌گیرد،
 // در حالی که صفحه‌ی واقعی ورود در این پروژه "/login" است. بدون این تنظیم، وقتی کاربر
@@ -205,6 +207,9 @@ builder.Services.AddScoped<Dashboard.Web.Services.ToastService>();
 builder.Services.AddHostedService<Dashboard.Web.Services.OrderExpiryService>();
 builder.Services.AddHostedService<Dashboard.Web.Services.OutboxProcessor>();
 
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>();
+
 // ایمیل تراکنشی — SMTP از «Email:Smtp:*»؛ Host خالی یعنی ارسال با خطای روشن در Outbox ثبت می‌شود
 builder.Services.AddScoped<IEmailSender>(sp =>
 {
@@ -234,6 +239,23 @@ builder.Services.AddScoped<Dashboard.Domain.Interfaces.IFileStorageService>(sp =
     new Dashboard.Infrastructure.Services.LocalFileStorageService(
         sp.GetRequiredService<IWebHostEnvironment>().WebRootPath));
 var app = builder.Build();
+
+// Forwarded Headers — باید اولین middleware باشد تا RemoteIpAddress واقعیِ کاربر (پشت reverse proxy)
+// برای Rate Limiter و لاگ در دسترس باشد؛ وگرنه همهٔ کاربران یک سطل محدودیتِ نرخ می‌شوند
+// (مثلاً ۳ درخواست OTP در ۵ دقیقه برای کل سایت). پیش‌فرض فقط proxy محلی (loopback) معتبر است؛
+// پشت nginx/docker/App Service باید «ForwardedHeaders:TrustAllProxies» را true کنید.
+var forwardedHeadersOptions = new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
+{
+    ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+                     | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+                     | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost
+};
+if (builder.Configuration.GetValue<bool>("ForwardedHeaders:TrustAllProxies"))
+{
+    forwardedHeadersOptions.KnownIPNetworks.Clear();
+    forwardedHeadersOptions.KnownProxies.Clear();
+}
+app.UseForwardedHeaders(forwardedHeadersOptions);
 
 // اعمال خودکار مایگریشن‌های EF هنگام استارتاپ — دیگر فراموش نمی‌شوند
 using (var scope = app.Services.CreateScope())
@@ -280,6 +302,8 @@ app.MapShopCartEndpoints();
 app.MapNotificationsEndpoints();
 app.MapShopOrderEndpoints();
 app.MapSitemapEndpoints();
+
+app.MapHealthChecks("/health");
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
