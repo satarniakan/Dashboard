@@ -1,0 +1,48 @@
+@page "/shop"
+@layout Dashboard.Web.Components.Layout.StoreLayout
+@attribute [ExcludeFromInteractiveRouting]
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@inject IStorefrontService Storefront
+<PageTitle>فروشگاه من</PageTitle>
+
+<div class="store-hero">
+    <h1>به فروشگاه ما خوش آمدید</h1>
+    <p>بهترین کالاها با قیمت مناسب و ارسال سریع به سراسر کشور</p>
+</div>
+
+<section aria-label="جدیدترین کالاها">
+    <h2 class="h5 mb-3">جدیدترین کالاها</h2>
+
+    @if (latest is null)
+    {
+        <LoadingSkeleton />
+    }
+    else if (!latest.Any())
+    {
+        <div class="text-center text-body-secondary py-5">
+            <i class="bi bi-inbox d-block mb-2" style="font-size: 2rem;"></i>
+            هنوز کالایی برای نمایش منتشر نشده است.
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var p in latest)
+            {
+                <div class="col-6 col-md-4 col-lg-3">
+                    <StoreProductCard Product="p" />
+                </div>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private IEnumerable<StoreProductDto>? latest;
+
+    protected override async Task OnInitializedAsync()
+    {
+        latest = await Storefront.GetLatestAsync(count: 8);
+    }
+}

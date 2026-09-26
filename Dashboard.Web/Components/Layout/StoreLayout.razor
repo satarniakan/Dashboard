@@ -1,0 +1,27 @@
+@inherits LayoutComponentBase
+@* Layout عمومی فروشگاه — جدا از پنل ادمین؛ صفحات /shop از این استفاده می‌کنند *@
+<div class="store-shell">
+    <header class="store-header">
+        <div class="store-container d-flex align-items-center justify-content-between">
+            <a href="/shop" class="store-brand"><i class="bi bi-shop" aria-hidden="true"></i>فروشگاه من</a>
+            <nav class="d-flex align-items-center gap-3" aria-label="فهرست فروشگاه">
+                <a href="/shop">خانه</a>
+                <a href="/shop/products">محصولات</a>
+                <CartBadge />
+            </nav>
+        </div>
+    </header>
+
+    <main class="store-container store-main">
+        @Body
+    </main>
+
+    <footer class="store-footer">
+        <div class="store-container d-flex justify-content-between text-body-secondary small">
+            <span>© فروشگاه من — همه‌ی حقوق محفوظ است.</span>
+            <a href="/" class="text-body-secondary">ورود مدیران</a>
+        </div>
+    </footer>
+</div>
+
+

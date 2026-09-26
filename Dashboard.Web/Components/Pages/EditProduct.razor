@@ -182,6 +182,22 @@ else
                     }
                     <div class="form-text mt-2">فرمت‌های تصویری؛ حداکثر ۵ مگابایت.</div>
                 </div>
+
+                @* ===== فروشگاه اینترنتی ===== *@
+                <div class="card-panel mb-3">
+                    <h6 class="form-section-title"><i class="bi bi-shop"></i>فروشگاه اینترنتی</h6>
+
+                    <AppCheckbox Label="نمایش این کالا در فروشگاه" @bind-Value="editModel.IsPublished" />
+
+                    <AppTextField @bind-Value="editModel.Slug" Label="نشان صفحه‌ی محصول (Slug)"
+                                  Placeholder="مثلاً: gol-e-roz-holandi"
+                                  Hint="نشانی صفحه در فروشگاه: /shop/p/{نشان} — فقط حروف، عدد و خط تیره. برای انتشار الزامی است." />
+
+                    <AppTextArea @bind-Value="editModel.HtmlDescription" Label="توضیحات صفحه‌ی محصول"
+                                 Placeholder="توضیح کامل کالا برای نمایش در فروشگاه…"
+                                 Rows="6" MaxLength="10000" ShowCount="true"
+                                 Hint="می‌تواند شامل ویژگی‌ها، نکات نگهداری و … باشد." />
+                </div>
             </div>
         </div>
 
@@ -249,7 +265,10 @@ else
             Height = product.Height,
             ReorderPoint = product.ReorderPoint,
             CategoryId = product.CategoryId,
-            ImageUrl = product.ImageUrl
+            ImageUrl = product.ImageUrl,
+            IsPublished = product.IsPublished,
+            Slug = product.Slug,
+            HtmlDescription = product.HtmlDescription
         };
     }
 

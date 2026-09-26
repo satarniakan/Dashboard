@@ -1,0 +1,21 @@
+@* Dashboard.Web/Components/Shared/CartBadge.razor *@
+@* شمارنده‌ی سبد — با fetch به endpoint سبک؛ عمداً از DbContext مدار استفاده نمی‌کند
+   تا با کوئری‌های صفحه هم‌روندی (second operation on DbContext) پیش نیاید *@
+@rendermode InteractiveServer
+@inject IJSRuntime JS
+
+<a href="/shop/cart" class="position-relative" aria-label="سبد خرید">
+    <i class="bi bi-cart3 fs-5" aria-hidden="true"></i>
+    <span class="badge rounded-pill bg-primary position-absolute top-0 start-100 translate-middle small"
+          style="display: none;" @ref="badgeEl"></span>
+</a>
+
+@code {
+    private Microsoft.AspNetCore.Components.ElementReference badgeEl;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RendererInfo.Name != "Static")
+            await JS.InvokeVoidAsync("dashboardCartBadge.refresh", badgeEl);
+    }
+}

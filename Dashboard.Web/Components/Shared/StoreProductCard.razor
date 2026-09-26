@@ -1,0 +1,32 @@
+@* Dashboard.Web/Components/Shared/StoreProductCard.razor *@
+@* کارت محصول در ویترین فروشگاه — فقط لینک، بدون منطق *@
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Helpers
+<a href="/shop/p/@Product.Slug" class="product-card">
+    <div class="thumb">
+        @if (!string.IsNullOrEmpty(Product.ImageUrl))
+        {
+            <img src="@Product.ImageUrl" alt="@Product.Name" loading="lazy" />
+        }
+        else
+        {
+            <i class="bi bi-box" aria-hidden="true"></i>
+        }
+        @if (!Product.InStock)
+        {
+            <span class="oos-badge">ناموجود</span>
+        }
+    </div>
+    <div class="body">
+        <div class="name">@Product.Name</div>
+        @if (!string.IsNullOrEmpty(Product.CategoryName))
+        {
+            <div class="cat">@Product.CategoryName</div>
+        }
+        <div class="price">@CurrencyFormatter.ToToman(Product.Price)</div>
+    </div>
+</a>
+
+@code {
+    [Parameter, EditorRequired] public StoreProductDto Product { get; set; } = default!;
+}

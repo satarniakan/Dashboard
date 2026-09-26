@@ -54,6 +54,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ProductAttributeValue> ProductAttributeValues => Set<ProductAttributeValue>();
     public DbSet<ProductVariantAttribute> ProductVariantAttributes => Set<ProductVariantAttribute>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
+    public DbSet<Cart> Carts => Set<Cart>();
+    public DbSet<CartItem> CartItems => Set<CartItem>();
+    public DbSet<DiscountCode> DiscountCodes => Set<DiscountCode>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Unit> Units => Set<Unit>();
     public DbSet<Province> Provinces => Set<Province>();
     public DbSet<City> Cities => Set<City>();
@@ -75,8 +81,80 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(p => p.Sku).IsUnique();
             e.HasIndex(p => p.Barcode).IsUnique().HasFilter("[Barcode] IS NOT NULL");
             e.Property(p => p.ImageUrl).HasMaxLength(500);
+            e.Property(p => p.Slug).HasMaxLength(150);
+            e.HasIndex(p => p.Slug).IsUnique().HasFilter("[Slug] IS NOT NULL");
+            e.Property(p => p.HtmlDescription);
             e.HasOne(p => p.Category).WithMany().HasForeignKey(p => p.CategoryId).OnDelete(DeleteBehavior.Restrict);
 
+        });
+
+        // ---------- Cart (سبد خرید فروشگاه) ----------
+        builder.Entity<Cart>(e =>
+        {
+            e.Property(c => c.CookieId).HasMaxLength(64).IsRequired();
+            e.HasIndex(c => c.CookieId).IsUnique();
+            e.HasIndex(c => c.ExpiresAt);
+        });
+
+        builder.Entity<CartItem>(e =>
+        {
+            e.Property(i => i.Quantity).HasColumnType("decimal(18,3)");
+            e.HasOne(i => i.Cart).WithMany(c => c.Items).HasForeignKey(i => i.CartId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(i => i.Product).WithMany().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(i => new { i.CartId, i.ProductId }).IsUnique();
+        });
+
+        builder.Entity<DiscountCode>(e =>
+        {
+            e.Property(d => d.Code).HasMaxLength(50).IsRequired();
+            e.HasIndex(d => d.Code).IsUnique();
+            e.Property(d => d.Value).HasColumnType("decimal(18,2)");
+            e.Property(d => d.MaxDiscountAmount).HasColumnType("decimal(18,2)");
+            e.Property(d => d.MinCartAmount).HasColumnType("decimal(18,2)");
+        });
+
+        // کد تخفیف اعمال‌شده روی سبد — حذف کد نباید سبد را حذف کند
+        builder.Entity<Cart>(e =>
+        {
+            e.HasOne(c => c.DiscountCode).WithMany().HasForeignKey(c => c.DiscountCodeId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ---------- Order (سفارش فروشگاه) ----------
+        builder.Entity<Order>(e =>
+        {
+            e.Property(o => o.OrderNumber).HasMaxLength(40).IsRequired();
+            e.HasIndex(o => o.OrderNumber).IsUnique();
+            e.Property(o => o.CustomerName).HasMaxLength(150).IsRequired();
+            e.Property(o => o.CustomerPhone).HasMaxLength(20).IsRequired();
+            e.Property(o => o.Province).HasMaxLength(80);
+            e.Property(o => o.City).HasMaxLength(80);
+            e.Property(o => o.AddressLine).HasMaxLength(500);
+            e.Property(o => o.PostalCode).HasMaxLength(20);
+            e.Property(o => o.TrackingCode).HasMaxLength(50);
+            e.Property(o => o.AdminNote).HasMaxLength(500);
+            e.Property(o => o.DiscountCodeText).HasMaxLength(50);
+            e.Property(o => o.Subtotal).HasColumnType("decimal(18,2)");
+            e.Property(o => o.DiscountAmount).HasColumnType("decimal(18,2)");
+            e.Property(o => o.ShippingCost).HasColumnType("decimal(18,2)");
+            e.HasIndex(o => new { o.UserId, o.Status });
+        });
+
+        builder.Entity<OrderItem>(e =>
+        {
+            e.Property(i => i.ProductName).HasMaxLength(150).IsRequired();
+            e.Property(i => i.UnitPrice).HasColumnType("decimal(18,2)");
+            e.Property(i => i.Quantity).HasColumnType("decimal(18,3)");
+            e.HasOne(i => i.Order).WithMany(o => o.Items).HasForeignKey(i => i.OrderId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(i => i.Product).WithMany().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Payment>(e =>
+        {
+            e.Property(p => p.Authority).HasMaxLength(100).IsRequired();
+            e.HasIndex(p => p.Authority).IsUnique().HasFilter("[Authority] <> ''");
+            e.Property(p => p.RefId).HasMaxLength(100);
+            e.Property(p => p.Amount).HasColumnType("decimal(18,2)");
+            e.HasOne(p => p.Order).WithMany(o => o.Payments).HasForeignKey(p => p.OrderId).OnDelete(DeleteBehavior.Cascade);
         });
 
         // ---------- Warehouse / Supplier ----------

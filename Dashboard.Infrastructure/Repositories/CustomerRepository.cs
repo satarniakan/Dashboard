@@ -13,6 +13,9 @@ public class CustomerRepository : ICustomerRepository
     public async Task<Customer?> GetByIdAsync(int id) =>
         await _context.Customers.FindAsync(id);
 
+    public async Task<Customer?> GetByPhoneAsync(string phone) =>
+        await _context.Customers.FirstOrDefaultAsync(c => c.Phone == phone);
+
     public async Task<IEnumerable<Customer>> GetAllAsync() =>
         await _context.Customers.Where(c => c.IsActive).ToListAsync();
 

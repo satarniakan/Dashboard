@@ -1,12 +1,17 @@
 ﻿// Dashboard.Web/Program.cs
 using Dashboard.Application;
 using Dashboard.Application.Services;
+using Dashboard.Domain.Interfaces;
+using Dashboard.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
 using Dashboard.Infrastructure;
+using Dashboard.Infrastructure.Data;
 using Dashboard.Web.Components;
 using Dashboard.Web.Endpoints;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using Microsoft.Extensions.Configuration;
 using Serilog;
 using System.Globalization;
 
@@ -106,6 +111,8 @@ builder.Services.AddAuthorizationBuilder()
     }))
     .AddPolicy(Dashboard.Domain.Identity.Permissions.CatalogManage, policy =>
     policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.CatalogManage))
+    .AddPolicy(Dashboard.Domain.Identity.Permissions.StoreManage, policy =>
+    policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.StoreManage))
     ;
 
 // Persist Data Protection keys so cookies/antiforgery tokens survive app restarts
@@ -115,6 +122,29 @@ builder.Services.AddDataProtection()
 // هر لایه تنظیمات سرویس‌های خودش را رجیستر می‌کند
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.IsDevelopment());
+
+// --- فروشگاه اینترنتی: درگاه پرداخت و سرویس سفارش ---
+// MerchantId/Sandbox از «Zarinpal:*»؛ انبار فروش از «Store:WarehouseId»
+builder.Services.AddHttpClient("Zarinpal", client => client.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddScoped<IPaymentGateway>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("Zarinpal");
+    return new ZarinpalPaymentGateway(
+        client,
+        config["Zarinpal:MerchantId"] ?? string.Empty,
+        config.GetValue("Zarinpal:Sandbox", true));
+});
+builder.Services.Configure<StoreOptions>(builder.Configuration.GetSection(StoreOptions.SectionName));
+builder.Services.AddScoped<IOrderService>(sp =>
+{
+    var store = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<StoreOptions>>();
+    return new OrderService(
+        sp.GetRequiredService<IUnitOfWork>(),
+        sp.GetRequiredService<ISalesService>(),
+        sp.GetRequiredService<ISmsSender>(),
+        store);
+});
 // AddIdentity به‌صورت پیش‌فرض مسیر "/Account/Login" را برای صفحه‌ی ورود در نظر می‌گیرد،
 // در حالی که صفحه‌ی واقعی ورود در این پروژه "/login" است. بدون این تنظیم، وقتی کاربر
 // لاگ‌اوت شده باشد و بخواهد به صفحه‌ای محافظت‌شده برود، به مسیر اشتباه ریدایرکت می‌شود
@@ -130,6 +160,10 @@ builder.Services.ConfigureApplicationCookie(options =>
 // یعنی هر کاربر جدا محدود می‌شود، نه همه با هم.
 builder.Services.AddRateLimiter(options =>
 {
+    options.AddPolicy("order", context =>
+        RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "anon",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
+
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
     // حداکثر ۳ درخواست کد پیامکی در هر ۵ دقیقه از هر IP
@@ -166,12 +200,20 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 builder.Services.AddScoped<Dashboard.Web.Services.ToastService>();
+builder.Services.AddHostedService<Dashboard.Web.Services.OrderExpiryService>();
 
 // ذخیره‌سازی فایل (عکس محصولات) روی دیسک، داخل wwwroot/uploads
 builder.Services.AddScoped<Dashboard.Domain.Interfaces.IFileStorageService>(sp =>
     new Dashboard.Infrastructure.Services.LocalFileStorageService(
         sp.GetRequiredService<IWebHostEnvironment>().WebRootPath));
 var app = builder.Build();
+
+// اعمال خودکار مایگریشن‌های EF هنگام استارتاپ — دیگر فراموش نمی‌شوند
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+}
 await Dashboard.Infrastructure.RoleSeeder.SeedRolesAsync(app.Services);
 app.UseSerilogRequestLogging();
 await Dashboard.Infrastructure.ChartOfAccountsSeeder.SeedAsync(app.Services);
@@ -207,6 +249,9 @@ app.UseRateLimiter();
 
 // Endpointهای احراز هویت (Dashboard.Web/Endpoints/AccountEndpoints.cs) — هر کدام فقط IAuthService را صدا می‌زنند
 app.MapAccountEndpoints();
+app.MapShopCartEndpoints();
+app.MapShopOrderEndpoints();
+app.MapSitemapEndpoints();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

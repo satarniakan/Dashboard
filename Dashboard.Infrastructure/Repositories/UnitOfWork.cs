@@ -40,6 +40,9 @@ public class UnitOfWork : IUnitOfWork
     public IInstallmentPlanRepository InstallmentPlans { get; private set; }
     public ICatalogRepository Catalog { get; private set; }
     public ILocationRepository Locations { get; private set; }
+    public ICartRepository Carts { get; private set; }
+    public IDiscountCodeRepository DiscountCodes { get; private set; }
+    public IOrderRepository Orders { get; private set; }
 
 
     public UnitOfWork(
@@ -66,7 +69,10 @@ public class UnitOfWork : IUnitOfWork
         ISupplierPaymentRepository supplierPayments,
         IInstallmentPlanRepository installmentPlan,
         ICatalogRepository catalog,
-        ILocationRepository location
+        ILocationRepository location,
+        ICartRepository carts,
+        IDiscountCodeRepository discountCodes,
+        IOrderRepository orders
 
         )
     {
@@ -100,6 +106,9 @@ public class UnitOfWork : IUnitOfWork
         InstallmentPlans = installmentPlan;
         Catalog = catalog;
         Locations = location;
+        Carts = carts;
+        DiscountCodes = discountCodes;
+        Orders = orders;
     }
 
     // این همان متد جادویی است که همه چیز را یک‌باره ذخیره می‌کند

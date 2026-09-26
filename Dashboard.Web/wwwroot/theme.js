@@ -34,3 +34,19 @@ if (saved !== 'dark' && saved !== 'light') {
         }
     };
 })();
+
+// خواندن کوکی با نام — برای کامپوننت‌های تعاملی که به کوکی سبد نیاز دارند
+window.getCookie = (name) =>
+    document.cookie.split('; ').find(c => c.startsWith(name + '='))?.split('=')[1] ?? null;
+
+// شمارنده‌ی سبد خرید — بَج را با fetch از endpoint سبک به‌روز می‌کند
+window.dashboardCartBadge = {
+    refresh: async function (el) {
+        try {
+            const r = await fetch('/shop/cart/count');
+            const d = await r.json();
+            el.textContent = d.count > 0 ? d.count : '';
+            el.style.display = d.count > 0 ? '' : 'none';
+        } catch (e) { /*offline*/ }
+    }
+};

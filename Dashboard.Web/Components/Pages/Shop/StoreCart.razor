@@ -1,0 +1,179 @@
+@page "/shop/cart"
+@layout Dashboard.Web.Components.Layout.StoreLayout
+@attribute [ExcludeFromInteractiveRouting]
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@using Dashboard.Web.Endpoints
+@inject ICartService CartService
+<PageTitle>سبد خرید | فروشگاه من</PageTitle>
+
+<h1 class="h4 mb-3">سبد خرید</h1>
+
+@if (!string.IsNullOrEmpty(Msg))
+{
+    <div class="alert @(Msg.StartsWith("کد") || Msg.Contains("اعمال شد") ? "alert-success" : "alert-info")">@Msg</div>
+}
+
+@if (cart is null)
+{
+    <LoadingSkeleton />
+}
+else if (cart.Items.Count == 0)
+{
+    <div class="text-center text-body-secondary py-5">
+        <i class="bi bi-cart-x d-block mb-2" style="font-size: 2.5rem;"></i>
+        <p class="mb-3">سبد خرید شما خالی است.</p>
+        <a href="/shop/products" class="btn btn-primary">مشاهده‌ی محصولات</a>
+    </div>
+}
+else
+{
+    <div class="card-panel p-0 overflow-hidden">
+        <table class="table mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>کالا</th>
+                    <th>قیمت واحد</th>
+                    <th style="width: 170px;">تعداد</th>
+                    <th>جمع</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var line in cart.Items)
+                {
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                @if (!string.IsNullOrEmpty(line.ImageUrl))
+                                {
+                                    <img src="@line.ImageUrl" alt="@line.Name" style="width: 48px; height: 48px; object-fit: cover;" class="rounded" />
+                                }
+                                else
+                                {
+                                    <div class="rounded bg-body-tertiary d-flex align-items-center justify-content-center text-body-secondary" style="width: 48px; height: 48px;">
+                                        <i class="bi bi-box"></i>
+                                    </div>
+                                }
+                                <div>
+                                    <a href="/shop/p/@line.Slug" class="fw-medium d-block text-decoration-none">@line.Name</a>
+                                    @if (line.AvailableStock <= 0)
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger-emphasis mt-1">ناموجود</span>
+                                    }
+                                    else if (line.Quantity >= line.AvailableStock)
+                                    {
+                                        <span class="badge bg-warning-subtle text-warning-emphasis mt-1">حداکثر موجودی: QuantityFormatter.Format(line.AvailableStock) @line.Unit</span>
+                                    }
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-nowrap">@CurrencyFormatter.ToToman(line.Price)</td>
+                        <td>
+                            <form method="post" action="/shop/cart/update" class="d-flex gap-1">
+                                <AntiforgeryToken />
+                                <input type="hidden" name="itemId" value="@line.ItemId" />
+                                <input type="number" name="quantity" class="form-control form-control-sm text-center"
+                                       value="QuantityFormatter.Format(line.Quantity)" min="0" step="any" style="max-width: 90px;" />
+                                <button type="submit" class="btn btn-sm btn-outline-primary" title="به‌روزرسانی تعداد">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </form>
+                        </td>
+                        <td class="fw-bold text-nowrap">@CurrencyFormatter.ToToman(line.LineTotal)</td>
+                        <td>
+                            <form method="post" action="/shop/cart/remove">
+                                <AntiforgeryToken />
+                                <input type="hidden" name="itemId" value="@line.ItemId" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف از سبد">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-lg-7">
+            <div class="card-panel">
+                <h6 class="form-section-title"><i class="bi bi-ticket-perforated"></i>کد تخفیف</h6>
+                @if (string.IsNullOrEmpty(cart.DiscountCode))
+                {
+                    <form method="post" action="/shop/cart/discount" class="d-flex flex-wrap gap-2 align-items-end">
+                        <AntiforgeryToken />
+                        <div class="flex-grow-1" style="min-width: 200px;">
+                            <label class="form-label" for="code">کد تخفیف دارید؟</label>
+                            <input type="text" id="code" name="code" class="form-control text-start" placeholder="مثلاً: YALDA1404" style="text-transform: uppercase;" />
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary">اعمال کد</button>
+                    </form>
+                }
+                else
+                {
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div>
+                            <span class="badge bg-success-subtle text-success-emphasis fs-6">@cart.DiscountCode</span>
+                            <span class="text-body-secondary small ms-2">روی این سبد اعمال شده است.</span>
+                        </div>
+                        <form method="post" action="/shop/cart/discount/remove">
+                            <AntiforgeryToken />
+                            <button type="submit" class="btn btn-sm btn-outline-danger">حذف کد</button>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card-panel">
+                <dl class="mb-0">
+                    <div class="d-flex justify-content-between mb-1">
+                        <dt class="fw-normal text-body-secondary">جمع کالاها</dt>
+                        <dd class="mb-0">@CurrencyFormatter.ToToman(cart.TotalAmount)</dd>
+                    </div>
+                    @if (cart.DiscountAmount > 0)
+                    {
+                        <div class="d-flex justify-content-between mb-1 text-success">
+                            <dt class="fw-normal">تخفیف (@cart.DiscountCode)</dt>
+                            <dd class="mb-0">−@CurrencyFormatter.ToToman(cart.DiscountAmount)</dd>
+                        </div>
+                    }
+                    <hr class="my-2" />
+                    <div class="d-flex justify-content-between">
+                        <dt>مبلغ قابل پرداخت</dt>
+                        <dd class="mb-0 fs-5 fw-bold" style="color: var(--brand-primary);">@CurrencyFormatter.ToToman(cart.FinalAmount)</dd>
+                    </div>
+                </dl>
+                <div class="d-flex gap-2 mt-3">
+                    <a href="/shop/products" class="btn btn-outline-secondary flex-grow-1">ادامه‌ی خرید</a>
+                    @* پرداخت در فاز ۴ فعال می‌شود *@
+                    <button type="button" class="btn btn-primary flex-grow-1" disabled title="پرداخت آنلاین به‌زودی فعال می‌شود">
+                        <i class="bi bi-credit-card me-1"></i>تسویه حساب
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "msg")]
+    public string? Msg { get; set; }
+
+    private CartDto? cart;
+
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var cookieId = HttpContext?.Request.Cookies[ShopCartEndpoints.CartCookieName];
+        cart = string.IsNullOrEmpty(cookieId)
+            ? new CartDto(Array.Empty<CartLineDto>(), 0, 0m)
+            : await CartService.GetCartAsync(cookieId);
+    }
+}

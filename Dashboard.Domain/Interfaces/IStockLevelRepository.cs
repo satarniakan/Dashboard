@@ -20,4 +20,7 @@ public interface IStockLevelRepository
     /// این متد به همراه RowVersion (همزمانی خوش‌بینانه) از race condition بین چند درخواست همزمان جلوگیری می‌کند.
     /// </summary>
     Task DecreaseWithCheckAsync(int productId, int warehouseId, decimal quantity);
+
+    /// جمع موجودی هر کالا در کل انبارها — برای نمایش «موجود/ناموجود» در فروشگاه
+    Task<Dictionary<int, decimal>> GetTotalStockAsync(IReadOnlyCollection<int> productIds);
 }

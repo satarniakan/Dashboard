@@ -82,4 +82,15 @@ public class StockLevelRepository : IStockLevelRepository
         level.QuantityOnHand -= quantity;
         level.LastUpdatedAt = DateTime.UtcNow;
     }
+
+    public async Task<Dictionary<int, decimal>> GetTotalStockAsync(IReadOnlyCollection<int> productIds)
+    {
+        if (productIds.Count == 0) return new Dictionary<int, decimal>();
+
+        return await _context.StockLevels
+            .Where(sl => productIds.Contains(sl.ProductId))
+            .GroupBy(sl => sl.ProductId)
+            .Select(g => new { ProductId = g.Key, Total = g.Sum(x => x.QuantityOnHand) })
+            .ToDictionaryAsync(x => x.ProductId, x => x.Total);
+    }
 }

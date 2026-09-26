@@ -33,6 +33,11 @@ public interface IUnitOfWork
     ICatalogRepository Catalog { get; }
     ILocationRepository Locations { get; }
 
+    // --- فروشگاه اینترنتی ---
+    ICartRepository Carts { get; }
+    IDiscountCodeRepository DiscountCodes { get; }
+    IOrderRepository Orders { get; }
+
     // این همان متد جادویی است که در پایان، همه تغییرات را یک‌باره ذخیره می‌کند
     Task<int> CompleteAsync();
 

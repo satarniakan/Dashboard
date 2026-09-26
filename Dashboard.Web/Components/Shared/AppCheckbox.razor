@@ -4,10 +4,16 @@
 <div class="mb-3 form-check">
     <InputCheckbox class="form-check-input" Value="@Value" ValueChanged="@ValueChanged" ValueExpression="@ValueExpression" id="@Id" />
     <label class="form-check-label" for="@Id">@Label</label>
-    <ValidationMessage For="@ValueExpression" class="text-danger small mt-1 d-block" />
+    @if (CascadedEditContext is not null && ValueExpression is not null)
+    {
+        <ValidationMessage For="@ValueExpression" class="text-danger small mt-1 d-block" />
+    }
 </div>
 
 @code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.Forms.EditContext? CascadedEditContext { get; set; }
+
     [Parameter] public string? Label { get; set; }
     [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString("N");
     [Parameter] public bool Value { get; set; }

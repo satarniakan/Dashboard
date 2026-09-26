@@ -31,6 +31,14 @@ public class Product
     public Category? Category { get; private set; }
     public string? ImageUrl { get; private set; }
 
+    // --- فروشگاه اینترنتی ---
+    // فقط کالاهای منتشرشده در ویترین (/shop) نمایش داده می‌شوند
+    public bool IsPublished { get; private set; }
+    // نشانی یکتای صفحه‌ی محصول در فروشگاه؛ خالی یعنی هنوز آماده‌ی نمایش نیست
+    public string? Slug { get; private set; }
+    // توضیحات بلند صفحه‌ی محصول (می‌تواند HTML ساده باشد)
+    public string? HtmlDescription { get; private set; }
+
     private Product() { } // برای EF Core
 
     // سازنده‌ی قبلی — دست‌نخورده، تا کدهای موجود (ProductService و غیره) کار کنند
@@ -132,6 +140,16 @@ public class Product
     public void SetImage(string? imageUrl)
     {
         ImageUrl = imageUrl;
+    }
+
+    // تنظیم وضعیت انتشار کالا در فروشگاه اینترنتی؛ Slug خالی/فقط فاصله یعنی بدون صفحه‌ی عمومی
+    public void SetStoreDetails(bool isPublished, string? slug, string? htmlDescription)
+    {
+        IsPublished = isPublished;
+        Slug = string.IsNullOrWhiteSpace(slug) ? null : slug.Trim();
+        HtmlDescription = string.IsNullOrWhiteSpace(htmlDescription) ? null : htmlDescription.Trim();
+        // کالای بدون Slug نمی‌تواند منتشر باشد
+        if (Slug is null) IsPublished = false;
     }
 
     private static string GenerateFallbackSku() => $"SKU-{Guid.NewGuid().ToString()[..8].ToUpperInvariant()}";

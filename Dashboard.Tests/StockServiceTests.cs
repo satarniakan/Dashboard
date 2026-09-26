@@ -15,6 +15,7 @@ public class StockServiceTests
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IStockLevelRepository> _stockLevels = new();
     private readonly Mock<IStockCountRepository> _stockCounts = new();
+    private readonly Mock<IStockValidator> _stockValidator = new();
     private readonly StockService _sut;
 
     public StockServiceTests()
@@ -23,7 +24,7 @@ public class StockServiceTests
         _unitOfWork.Setup(u => u.StockCounts).Returns(_stockCounts.Object);
         _unitOfWork.Setup(u => u.CompleteAsync()).ReturnsAsync(1);
 
-        _sut = new StockService(_unitOfWork.Object, Mock.Of<ILogger<StockService>>(), Mock.Of<IJournalService>(), Mock.Of<IStockValidator>());
+        _sut = new StockService(_unitOfWork.Object, Mock.Of<ILogger<StockService>>(), Mock.Of<IJournalService>(), _stockValidator.Object);
     }
 
     [Fact]
@@ -57,7 +58,8 @@ public class StockServiceTests
             Items = new() { new StockItemInput { ProductId = 10, Quantity = 5 } }
         };
         // ÙÙ‚Ø· Û³ Ø¹Ø¯Ø¯ ØªÙˆ Ø§Ù†Ø¨Ø§Ø± Ù…Ø¨Ø¯Ø§ Ù…ÙˆØ¬ÙˆØ¯Ù‡ØŒ Ø¯Ø±Ø®ÙˆØ§Ø³Øª Ûµ ØªØ§Ø³Øª
-        _stockLevels.Setup(r => r.GetAsync(10, 1)).ReturnsAsync(new StockLevel { QuantityOnHand = 3 });
+        _stockValidator.Setup(v => v.ValidateSufficientStockAsync(1, dto.Items))
+                    .ThrowsAsync(new BusinessRuleException("موجودی کافی نیست."));
 
         await Assert.ThrowsAsync<BusinessRuleException>(() => _sut.RegisterStockTransferAsync(dto, "user1"));
     }

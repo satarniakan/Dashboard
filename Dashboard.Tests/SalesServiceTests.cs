@@ -17,6 +17,7 @@ public class SalesServiceTests
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ISalesInvoiceRepository> _salesInvoices = new();
     private readonly Mock<IStockLevelRepository> _stockLevels = new();
+    private readonly Mock<IStockTransactionRepository> _stockTransactions = new();
     private readonly Mock<IAuditLogRepository> _auditLogs = new();
     private readonly SalesService _sut; // Sut = System Under TestØŒ ÛŒØ¹Ù†ÛŒ Â«Ú†ÛŒØ²ÛŒ Ú©Ù‡ Ø¯Ø§Ø±ÛŒÙ… ØªØ³ØªØ´ Ù…ÛŒâ€ŒÚ©Ù†ÛŒÙ…Â»
 
@@ -24,6 +25,7 @@ public class SalesServiceTests
     {
         _unitOfWork.Setup(u => u.SalesInvoices).Returns(_salesInvoices.Object);
         _unitOfWork.Setup(u => u.StockLevels).Returns(_stockLevels.Object);
+        _unitOfWork.Setup(u => u.StockTransactions).Returns(_stockTransactions.Object);
         _unitOfWork.Setup(u => u.AuditLogs).Returns(_auditLogs.Object);
         _unitOfWork.Setup(u => u.CompleteAsync()).ReturnsAsync(1);
 
@@ -125,7 +127,8 @@ public class SalesServiceTests
         };
         _salesInvoices.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(invoice);
         // ÙÙ‚Ø· Û² Ø¹Ø¯Ø¯ Ù…ÙˆØ¬ÙˆØ¯Ù‡ ÙˆÙ„ÛŒ ÙØ§Ú©ØªÙˆØ± Ûµ ØªØ§ Ø®ÙˆØ§Ø³ØªÙ‡
-        _stockLevels.Setup(r => r.GetAsync(10, 1)).ReturnsAsync(new StockLevel { QuantityOnHand = 2 });
+        _stockLevels.Setup(r => r.DecreaseWithCheckAsync(10, 1, 5))
+                    .ThrowsAsync(new BusinessRuleException("موجودی کافی نیست."));
 
         await Assert.ThrowsAsync<BusinessRuleException>(() => _sut.ConfirmInvoiceAsync(1, "user1"));
     }

@@ -1,0 +1,77 @@
+@page "/shop/orders"
+@layout Dashboard.Web.Components.Layout.StoreLayout
+@attribute [ExcludeFromInteractiveRouting]
+@attribute [Authorize]
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Domain.Enums
+@inject IOrderService OrderService
+@inject AuthenticationStateProvider AuthStateProvider
+<PageTitle>سفارش‌های من | فروشگاه من</PageTitle>
+
+<h1 class="h4 mb-3">سفارش‌های من</h1>
+
+@if (orders is null)
+{
+    <LoadingSkeleton />
+}
+else if (!orders.Any())
+{
+    <div class="text-center text-body-secondary py-5">
+        <i class="bi bi-bag-x d-block mb-2" style="font-size: 2.5rem;"></i>
+        <p class="mb-3">هنوز سفارشی ثبت نکرده‌اید.</p>
+        <a href="/shop/products" class="btn btn-primary">شروع خرید</a>
+    </div>
+}
+else
+{
+    <div class="card-panel p-0 overflow-hidden">
+        <table class="table mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>شماره سفارش</th>
+                    <th>تاریخ</th>
+                    <th>مبلغ</th>
+                    <th>وضعیت</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var o in orders)
+                {
+                    <tr>
+                        <td class="fw-bold">@o.OrderNumber</td>
+                        <td class="text-body-secondary">@o.CreatedAt.ToString("yyyy/MM/dd")</td>
+                        <td>@o.Total.ToString("N0") تومان</td>
+                        <td><span class="badge @BadgeClass(o.Status)">@o.StatusText</span></td>
+                        <td class="text-end"><a href="/shop/orders/@o.Id" class="btn btn-sm btn-outline-primary">جزئیات</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private IEnumerable<OrderSummaryDto>? orders;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        orders = await OrderService.GetForUserAsync(userId);
+    }
+
+    private static string BadgeClass(OrderStatus s) => s switch
+    {
+        OrderStatus.PendingPayment => "bg-warning-subtle text-warning-emphasis",
+        OrderStatus.Paid => "bg-success-subtle text-success-emphasis",
+        OrderStatus.Processing => "bg-info-subtle text-info-emphasis",
+        OrderStatus.Shipped => "bg-primary-subtle text-primary-emphasis",
+        OrderStatus.Delivered => "bg-success-subtle text-success-emphasis",
+        OrderStatus.Canceled => "bg-danger-subtle text-danger-emphasis",
+        _ => "bg-secondary-subtle text-secondary-emphasis"
+    };
+}

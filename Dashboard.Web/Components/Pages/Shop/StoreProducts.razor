@@ -1,0 +1,115 @@
+@page "/shop/products"
+@layout Dashboard.Web.Components.Layout.StoreLayout
+@attribute [ExcludeFromInteractiveRouting]
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@inject IStorefrontService Storefront
+@inject ICatalogService CatalogService
+<PageTitle>محصولات | فروشگاه من</PageTitle>
+
+<h1 class="h4 mb-3">محصولات</h1>
+
+@* فیلتر با فرم GET — بدون JS و سازگار با Static SSR و SEO *@
+<form method="get" class="card-panel mb-4 d-flex flex-wrap gap-2 align-items-end">
+    <div class="flex-grow-1" style="min-width: 220px;">
+        <label class="form-label" for="q">جست‌وجو</label>
+        <input type="search" id="q" name="q" class="form-control" value="@Search" placeholder="نام کالا…" />
+    </div>
+    <div style="min-width: 200px;">
+        <label class="form-label" for="cat">دسته‌بندی</label>
+        <select id="cat" name="cat" class="form-select">
+            <option value="">همه‌ی دسته‌ها</option>
+            @if (categories is not null)
+            {
+                @foreach (var c in categories)
+                {
+                    <option value="@c.Id" selected="@(CategoryId == c.Id)">@c.Name</option>
+                }
+            }
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary">اعمال فیلتر</button>
+    @if (!string.IsNullOrEmpty(Search) || CategoryId is not null)
+    {
+        <a href="/shop/products" class="btn btn-outline-secondary">حذف فیلترها</a>
+    }
+</form>
+
+@if (items is null)
+{
+    <LoadingSkeleton />
+}
+else if (!items.Any())
+{
+    <div class="text-center text-body-secondary py-5">
+        <i class="bi bi-search d-block mb-2" style="font-size: 2rem;"></i>
+        کالایی مطابق جست‌وجوی شما پیدا نشد.
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var p in items)
+        {
+            <div class="col-6 col-md-4 col-lg-3">
+                <StoreProductCard Product="p" />
+            </div>
+        }
+    </div>
+
+    @* صفحه‌بندی با لینک (Static SSR) *@
+    @if (TotalPages > 1)
+    {
+        <nav class="d-flex justify-content-center gap-1 mt-4" aria-label="صفحه‌بندی">
+            @for (var i = 1; i <= TotalPages; i++)
+            {
+                if (i == Page)
+                {
+                    <span class="btn btn-sm btn-primary" aria-current="page">@i</span>
+                }
+                else
+                {
+                    <a class="btn btn-sm btn-outline-secondary" href="@BuildPageUrl(i)">@i</a>
+                }
+            }
+        </nav>
+    }
+}
+
+@code {
+    // پارامترهای کوئری‌استرینگ — در Static SSR از URL پر می‌شوند
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? Search { get; set; }
+
+    [SupplyParameterFromQuery(Name = "cat")]
+    public int? CategoryId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "page")]
+    public int Page { get; set; } = 1;
+
+    private IEnumerable<StoreProductDto>? items;
+    private IEnumerable<CategoryDto>? categories;
+    private int TotalCount;
+    private int TotalPages;
+    private const int PageSize = 12;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Page < 1) Page = 1;
+        categories = await CatalogService.GetCategoriesAsync();
+        var (pageItems, totalCount) = await Storefront.GetProductsAsync(Page, PageSize, Search, CategoryId);
+        items = pageItems;
+        TotalCount = totalCount;
+        TotalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PageSize));
+        if (Page > TotalPages) Page = TotalPages;
+    }
+
+    private string BuildPageUrl(int page)
+    {
+        var q = new List<string>();
+        if (Page > 0) q.Add($"page={page}");
+        if (!string.IsNullOrEmpty(Search)) q.Add($"q={Uri.EscapeDataString(Search)}");
+        if (CategoryId is not null) q.Add($"cat={CategoryId}");
+        return "/shop/products" + (q.Count > 0 ? "?" + string.Join("&", q) : "");
+    }
+}

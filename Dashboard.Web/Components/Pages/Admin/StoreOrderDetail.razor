@@ -1,0 +1,164 @@
+@page "/admin/orders/{Id:int}"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.StoreManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Domain.Enums
+@using Dashboard.Application.Helpers
+@inject IOrderService OrderService
+@inject Dashboard.Web.Services.ToastService ToastService
+@inject ILogger<Dashboard.Web.Components.Pages.Admin.StoreOrderDetail> Logger
+<PageTitle>مدیریت سفارش | فروشگاه</PageTitle>
+
+@if (order is null)
+{
+    <LoadingSkeleton />
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h3 class="mb-1">سفارش @order.OrderNumber</h3>
+            <span class="badge @BadgeClass(order.Status)">@order.StatusText</span>
+        </div>
+        <a href="/admin/orders" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-right me-1"></i>بازگشت</a>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="card-panel mb-3">
+                <h6 class="form-section-title"><i class="bi bi-basket"></i>اقلام سفارش</h6>
+                <table class="table mb-0 align-middle">
+                    <thead>
+                        <tr><th>کالا</th><th>قیمت واحد</th><th>تعداد</th><th>جمع</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in order.Items)
+                        {
+                            <tr>
+                                <td class="fw-medium">@item.ProductName</td>
+                                <td>@CurrencyFormatter.ToToman(item.UnitPrice)</td>
+                                <td>@QuantityFormatter.Format(item.Quantity)</td>
+                                <td>@CurrencyFormatter.ToToman(item.LineTotal)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card-panel">
+                <h6 class="form-section-title"><i class="bi bi-geo-alt"></i>مشتری و آدرس</h6>
+                <div class="small">
+                    <div class="mb-1"><strong>@order.CustomerName</strong> — @order.CustomerPhone</div>
+                    <div class="text-body-secondary">@order.Province، @order.City، @order.AddressLine @(string.IsNullOrEmpty(order.PostalCode) ? "" : $"— کد پستی {order.PostalCode}")</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card-panel mb-3">
+                <h6 class="form-section-title"><i class="bi bi-receipt"></i>صورتحساب</h6>
+                <div class="d-flex justify-content-between small mb-1">
+                    <span class="text-body-secondary">جمع کالاها</span><span>@CurrencyFormatter.ToToman(order.Subtotal)</span>
+                </div>
+                @if (order.DiscountAmount > 0)
+                {
+                    <div class="d-flex justify-content-between small mb-1 text-success">
+                        <span>تخفیف (@order.DiscountCodeText)</span><span>−@CurrencyFormatter.ToToman(order.DiscountAmount)</span>
+                    </div>
+                }
+                <div class="d-flex justify-content-between small mb-1">
+                    <span class="text-body-secondary">ارسال (@order.ShippingMethodText)</span><span>@CurrencyFormatter.ToToman(order.ShippingCost)</span>
+                </div>
+                <hr class="my-2" />
+                <div class="d-flex justify-content-between">
+                    <strong>مبلغ کل</strong><strong>@CurrencyFormatter.ToToman(order.Total)</strong>
+                </div>
+                @if (order.SalesInvoiceId is not null)
+                {
+                    <div class="form-text mt-2">فاکتور فروش شماره @order.SalesInvoiceId صادر شده است.</div>
+                }
+                @if (!string.IsNullOrEmpty(order.AdminNote))
+                {
+                    <div class="alert alert-warning small mt-2 mb-0">@order.AdminNote</div>
+                }
+            </div>
+
+            <div class="card-panel">
+                <h6 class="form-section-title"><i class="bi bi-gear"></i>به‌روزرسانی وضعیت</h6>
+                <AppDropdown Label="وضعیت سفارش" @bind-Value="selectedStatus">
+                    <option value="@((int)OrderStatus.Paid)">پرداخت شده</option>
+                    <option value="@((int)OrderStatus.Processing)">در حال پردازش</option>
+                    <option value="@((int)OrderStatus.Shipped)">ارسال شده</option>
+                    <option value="@((int)OrderStatus.Delivered)">تحویل شده</option>
+                    <option value="@((int)OrderStatus.Canceled)">لغو شده</option>
+                </AppDropdown>
+                <AppTextField @bind-Value="trackingCode" Label="کد رهگیری پستی"
+                              Placeholder="مثلاً: 12345678901234567890" />
+                <AppTextArea @bind-Value="adminNote" Label="یادداشت ادمین" Rows="2" />
+
+                <button type="button" class="btn btn-primary w-100" disabled="@isSaving" @onclick="SaveStatus">
+                    @if (isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                    }
+                    ذخیره تغییرات
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private OrderDto? order;
+    private int selectedStatus;
+    private string? trackingCode;
+    private string? adminNote;
+    private bool isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        order = await OrderService.GetForAdminAsync(Id);
+        if (order is not null)
+        {
+            selectedStatus = (int)order.Status;
+            trackingCode = order.TrackingCode;
+            adminNote = order.AdminNote;
+        }
+    }
+
+    private async Task SaveStatus()
+    {
+        if (order is null) return;
+        isSaving = true;
+        try
+        {
+            await OrderService.UpdateStatusAsync(order.Id, (OrderStatus)selectedStatus, trackingCode, adminNote);
+            ToastService.ShowSuccess("وضعیت سفارش به‌روزرسانی شد.");
+            order = await OrderService.GetForAdminAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در به‌روزرسانی وضعیت سفارش {OrderId}", Id);
+            ToastService.ShowError(ErrorMessageHelper.ToUserMessage(ex));
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private static string BadgeClass(OrderStatus s) => s switch
+    {
+        OrderStatus.PendingPayment => "bg-warning-subtle text-warning-emphasis",
+        OrderStatus.Paid => "bg-success-subtle text-success-emphasis",
+        OrderStatus.Processing => "bg-info-subtle text-info-emphasis",
+        OrderStatus.Shipped => "bg-primary-subtle text-primary-emphasis",
+        OrderStatus.Delivered => "bg-success-subtle text-success-emphasis",
+        OrderStatus.Canceled => "bg-danger-subtle text-danger-emphasis",
+        _ => "bg-secondary-subtle text-secondary-emphasis"
+    };
+}

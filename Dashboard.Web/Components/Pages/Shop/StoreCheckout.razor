@@ -1,0 +1,189 @@
+@page "/shop/checkout"
+@layout Dashboard.Web.Components.Layout.StoreLayout
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@using Dashboard.Domain.Enums
+@using Dashboard.Web.Endpoints
+@inject ICartService CartService
+@inject IOrderService OrderService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthStateProvider
+<PageTitle>تسویه حساب | فروشگاه من</PageTitle>
+
+<h1 class="h4 mb-3">تسویه حساب</h1>
+
+@if (!string.IsNullOrEmpty(Error))
+{
+    <div class="alert alert-danger"><i class="bi bi-exclamation-octagon me-1"></i>@Error</div>
+}
+
+@if (cart is null)
+{
+    <LoadingSkeleton />
+}
+else if (cart.Items.Count == 0)
+{
+    <div class="text-center text-body-secondary py-5">
+        <i class="bi bi-cart-x d-block mb-2" style="font-size: 2.5rem;"></i>
+        <p class="mb-3">برای تسویه حساب، اول کالایی به سبد اضافه کنید.</p>
+        <a href="/shop/products" class="btn btn-primary">مشاهده‌ی محصولات</a>
+    </div>
+}
+else
+{
+    <form method="post" action="/shop/checkout/place">
+        <AntiforgeryToken />
+        <div class="row g-3">
+            <div class="col-lg-7">
+                <div class="card-panel mb-3">
+                    <h6 class="form-section-title"><i class="bi bi-person"></i>اطلاعات گیرنده</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">نام گیرنده <span class="text-danger">*</span></label>
+                            <input name="customerName" class="form-control" value="@ReceiverName" required maxlength="150" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">شماره موبایل <span class="text-danger">*</span></label>
+                            <input name="customerPhone" class="form-control" value="@ReceiverPhone" required pattern="09\d{9}" placeholder="09123456789" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-panel mb-3">
+                    <h6 class="form-section-title"><i class="bi bi-geo-alt"></i>آدرس ارسال</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">استان <span class="text-danger">*</span></label>
+                            <input name="province" class="form-control" required maxlength="80" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">شهر <span class="text-danger">*</span></label>
+                            <input name="city" class="form-control" required maxlength="80" />
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label class="form-label">نشانی کامل <span class="text-danger">*</span></label>
+                            <textarea name="addressLine" class="form-control" rows="3" required maxlength="500"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">کد پستی</label>
+                            <input name="postalCode" class="form-control" pattern="\d{5,10}" inputmode="numeric" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-panel">
+                    <h6 class="form-section-title"><i class="bi bi-truck"></i>روش ارسال</h6>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="shippingMethod" id="ship-post" value="@((int)ShippingMethod.Post)" checked="@(SelectedMethod == ShippingMethod.Post)" @onchange="() => SelectedMethod = ShippingMethod.Post" />
+                        <label class="form-check-label" for="ship-post">
+                            پست پیشتاز — <strong>@Format(OrderService.GetShippingCost(ShippingMethod.Post))</strong>
+                        </label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="shippingMethod" id="ship-courier" value="@((int)ShippingMethod.Courier)" checked="@(SelectedMethod == ShippingMethod.Courier)" @onchange="() => SelectedMethod = ShippingMethod.Courier" />
+                        <label class="form-check-label" for="ship-courier">
+                            پیک — <strong>@Format(OrderService.GetShippingCost(ShippingMethod.Courier))</strong>
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="shippingMethod" id="ship-inperson" value="@((int)ShippingMethod.InPerson)" checked="@(SelectedMethod == ShippingMethod.InPerson)" @onchange="() => SelectedMethod = ShippingMethod.InPerson" />
+                        <label class="form-check-label" for="ship-inperson">
+                            تحویل حضوری — <strong>@(OrderService.GetShippingCost(ShippingMethod.InPerson) == 0 ? "رایگان" : Format(OrderService.GetShippingCost(ShippingMethod.InPerson)))</strong>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="card-panel">
+                    <h6 class="form-section-title"><i class="bi bi-receipt"></i>خلاصه‌ی سفارش</h6>
+                    @foreach (var line in cart.Items)
+                    {
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span>@line.Name × @QuantityFormatter.Format(line.Quantity)</span>
+                            <span>@CurrencyFormatter.ToToman(line.LineTotal)</span>
+                        </div>
+                    }
+                    <hr class="my-2" />
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span class="text-body-secondary">جمع کالاها</span>
+                        <span>@CurrencyFormatter.ToToman(cart.TotalAmount)</span>
+                    </div>
+                    @if (cart.DiscountAmount > 0)
+                    {
+                        <div class="d-flex justify-content-between small mb-1 text-success">
+                            <span>تخفیف (@cart.DiscountCode)</span>
+                            <span>−@CurrencyFormatter.ToToman(cart.DiscountAmount)</span>
+                        </div>
+                    }
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span class="text-body-secondary">هزینه‌ی ارسال (@ShippingText(SelectedMethod))</span>
+                        <span>@(ShippingCost == 0 ? "رایگان" : CurrencyFormatter.ToToman(ShippingCost))</span>
+                    </div>
+                    <hr class="my-2" />
+                    <div class="d-flex justify-content-between">
+                        <strong>قابل پرداخت</strong>
+                        <strong class="fs-5" style="color: var(--brand-primary);">@CurrencyFormatter.ToToman(cart.FinalAmount + ShippingCost)</strong>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mt-3">
+                        <i class="bi bi-credit-card me-1"></i>پرداخت آنلاین
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+}
+
+@code {
+    private string? Error;
+
+    private CartDto? cart;
+    private ShippingMethod SelectedMethod = ShippingMethod.Post;
+    private string? ReceiverName;
+    private string? ReceiverPhone;
+
+    private decimal ShippingCost => OrderService.GetShippingCost(SelectedMethod);
+
+    private static string ShippingText(ShippingMethod m) => m switch
+    {
+        ShippingMethod.Post => "پست پیشتاز",
+        ShippingMethod.Courier => "پیک",
+        ShippingMethod.InPerson => "تحویل حضوری",
+        _ => string.Empty
+    };
+
+    private static string Format(decimal amount) => CurrencyFormatter.ToToman(amount);
+
+    protected override async Task OnInitializedAsync()
+    {
+        // کامپوننت تعاملی است؛ کوئری‌استرینگ را از NavigationManager می‌خوانیم
+        var query = new Uri(NavigationManager.Uri).Query;
+        if (Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(query).TryGetValue("error", out var err))
+            Error = err.ToString();
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        ReceiverName = authState.User.FindFirst("FullName")?.Value;
+        ReceiverPhone = authState.User.FindFirstValue(ClaimTypes.MobilePhone) ?? authState.User.Identity?.Name;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // در مدار تعاملی HttpContext در دسترس نیست؛ کوکی سبد با JS خوانده می‌شود
+        // (کوکی سبد HttpOnly نیست چون فقط GUID ناشناس دارد)
+        if (firstRender && cart is null)
+        {
+            var cookieId = await JS.InvokeAsync<string>("getCookie", "shop_cart");
+            cart = string.IsNullOrEmpty(cookieId)
+                ? new CartDto(Array.Empty<CartLineDto>(), 0, 0m)
+                : await CartService.GetCartAsync(cookieId);
+            StateHasChanged();
+        }
+    }
+}

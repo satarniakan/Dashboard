@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Dashboard.Domain.Entities;
+using Dashboard.Domain.Exceptions;
 using Dashboard.Domain.Interfaces;
 using Dashboard.Application.DTOs;
 
@@ -31,7 +32,8 @@ public class ProductService : IProductService
     private static ProductDto ToDto(Product p) => new(
         p.Id, p.Name, p.Price, p.Sku, p.Barcode, p.Unit, p.CostPrice,
         p.Weight, p.Length, p.Width, p.Height, p.ReorderPoint,
-        p.CategoryId, p.Category?.Name, p.ImageUrl);
+        p.CategoryId, p.Category?.Name, p.ImageUrl,
+        p.IsPublished, p.Slug, p.HtmlDescription);
 
     public async Task<ProductDto?> GetProductAsync(int id)
     {
@@ -80,6 +82,7 @@ public class ProductService : IProductService
 
         product.SetCategory(dto.CategoryId);
         product.SetImage(dto.ImageUrl);
+        await ApplyStoreDetailsAsync(product, dto.IsPublished, dto.Slug, dto.HtmlDescription, excludeProductId: null);
 
         await _unitOfWork.Products.AddAsync(product);
 
@@ -111,6 +114,7 @@ public class ProductService : IProductService
             reorderPoint: dto.ReorderPoint);
         product.SetCategory(dto.CategoryId);
         product.SetImage(dto.ImageUrl);
+        await ApplyStoreDetailsAsync(product, dto.IsPublished, dto.Slug, dto.HtmlDescription, excludeProductId: id);
 
         await _unitOfWork.Products.UpdateAsync(product);
 
@@ -120,6 +124,19 @@ public class ProductService : IProductService
         await _unitOfWork.CompleteAsync();
 
         return ToDto(product);
+    }
+
+    // اعتبارسنجی یکتایی Slug و اعمال فیلدهای فروشگاه؛ خطای تکراری‌بودن با پیام فارسی
+    private async Task ApplyStoreDetailsAsync(Product product, bool isPublished, string? slug, string? htmlDescription, int? excludeProductId)
+    {
+        var normalized = string.IsNullOrWhiteSpace(slug) ? null : slug.Trim();
+        if (normalized is not null)
+        {
+            var duplicate = await _unitOfWork.Products.GetBySlugAsync(normalized);
+            if (duplicate is not null && duplicate.Id != excludeProductId)
+                throw new BusinessRuleException("این نشان (Slug) قبلاً برای کالای دیگری ثبت شده است.");
+        }
+        product.SetStoreDetails(isPublished, normalized, htmlDescription);
     }
 
     public async Task<bool> DeleteProductAsync(int id, string? userEmail)

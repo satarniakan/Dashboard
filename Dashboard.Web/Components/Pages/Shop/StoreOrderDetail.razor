@@ -1,0 +1,137 @@
+@page "/shop/orders/{Id:int}"
+@layout Dashboard.Web.Components.Layout.StoreLayout
+@attribute [ExcludeFromInteractiveRouting]
+@attribute [Authorize]
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@using Dashboard.Domain.Enums
+@inject IOrderService OrderService
+@inject AuthenticationStateProvider AuthStateProvider
+<PageTitle>سفارش @order?.OrderNumber | فروشگاه من</PageTitle>
+
+@if (order is null)
+{
+    <div class="text-center text-body-secondary py-5">
+        <i class="bi bi-file-x d-block mb-2" style="font-size: 2.5rem;"></i>
+        <p class="mb-3">سفارش یافت نشد.</p>
+        <a href="/shop/orders" class="btn btn-outline-primary">سفارش‌های من</a>
+    </div>
+}
+else
+{
+    @if (Paid)
+    {
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle me-1"></i>پرداخت شما با موفقیت انجام شد؛ سفارش شما در حال پردازش است.
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(Error))
+    {
+        <div class="alert alert-danger"><i class="bi bi-exclamation-octagon me-1"></i>@Error</div>
+    }
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="h4 mb-1">سفارش @order.OrderNumber</h1>
+            <span class="badge @BadgeClass(order.Status)">@order.StatusText</span>
+        </div>
+        <a href="/shop/orders" class="btn btn-outline-secondary btn-sm">سفارش‌های من</a>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="card-panel mb-3">
+                <h6 class="form-section-title"><i class="bi bi-basket"></i>اقلام سفارش</h6>
+                <table class="table mb-0 align-middle">
+                    <thead>
+                        <tr><th>کالا</th><th>قیمت واحد</th><th>تعداد</th><th>جمع</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in order.Items)
+                        {
+                            <tr>
+                                <td class="fw-medium">@item.ProductName</td>
+                                <td>@CurrencyFormatter.ToToman(item.UnitPrice)</td>
+                                <td>@QuantityFormatter.Format(item.Quantity)</td>
+                                <td>@CurrencyFormatter.ToToman(item.LineTotal)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card-panel">
+                <h6 class="form-section-title"><i class="bi bi-geo-alt"></i>آدرس تحویل</h6>
+                <div class="small">
+                    <div class="mb-1"><strong>@order.CustomerName</strong> — @order.CustomerPhone</div>
+                    <div class="text-body-secondary">@order.Province، @order.City، @order.AddressLine@(string.IsNullOrEmpty(order.PostalCode) ? "" : $" — کد پستی {order.PostalCode}")</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card-panel">
+                <h6 class="form-section-title"><i class="bi bi-receipt"></i>صورتحساب</h6>
+                <div class="d-flex justify-content-between small mb-1">
+                    <span class="text-body-secondary">جمع کالاها</span><span>@CurrencyFormatter.ToToman(order.Subtotal)</span>
+                </div>
+                @if (order.DiscountAmount > 0)
+                {
+                    <div class="d-flex justify-content-between small mb-1 text-success">
+                        <span>تخفیف (@order.DiscountCodeText)</span><span>−@CurrencyFormatter.ToToman(order.DiscountAmount)</span>
+                    </div>
+                }
+                <div class="d-flex justify-content-between small mb-1">
+                    <span class="text-body-secondary">ارسال (@order.ShippingMethodText)</span><span>@(order.ShippingCost == 0 ? "رایگان" : CurrencyFormatter.ToToman(order.ShippingCost))</span>
+                </div>
+                <hr class="my-2" />
+                <div class="d-flex justify-content-between">
+                    <strong>مبلغ کل</strong><strong class="fs-5" style="color: var(--brand-primary);">@CurrencyFormatter.ToToman(order.Total)</strong>
+                </div>
+                @if (!string.IsNullOrEmpty(order.TrackingCode))
+                {
+                    <div class="alert alert-info small mt-3 mb-0">
+                        <i class="bi bi-truck me-1"></i>کد رهگیری پستی: <strong>@order.TrackingCode</strong>
+                    </div>
+                }
+                @if (order.SalesInvoiceId is not null)
+                {
+                    <div class="form-text mt-2">فاکتور فروش شماره @order.SalesInvoiceId برای این سفارش صادر شده است.</div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    [SupplyParameterFromQuery(Name = "paid")]
+    public bool Paid { get; set; }
+
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    private OrderDto? order;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        order = await OrderService.GetForUserAsync(Id, userId);
+    }
+
+    private static string BadgeClass(OrderStatus s) => s switch
+    {
+        OrderStatus.PendingPayment => "bg-warning-subtle text-warning-emphasis",
+        OrderStatus.Paid => "bg-success-subtle text-success-emphasis",
+        OrderStatus.Processing => "bg-info-subtle text-info-emphasis",
+        OrderStatus.Shipped => "bg-primary-subtle text-primary-emphasis",
+        OrderStatus.Delivered => "bg-success-subtle text-success-emphasis",
+        OrderStatus.Canceled => "bg-danger-subtle text-danger-emphasis",
+        _ => "bg-secondary-subtle text-secondary-emphasis"
+    };
+}

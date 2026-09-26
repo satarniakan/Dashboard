@@ -45,9 +45,18 @@ public static class ValidationAttributeInspector
         return (body as MemberExpression)?.Member as PropertyInfo;
     }
 
-    private static bool ComputeIsRequired(PropertyInfo property) =>
-        property.GetCustomAttribute<RequiredAttribute>() is not null ||
-        HasPositiveMinimum(property.GetCustomAttribute<RangeAttribute>());
+    private static bool ComputeIsRequired(PropertyInfo property)
+    {
+        if (property.GetCustomAttribute<RequiredAttribute>() is not null)
+            return true;
+
+        // فیلد nullable اختیاری است: خالی گذاشتنش مجاز است حتی اگر Range با حداقل مثبت داشته باشد
+        // (مثال: MaxUsageCount با Range(1,…) اختیاری است؛ خالی = نامحدود)
+        if (Nullable.GetUnderlyingType(property.PropertyType) is not null)
+            return false;
+
+        return HasPositiveMinimum(property.GetCustomAttribute<RangeAttribute>());
+    }
 
     private static int? ComputeMaxLength(PropertyInfo property)
     {

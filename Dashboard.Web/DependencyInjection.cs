@@ -35,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<ToastService>();
         services.AddSingleton<IFileStorageService>(_ => new LocalFileStorageService(environment.WebRootPath));
 
+
         return services;
     }
 

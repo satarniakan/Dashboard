@@ -18,6 +18,15 @@ public class ProductRepository : IProductRepository
     public async Task<IEnumerable<Product>> GetAllAsync() =>
         await _context.Products.Include(p => p.Category).ToListAsync();
 
+    public async Task<List<Product>> GetByIdsAsync(IReadOnlyCollection<int> ids)
+    {
+        if (ids.Count == 0) return new List<Product>();
+        return await _context.Products
+            .Include(p => p.Category)
+            .Where(p => ids.Contains(p.Id))
+            .ToListAsync();
+    }
+
     public async Task<(IEnumerable<Product> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? search = null)
     {
         var query = _context.Products.Include(p => p.Category).AsQueryable();
@@ -58,6 +67,48 @@ public class ProductRepository : IProductRepository
             //await _context.SaveChangesAsync();
         }
     }
+
+    public async Task<Product?> GetBySlugAsync(string slug) =>
+        await _context.Products.FirstOrDefaultAsync(p => p.Slug == slug);
+
+    public async Task<Product?> GetPublishedBySlugAsync(string slug) =>
+        await _context.Products
+            .Include(p => p.Category)
+            .Include(p => p.ProductGroup)
+                .ThenInclude(g => g!.Images)
+            .FirstOrDefaultAsync(p => p.Slug == slug && p.IsPublished);
+
+    public async Task<(IEnumerable<Product> Items, int TotalCount)> GetPublishedPagedAsync(int page, int pageSize, string? search = null, int? categoryId = null)
+    {
+        var query = _context.Products
+            .Include(p => p.Category)
+            .Where(p => p.IsPublished)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(p => p.Name.Contains(search));
+
+        if (categoryId is not null)
+            query = query.Where(p => p.CategoryId == categoryId);
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, totalCount);
+    }
+
+    public async Task<IEnumerable<Product>> GetLatestPublishedAsync(int count) =>
+        await _context.Products
+            .Include(p => p.Category)
+            .Where(p => p.IsPublished)
+            .OrderByDescending(p => p.CreatedAt)
+            .Take(count)
+            .ToListAsync();
 
     public async Task<List<Product>> GetByUnitNameAsync(string unitName) =>
         await _context.Products.Where(p => p.Unit == unitName).ToListAsync();

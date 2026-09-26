@@ -1,0 +1,162 @@
+@page "/shop/p/{Slug}"
+@layout Dashboard.Web.Components.Layout.StoreLayout
+@attribute [ExcludeFromInteractiveRouting]
+@using System.Text.Json
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@inject IStorefrontService Storefront
+<PageTitle>@(product is null ? "یافت نشد" : product.Name) | فروشگاه من</PageTitle>
+
+@if (product is null)
+{
+    <div class="text-center text-body-secondary py-5">
+        <i class="bi bi-box d-block mb-2" style="font-size: 2.5rem;"></i>
+        <p class="mb-3">چنین کالایی یافت نشد یا دیگر در فروشگاه نمایش داده نمی‌شود.</p>
+        <a href="/shop/products" class="btn btn-outline-primary">مشاهده‌ی همه‌ی محصولات</a>
+    </div>
+}
+else
+{
+    <nav aria-label="مسیر" class="small mb-3 text-body-secondary">
+        <a href="/shop" class="text-body-secondary">خانه</a>
+        <span class="mx-1">/</span>
+        <a href="/shop/products" class="text-body-secondary">محصولات</a>
+        @if (!string.IsNullOrEmpty(product.CategoryName))
+        {
+            <span class="mx-1">/</span>
+            <span>@product.CategoryName</span>
+        }
+        <span class="mx-1">/</span>
+        <span>@product.Name</span>
+    </nav>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="store-gallery">
+                @if (product.Images.Count > 0)
+                {
+                    <div class="strip">
+                        @foreach (var img in product.Images)
+                        {
+                            <img src="@img" alt="@product.Name" />
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="strip">
+                        <div class="placeholder"><i class="bi bi-box" aria-hidden="true"></i></div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <h1 class="h3 mb-2">@product.Name</h1>
+
+            @if (!string.IsNullOrEmpty(product.CategoryName))
+            {
+                <div class="text-body-secondary mb-2">دسته‌بندی: @product.CategoryName</div>
+            }
+            @if (!string.IsNullOrEmpty(product.GroupName))
+            {
+                <div class="text-body-secondary mb-2">خانواده‌ی کالا: @product.GroupName</div>
+            }
+
+            <div class="d-flex align-items-center gap-3 my-3">
+                <span class="fs-3 fw-bold" style="color: var(--brand-primary);">
+                    @CurrencyFormatter.ToToman(product.Price)
+                </span>
+                @if (product.InStock)
+                {
+                    <span class="badge bg-success-subtle text-success-emphasis">موجود در انبار</span>
+                }
+                else
+                {
+                    <span class="badge bg-danger-subtle text-danger-emphasis">ناموجود</span>
+                }
+            </div>
+
+            <div class="store-description mb-4">
+                @if (!string.IsNullOrEmpty(product.HtmlDescription))
+                {
+                    @((MarkupString)product.HtmlDescription)
+                }
+                else
+                {
+                    <span class="text-body-secondary">توضیحاتی برای این کالا ثبت نشده است.</span>
+                }
+            </div>
+
+            @* افزودن به سبد — فرم POST به Endpoint سبد (Static SSR) *@
+            <form method="post" action="/shop/cart/add" class="mb-4">
+                <AntiforgeryToken />
+                <input type="hidden" name="productId" value="@product.Id" />
+                <input type="hidden" name="returnUrl" value="/shop/p/@product.Slug" />
+                <div class="input-group mb-2" style="max-width: 230px;">
+                    <input type="number" name="quantity" class="form-control text-center" value="1"
+                           min="1" step="any" aria-label="تعداد" />
+                    <span class="input-group-text">@product.Unit</span>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg w-100" disabled="@(!product.InStock)">
+                    <i class="bi bi-cart-plus me-1"></i>
+                    @(product.InStock ? "افزودن به سبد خرید" : "ناموجود")
+                </button>
+            </form>
+
+            <div class="small text-body-secondary">
+                <i class="bi bi-truck me-1"></i>ارسال به سراسر کشور
+                <span class="mx-2">|</span>
+                <i class="bi bi-shield-check me-1"></i>ضمانت اصالت کالا
+            </div>
+        </div>
+    </div>
+
+    @if (product.Related.Count > 0)
+    {
+        <section class="mt-5" aria-label="کالاهای مرتبط">
+            <h2 class="h5 mb-3">کالاهای مرتبط</h2>
+            <div class="row g-3">
+                @foreach (var p in product.Related)
+                {
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <StoreProductCard Product="p" />
+                    </div>
+                }
+            </div>
+        </section>
+    }
+
+    @* داده‌ی ساخت‌یافته برای نتایج غنی گوگل *@
+    <script type="application/ld+json">@((MarkupString)BuildProductJsonLd(product))</script>
+}
+
+@code {
+    [Parameter] public string Slug { get; set; } = string.Empty;
+
+    private StoreProductDetailDto? product;
+
+    protected override async Task OnInitializedAsync()
+    {
+        product = await Storefront.GetProductBySlugAsync(Slug);
+    }
+
+    private static string BuildProductJsonLd(StoreProductDetailDto p) =>
+        JsonSerializer.Serialize(new Dictionary<string, object?>
+        {
+            ["@context"] = "https://schema.org",
+            ["@type"] = "Product",
+            ["name"] = p.Name,
+            ["category"] = p.CategoryName,
+            ["image"] = p.Images,
+            ["description"] = p.HtmlDescription,
+            ["offers"] = new Dictionary<string, object?>
+            {
+                ["@type"] = "Offer",
+                ["price"] = p.Price,
+                ["priceCurrency"] = "IRR",
+                ["availability"] = p.InStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
+            }
+        });
+}

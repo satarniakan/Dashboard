@@ -1,0 +1,122 @@
+@page "/admin/orders"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.StoreManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Domain.Enums
+@using Dashboard.Application.Helpers
+@inject IOrderService OrderService
+@inject Dashboard.Web.Services.ToastService ToastService
+@inject ILogger<Dashboard.Web.Components.Pages.Admin.StoreOrders> Logger
+<PageTitle>سفارش‌های فروشگاه</PageTitle>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">سفارش‌های فروشگاه</h3>
+        <div class="text-body-secondary small">سفارش‌های آنلاین را پردازش و ارسال کنید.</div>
+    </div>
+    <a href="/" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-right me-1"></i>بازگشت به پیشخوان</a>
+</div>
+
+<div class="card-panel mb-3 d-flex flex-wrap gap-2 align-items-end">
+    <div style="min-width: 200px;">
+        <label class="form-label">فیلتر وضعیت</label>
+        <select class="form-select" value="@statusFilter" @onchange="StatusFilterChanged">
+            <option value="">همه</option>
+            <option value="@((int)OrderStatus.PendingPayment)">در انتظار پرداخت</option>
+            <option value="@((int)OrderStatus.Paid)">پرداخت شده</option>
+            <option value="@((int)OrderStatus.Processing)">در حال پردازش</option>
+            <option value="@((int)OrderStatus.Shipped)">ارسال شده</option>
+            <option value="@((int)OrderStatus.Delivered)">تحویل شده</option>
+            <option value="@((int)OrderStatus.Canceled)">لغو شده</option>
+        </select>
+    </div>
+    <div class="flex-grow-1" style="max-width: 280px;">
+        <label class="form-label">جست‌وجو (شماره/نام/موبایل)</label>
+        <input class="form-control" value="@search" @oninput="SearchChanged" />
+    </div>
+</div>
+
+@if (orders is null)
+{
+    <LoadingSkeleton />
+}
+else if (!orders.Any())
+{
+    <div class="text-center text-body-secondary py-5">
+        <i class="bi bi-bag d-block mb-2" style="font-size: 2rem;"></i>
+        سفارشی مطابق فیلتر فعلی نیست.
+    </div>
+}
+else
+{
+    <div class="card-panel p-0 overflow-hidden">
+        <table class="table mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>شماره سفارش</th>
+                    <th>مشتری</th>
+                    <th>مبلغ</th>
+                    <th>تاریخ</th>
+                    <th>وضعیت</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var o in orders)
+                {
+                    <tr>
+                        <td class="fw-bold">@o.OrderNumber</td>
+                        <td>@o.CustomerName</td>
+                        <td>@CurrencyFormatter.ToToman(o.Total)</td>
+                        <td class="text-body-secondary">@o.CreatedAt.ToString("yyyy/MM/dd HH:mm")</td>
+                        <td><span class="badge @BadgeClass(o.Status)">@o.StatusText</span></td>
+                        <td class="text-end"><a href="/admin/orders/@o.Id" class="btn btn-sm btn-outline-primary">مدیریت</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private IEnumerable<OrderSummaryDto>? orders;
+    private string? statusFilter;
+    private string search = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
+    {
+        OrderStatus? status = int.TryParse(statusFilter, out var s) ? (OrderStatus)s : null;
+        var (items, _) = await OrderService.GetPagedForAdminAsync(1, 50, status, string.IsNullOrWhiteSpace(search) ? null : search);
+        orders = items;
+    }
+
+    private async Task StatusFilterChanged(ChangeEventArgs e)
+    {
+        statusFilter = e.Value?.ToString();
+        await LoadOrders();
+    }
+
+    private async Task SearchChanged(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? string.Empty;
+        await LoadOrders();
+    }
+
+    private static string BadgeClass(OrderStatus s) => s switch
+    {
+        OrderStatus.PendingPayment => "bg-warning-subtle text-warning-emphasis",
+        OrderStatus.Paid => "bg-success-subtle text-success-emphasis",
+        OrderStatus.Processing => "bg-info-subtle text-info-emphasis",
+        OrderStatus.Shipped => "bg-primary-subtle text-primary-emphasis",
+        OrderStatus.Delivered => "bg-success-subtle text-success-emphasis",
+        OrderStatus.Canceled => "bg-danger-subtle text-danger-emphasis",
+        _ => "bg-secondary-subtle text-secondary-emphasis"
+    };
+}

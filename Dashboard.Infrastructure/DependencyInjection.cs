@@ -53,6 +53,9 @@ public static class DependencyInjection
 
         // --- محصولات و کاتالوگ ---
         services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<ICartRepository, CartRepository>();
+        services.AddScoped<IDiscountCodeRepository, DiscountCodeRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<ICatalogRepository, CatalogRepository>();
 
         // --- ماژول انبارداری (WMS) ---

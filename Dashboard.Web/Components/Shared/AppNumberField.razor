@@ -16,7 +16,10 @@
     <input type="text" class="form-control text-end" inputmode="decimal" autocomplete="off"
            value="@DisplayText" @oninput="HandleInput" @onblur="HandleBlur"
            placeholder="@Placeholder" disabled="@Disabled" @ref="InputElement" />
-    <ValidationMessage For="@ValueExpression" class="text-danger small mt-1 d-block" />
+    @if (CascadedEditContext is not null && ValueExpression is not null)
+    {
+        <ValidationMessage For="@ValueExpression" class="text-danger small mt-1 d-block" />
+    }
     @if (!string.IsNullOrEmpty(Hint))
     {
         <div class="form-text">@Hint</div>
@@ -24,6 +27,9 @@
 </div>
 
 @code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.Forms.EditContext? CascadedEditContext { get; set; }
+
     private static readonly CultureInfo Cn = CultureInfo.InvariantCulture;
 
     private ElementReference InputElement;

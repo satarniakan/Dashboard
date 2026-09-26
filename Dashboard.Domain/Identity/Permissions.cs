@@ -31,6 +31,9 @@ public static class Permissions
     public const string TreasuryManage = "treasury.manage";
     public const string CatalogManage = "catalog.manage";
 
+    // --- فروشگاه اینترنتی ---
+    public const string StoreManage = "store.manage";
+
     // نکته: AccountingView و TreasuryManage قبلاً بعد از این آرایه تعریف شده بودند،
     // پس داخلش نبودند. نتیجه: نه در صفحه‌ی «مدیریت مجوزها» دیده می‌شدند، نه حتی
     // به نقش Admin به‌صورت خودکار داده می‌شدند (چون RoleSeeder فقط همین آرایه را می‌خواند).
@@ -41,7 +44,8 @@ public static class Permissions
         PurchaseReceiptsManage, InternalIssuesManage, SalesReturnsManage,
         ScrapRecordsManage, StockTransfersManage, StockCountsManage,
         CustomersManage, SalesCreate, SalesConfirm, SalesCancel, SalesView,
-        AccountingView, TreasuryManage, CatalogManage
+        AccountingView, TreasuryManage, CatalogManage,
+        StoreManage
     };
 
     public static string ToPersian(string permission) => permission switch
@@ -66,6 +70,7 @@ public static class Permissions
         AccountingView => "مشاهده حسابداری",
         TreasuryManage => "مدیریت صندوق و بانک",
         CatalogManage => "مدیریت کاتالوگ فروشگاه",
+        StoreManage => "مدیریت فروشگاه اینترنتی",
         _ => permission
     };
 }

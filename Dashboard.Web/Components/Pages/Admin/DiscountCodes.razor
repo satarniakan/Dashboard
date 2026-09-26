@@ -1,0 +1,243 @@
+@page "/admin/discounts"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.StoreManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Domain.Enums
+@using Dashboard.Application.Helpers
+@inject IDiscountCodeService DiscountService
+@inject Dashboard.Web.Services.ToastService ToastService
+@inject ILogger<Dashboard.Web.Components.Pages.Admin.DiscountCodes> Logger
+<PageTitle>کدهای تخفیف فروشگاه</PageTitle>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">کدهای تخفیف فروشگاه</h3>
+        <div class="text-body-secondary small">کدهای قابل استفاده در سبد خرید فروشگاه را مدیریت کنید.</div>
+    </div>
+    <a href="/" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به پیشخوان
+    </a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+
+        @* ===== افزودن کد جدید ===== *@
+        <div class="card-panel mb-3">
+            <h6 class="form-section-title"><i class="bi bi-plus-circle"></i>کد تخفیف جدید</h6>
+
+            <EditForm Model="@newCode" OnValidSubmit="HandleCreate" FormName="CreateDiscountForm">
+                <DataAnnotationsValidator />
+
+                <AppTextField @bind-Value="newCode.Code" Label="کد تخفیف" Required="true"
+                              Placeholder="مثلاً: YALDA1404" Hint="با حروف بزرگ ذخیره می‌شود؛ باید یکتا باشد." />
+
+                <AppDropdown Label="نوع تخفیف" @bind-Value="newCode.Type" Required="true">
+                    <option value="@DiscountType.Percentage">درصدی</option>
+                    <option value="@DiscountType.FixedAmount">مبلغ ثابت (تومان)</option>
+                </AppDropdown>
+
+                <AppNumberField TValue="decimal" @bind-Value="newCode.Value" Label="@(newCode.Type == DiscountType.Percentage ? "درصد تخفیف" : "مبلغ تخفیف (تومان)")"
+                                Required="true" Placeholder="0" />
+
+                @if (newCode.Type == DiscountType.Percentage)
+                {
+                    <AppNumberField TValue="decimal?" @bind-Value="newCode.MaxDiscountAmount" Label="سقف تخفیف (تومان)"
+                                    Placeholder="بدون سقف" Hint="حداکثر مبلغ تخفیف برای کدهای درصدی" />
+                }
+
+                <AppNumberField TValue="decimal?" @bind-Value="newCode.MinCartAmount" Label="حداقل جمع سبد (تومان)"
+                                Placeholder="بدون محدودیت" />
+
+                <AppNumberField TValue="int?" @bind-Value="newCode.MaxUsageCount" Label="سقف تعداد استفاده"
+                                Placeholder="نامحدود" />
+
+                <div class="row">
+                    <div class="col-6">
+                        <label class="form-label">شروع</label>
+                        <PersianDateTimePicker TValue="DateTime?" @bind-Value="newCode.StartsAt" ShowTime="true" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">انقضا</label>
+                        <PersianDateTimePicker TValue="DateTime?" @bind-Value="newCode.ExpiresAt" ShowTime="true" />
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger mt-3 mb-0">
+                        <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
+                    </div>
+                }
+
+                <div class="d-flex mt-3">
+                    <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-plus-lg me-1"></i>
+                        }
+                        ایجاد کد
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+
+        @* ===== فهرست کدها ===== *@
+        <div class="card-panel">
+            <h6 class="form-section-title"><i class="bi bi-ticket-perforated"></i>کدهای ثبت‌شده</h6>
+
+            @if (codes is null)
+            {
+                <LoadingSkeleton />
+            }
+            else if (!codes.Any())
+            {
+                <div class="text-center text-body-secondary py-5">
+                    <i class="bi bi-ticket-perforated d-block mb-2" style="font-size: 2rem;"></i>
+                    هنوز کد تخفیفی ثبت نشده است.
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>کد</th>
+                                <th>تخفیف</th>
+                                <th>مصرف</th>
+                                <th>وضعیت</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in codes)
+                            {
+                                <tr>
+                                    <td class="fw-bold">@c.Code</td>
+                                    <td>
+                                        @(c.Type == DiscountType.Percentage ? $"٪{c.Value:0.##}" : CurrencyFormatter.ToToman(c.Value))
+                                        @if (c.Type == DiscountType.Percentage && c.MaxDiscountAmount is not null)
+                                        {
+                                            <div class="small text-body-secondary">سقف: @CurrencyFormatter.ToToman(c.MaxDiscountAmount.Value)</div>
+                                        }
+                                        @if (c.MinCartAmount is not null)
+                                        {
+                                            <div class="small text-body-secondary">حداقل سبد: @CurrencyFormatter.ToToman(c.MinCartAmount.Value)</div>
+                                        }
+                                    </td>
+                                    <td>@c.UsageCount@(c.MaxUsageCount is not null ? $" / {c.MaxUsageCount}" : "")</td>
+                                    <td>
+                                        <span class="badge @(c.IsActive ? "bg-success-subtle text-success-emphasis" : "bg-secondary-subtle text-secondary-emphasis")">
+                                            @(c.IsActive ? "فعال" : "غیرفعال")
+                                        </span>
+                                        @if (c.ExpiresAt is not null && c.ExpiresAt < DateTime.UtcNow)
+                                        {
+                                            <div class="small text-danger">منقضی</div>
+                                        }
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => ToggleActive(c)">
+                                            @(c.IsActive ? "غیرفعال کن" : "فعال کن")
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(c)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<AppConfirmDialog @ref="confirmDialog" />
+
+@code {
+    [SupplyParameterFromForm]
+    private CreateDiscountCodeDto? newCode { get; set; }
+
+    private IEnumerable<DiscountCodeDto>? codes;
+    private AppConfirmDialog confirmDialog = default!;
+    private bool isSaving;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        newCode ??= new();
+        await LoadCodes();
+    }
+
+    private async Task LoadCodes()
+    {
+        codes = await DiscountService.GetAllAsync();
+    }
+
+    private async Task HandleCreate()
+    {
+        isSaving = true;
+        errorMessage = null;
+        try
+        {
+            await DiscountService.CreateAsync(newCode!);
+            ToastService.ShowSuccess($"کد تخفیف «{newCode!.Code}» ایجاد شد.");
+            newCode = new();
+            await LoadCodes();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در ایجاد کد تخفیف");
+            errorMessage = ErrorMessageHelper.ToUserMessage(ex);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task ToggleActive(DiscountCodeDto code)
+    {
+        try
+        {
+            await DiscountService.ToggleActiveAsync(code.Id);
+            await LoadCodes();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در تغییر وضعیت کد تخفیف {DiscountCodeId}", code.Id);
+            ToastService.ShowError(ErrorMessageHelper.ToUserMessage(ex));
+        }
+    }
+
+    private async Task ConfirmDelete(DiscountCodeDto code)
+    {
+        if (!await confirmDialog.ShowAsync("حذف کد تخفیف",
+                $"کد «{code.Code}» حذف شود؟ این عمل قابل بازگشت نیست.",
+                confirmText: "بله، حذف شود"))
+            return;
+
+        try
+        {
+            await DiscountService.DeleteAsync(code.Id);
+            ToastService.ShowSuccess("کد تخفیف حذف شد.");
+            await LoadCodes();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در حذف کد تخفیف {DiscountCodeId}", code.Id);
+            ToastService.ShowError(ErrorMessageHelper.ToUserMessage(ex));
+        }
+    }
+}

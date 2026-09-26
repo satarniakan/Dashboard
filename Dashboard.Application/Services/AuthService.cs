@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Dashboard.Application.DTOs;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Identity;
@@ -32,14 +33,19 @@ public class AuthService : IAuthService
         SignInManager<ApplicationUser> signInManager,
         RoleManager<IdentityRole> roleManager,
         IOtpService otpService,
-        ILogger<AuthService> logger)
+        ILogger<AuthService> logger,
+        Microsoft.Extensions.Configuration.IConfiguration configuration)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _roleManager = roleManager;
         _otpService = otpService;
         _logger = logger;
+        // شماره‌ی ادمین اول از تنظیمات «Identity:FirstAdminPhoneNumber»؛ fallback به ثابت قدیمی برای سازگاری
+        _firstAdminPhoneNumber = configuration["Identity:FirstAdminPhoneNumber"] ?? Roles.FirstAdminPhoneNumber;
     }
+
+    private readonly string _firstAdminPhoneNumber;
 
     public async Task<PasswordLoginResult> LoginWithPasswordAsync(string email, string password)
     {
@@ -96,7 +102,7 @@ public class AuthService : IAuthService
                 return new OtpVerificationResult(false, false);
             }
 
-            var roleToAssign = phoneNumber == Roles.FirstAdminPhoneNumber ? Roles.Admin : Roles.User;
+            var roleToAssign = phoneNumber == _firstAdminPhoneNumber ? Roles.Admin : Roles.User;
             await _userManager.AddToRoleAsync(user, roleToAssign);
         }
 

@@ -18,7 +18,10 @@ public record ProductDto(
     int ReorderPoint,
     int? CategoryId,
     string? CategoryName,
-    string? ImageUrl);
+    string? ImageUrl,
+    bool IsPublished,
+    string? Slug,
+    string? HtmlDescription);
 
 public class CreateProductDto
 {
@@ -51,6 +54,16 @@ public class CreateProductDto
 
     public int? CategoryId { get; set; }
     public string? ImageUrl { get; set; }
+
+    // --- فروشگاه اینترنتی ---
+    public bool IsPublished { get; set; }
+
+    [StringLength(150, ErrorMessage = "نشان (Slug) نمی‌تواند بیشتر از ۱۵۰ کاراکتر باشد.")]
+    [RegularExpression(@"^[a-zA-Z0-9\u0600-\u06FF\-._~%]+$", ErrorMessage = "نشان فقط می‌تواند شامل حروف، اعداد و خط تیره باشد.")]
+    public string? Slug { get; set; }
+
+    [StringLength(10000, ErrorMessage = "توضیحات نمی‌تواند بیشتر از ۱۰٬۰۰۰ کاراکتر باشد.")]
+    public string? HtmlDescription { get; set; }
 }
 
 public class UpdateProductDto
@@ -84,4 +97,14 @@ public class UpdateProductDto
 
     public int? CategoryId { get; set; }
     public string? ImageUrl { get; set; }
+
+    // --- فروشگاه اینترنتی ---
+    public bool IsPublished { get; set; }
+
+    [StringLength(150, ErrorMessage = "نشان (Slug) نمی‌تواند بیشتر از ۱۵۰ کاراکتر باشد.")]
+    [RegularExpression(@"^[a-zA-Z0-9\u0600-\u06FF\-._~%]+$", ErrorMessage = "نشان فقط می‌تواند شامل حروف، اعداد و خط تیره باشد.")]
+    public string? Slug { get; set; }
+
+    [StringLength(10000, ErrorMessage = "توضیحات نمی‌تواند بیشتر از ۱۰٬۰۰۰ کاراکتر باشد.")]
+    public string? HtmlDescription { get; set; }
 }
