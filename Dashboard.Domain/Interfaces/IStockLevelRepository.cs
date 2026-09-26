@@ -21,7 +21,8 @@ public interface IStockLevelRepository
     /// </summary>
     Task DecreaseWithCheckAsync(int productId, int warehouseId, decimal quantity);
 
-    /// جمع موجودی هر کالا در کل انبارها — برای نمایش «موجود/ناموجود» در فروشگاه
+    /// جمع موجودی هر کالا در کل انبارها — برای هشدار نقطه‌ی سفارش (نه ویترین فروشگاه؛
+    /// ویترین و سبد فقط موجودی انبار فروشگاه را می‌بینند تا با کسر واقعی سازگار باشد)
     Task<Dictionary<int, decimal>> GetTotalStockAsync(IReadOnlyCollection<int> productIds);
 
     /// موجودی هر کالا فقط در یک انبار مشخص — سفارش‌های فروشگاه از همین انبار کسر می‌شوند،
