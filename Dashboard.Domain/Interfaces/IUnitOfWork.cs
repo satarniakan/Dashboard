@@ -37,6 +37,8 @@ public interface IUnitOfWork
     ICartRepository Carts { get; }
     IDiscountCodeRepository DiscountCodes { get; }
     IOrderRepository Orders { get; }
+    INotificationRepository Notifications { get; }
+    IOutboxRepository Outbox { get; }
 
     // این همان متد جادویی است که در پایان، همه تغییرات را یک‌باره ذخیره می‌کند
     Task<int> CompleteAsync();

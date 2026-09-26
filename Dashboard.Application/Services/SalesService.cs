@@ -32,13 +32,15 @@ public class SalesService : ISalesService
     private readonly IJournalService _journalService;
     private readonly ILogger<SalesService> _logger;
     private readonly IStockValidator _stockValidator;
+    private readonly INotificationService _notifications;
 
-    public SalesService(IUnitOfWork unitOfWork, IJournalService journalService, ILogger<SalesService> logger, IStockValidator stockValidator)
+    public SalesService(IUnitOfWork unitOfWork, IJournalService journalService, ILogger<SalesService> logger, IStockValidator stockValidator, INotificationService notifications)
     {
         _unitOfWork = unitOfWork;
         _journalService = journalService;
         _logger = logger;
         _stockValidator = stockValidator;
+        _notifications = notifications;
     }
 
     // ---------------- مشتریان ----------------
@@ -164,6 +166,10 @@ public class SalesService : ISalesService
 
                     await _unitOfWork.StockLevels.DecreaseWithCheckAsync(item.ProductId, invoice.WarehouseId, item.Quantity);
                 }
+
+                // هشدار کم‌موجودی برای کالاهایی که به نقطه‌ی سفارش رسیده‌اند
+                foreach (var productId in invoice.Items.Select(i => i.ProductId).Distinct())
+                    await _notifications.NotifyLowStockIfBelowReorderPointAsync(productId);
 
                 invoice.Status = SalesInvoiceStatus.Confirmed;
                 invoice.ConfirmedAt = DateTime.UtcNow;

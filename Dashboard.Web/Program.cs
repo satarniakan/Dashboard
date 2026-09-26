@@ -143,7 +143,8 @@ builder.Services.AddScoped<IOrderService>(sp =>
     return new OrderService(
         sp.GetRequiredService<IUnitOfWork>(),
         sp.GetRequiredService<ISalesService>(),
-        sp.GetRequiredService<ISmsSender>(),
+        sp.GetRequiredService<IOutboxService>(),
+        sp.GetRequiredService<INotificationService>(),
         store);
 });
 // AddIdentity به‌صورت پیش‌فرض مسیر "/Account/Login" را برای صفحه‌ی ورود در نظر می‌گیرد،
@@ -202,6 +203,31 @@ builder.Services.AddRateLimiter(options =>
 });
 builder.Services.AddScoped<Dashboard.Web.Services.ToastService>();
 builder.Services.AddHostedService<Dashboard.Web.Services.OrderExpiryService>();
+builder.Services.AddHostedService<Dashboard.Web.Services.OutboxProcessor>();
+
+// ایمیل تراکنشی — SMTP از «Email:Smtp:*»؛ Host خالی یعنی ارسال با خطای روشن در Outbox ثبت می‌شود
+builder.Services.AddScoped<IEmailSender>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    return new SmtpEmailSender(
+        config["Email:Smtp:Host"] ?? string.Empty,
+        config.GetValue("Email:Smtp:Port", 587),
+        config["Email:Smtp:Username"],
+        config["Email:Smtp:Password"],
+        config["Email:Smtp:FromAddress"] ?? "no-reply@localhost",
+        config["Email:Smtp:FromName"] ?? "فروشگاه");
+});
+
+// پیامک: بر اساس «Sms:Provider» — Kavenegar واقعی یا Fake (پیش‌فرض Development)
+builder.Services.AddHttpClient("Sms", client => client.Timeout = TimeSpan.FromSeconds(20));
+if (string.Equals(builder.Configuration["Sms:Provider"], "Kavenegar", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddScoped<ISmsSender>(sp => new KavenegarSmsSender(
+        sp.GetRequiredService<IHttpClientFactory>().CreateClient("Sms"),
+        builder.Configuration["Sms:Kavenegar:ApiKey"] ?? string.Empty,
+        builder.Configuration["Sms:Kavenegar:Sender"],
+        sp.GetRequiredService<ILogger<KavenegarSmsSender>>()));
+}
 
 // ذخیره‌سازی فایل (عکس محصولات) روی دیسک، داخل wwwroot/uploads
 builder.Services.AddScoped<Dashboard.Domain.Interfaces.IFileStorageService>(sp =>
@@ -251,6 +277,7 @@ app.UseRateLimiter();
 // Endpointهای احراز هویت (Dashboard.Web/Endpoints/AccountEndpoints.cs) — هر کدام فقط IAuthService را صدا می‌زنند
 app.MapAccountEndpoints();
 app.MapShopCartEndpoints();
+app.MapNotificationsEndpoints();
 app.MapShopOrderEndpoints();
 app.MapSitemapEndpoints();
 

@@ -2,6 +2,7 @@
 using Dashboard.Application.DTOs;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
+using Dashboard.Domain.Identity;
 using Dashboard.Domain.Exceptions;
 using Dashboard.Domain.Interfaces;
 
@@ -48,14 +49,17 @@ public class OrderService : IOrderService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ISalesService _salesService;
-    private readonly ISmsSender _smsSender;
+    private readonly IOutboxService _smsQueue;
+    private readonly INotificationService _notifications;
     private readonly StoreOptions _store;
 
-    public OrderService(IUnitOfWork unitOfWork, ISalesService salesService, ISmsSender smsSender, Microsoft.Extensions.Options.IOptions<StoreOptions> storeOptions)
+    public OrderService(IUnitOfWork unitOfWork, ISalesService salesService, IOutboxService smsQueue,
+        INotificationService notifications, Microsoft.Extensions.Options.IOptions<StoreOptions> storeOptions)
     {
         _unitOfWork = unitOfWork;
         _salesService = salesService;
-        _smsSender = smsSender;
+        _smsQueue = smsQueue;
+        _notifications = notifications;
         _store = storeOptions.Value;
     }
 
@@ -210,8 +214,20 @@ public class OrderService : IOrderService
 
             // ۵. پاک‌کردن سبد به عهده‌ی callback است (کوکی سبد آنجا در دسترس است)؛
             // اینجا اطلاع‌رسانی پیامکی ثبت می‌شود
-            await _smsSender.SendAsync(order.CustomerPhone,
+            await _smsQueue.QueueSmsAsync(order.CustomerPhone,
                 $"سفارش {order.OrderNumber} شما با موفقیت ثبت شد. مبلغ: {order.Total:0} تومان");
+
+            await _notifications.NotifyAsync(order.UserId,
+                $"سفارش {order.OrderNumber} ثبت شد",
+                $"مبلغ {order.Total:0} تومان — در حال پردازش",
+                NotificationType.Order, $"/shop/orders/{order.Id}");
+
+            // اعلان به ادمین‌ها و انباردار: سفارش جدید نیازمند پردازش
+            var staffBody = $"مشتری: {order.CustomerName} — مبلغ {order.Total:0} تومان";
+            await _notifications.NotifyRoleAsync(Roles.Admin, $"سفارش جدید {order.OrderNumber}",
+                staffBody, NotificationType.Order, $"/admin/orders/{order.Id}");
+            await _notifications.NotifyRoleAsync(Roles.WarehouseUser, $"سفارش جدید {order.OrderNumber}",
+                staffBody, NotificationType.Order, $"/admin/orders/{order.Id}");
 
             return (true, null);
         }
@@ -321,6 +337,11 @@ public class OrderService : IOrderService
             order.Status = OrderStatus.Canceled;
             order.AdminNote = "انقضای سفارش پرداخت‌نشده";
             await _unitOfWork.Orders.UpdateAsync(order);
+
+            await _notifications.NotifyAsync(order.UserId,
+                $"سفارش {order.OrderNumber} لغو شد",
+                "به دلیل عدم پرداخت در مهلت مقرر لغو شد؛ در صورت تمایل می‌توانید دوباره خرید کنید.",
+                NotificationType.Order, $"/shop/orders/{order.Id}");
         }
         if (stale.Count > 0)
             await _unitOfWork.CompleteAsync();

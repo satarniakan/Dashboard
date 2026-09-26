@@ -1,0 +1,111 @@
+@page "/notifications"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Domain.Enums
+@inject INotificationService NotificationService
+<PageTitle>اعلان‌ها</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-1">اعلان‌ها</h3>
+        <div class="text-body-secondary small">آرشیو کامل اعلان‌های شما.</div>
+    </div>
+    <button type="button" class="btn btn-outline-primary btn-sm" disabled="@isMarkingAll" @onclick="MarkAllRead">
+        @if (isMarkingAll)
+        {
+            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+        }
+        علامت‌گذاری همه به‌عنوان خوانده‌شده
+    </button>
+</div>
+
+@if (items is null)
+{
+    <LoadingSkeleton />
+}
+else if (items.Count == 0)
+{
+    <div class="text-center text-body-secondary py-5">
+        <i class="bi bi-bell d-block mb-2" style="font-size: 2rem;"></i>
+        اعلانی ندارید.
+    </div>
+}
+else
+{
+    <div class="card-panel p-0 overflow-hidden">
+        <div class="list-group list-group-flush">
+            @foreach (var n in items)
+            {
+                <a href="@(n.LinkUrl ?? "#")" class="list-group-item list-group-item-action d-flex justify-content-between align-items-start"
+                   style="@(n.IsRead ? "" : "background-color: var(--brand-bg);")" @onclick="() => ItemClicked(n)">
+                    <div class="ms-2 me-auto">
+                        <div class="fw-semibold @(n.IsRead ? "text-body-secondary" : "")">
+                            @if (n.Type == NotificationType.Order || n.Type == NotificationType.Shipment)
+                            {
+                                <i class="bi bi-bag-check me-1" style="color: var(--brand-primary);"></i>
+                            }
+                            else
+                            {
+                                <i class="bi bi-info-circle me-1" style="color: var(--brand-primary);"></i>
+                            }
+                            @n.Title
+                        </div>
+                        @if (!string.IsNullOrEmpty(n.Body))
+                        {
+                            <div class="small text-body-secondary">@n.Body</div>
+                        }
+                    </div>
+                    <span class="text-body-secondary small text-nowrap">@n.CreatedAt.ToString("yyyy/MM/dd HH:mm")</span>
+                </a>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private List<NotificationDto>? items;
+    private bool isMarkingAll;
+
+    private string? UserId => HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var feed = await NotificationService.GetFeedAsync(UserId ?? "");
+        items = feed.Items.ToList();
+    }
+
+    private async Task ItemClicked(NotificationDto n)
+    {
+        if (!n.IsRead)
+        {
+            await NotificationService.MarkReadAsync(n.Id, UserId ?? "");
+            n.IsRead = true;
+        }
+    }
+
+    private async Task MarkAllRead()
+    {
+        isMarkingAll = true;
+        try
+        {
+            await NotificationService.MarkAllReadAsync(UserId ?? "");
+            await LoadAsync();
+        }
+        finally
+        {
+            isMarkingAll = false;
+        }
+    }
+}

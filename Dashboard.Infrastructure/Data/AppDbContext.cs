@@ -60,6 +60,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<Unit> Units => Set<Unit>();
     public DbSet<Province> Provinces => Set<Province>();
     public DbSet<City> Cities => Set<City>();
@@ -146,6 +148,24 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.Property(i => i.Quantity).HasColumnType("decimal(18,3)");
             e.HasOne(i => i.Order).WithMany(o => o.Items).HasForeignKey(i => i.OrderId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(i => i.Product).WithMany().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<OutboxMessage>(e =>
+        {
+            e.Property(o => o.Recipient).HasMaxLength(200).IsRequired();
+            e.Property(o => o.Body).HasMaxLength(1000).IsRequired();
+            e.Property(o => o.LastError).HasMaxLength(500);
+            e.Property(o => o.Subject).HasMaxLength(200);
+            e.HasIndex(o => new { o.Status, o.Attempts });
+        });
+
+        builder.Entity<Notification>(e =>
+        {
+            e.Property(n => n.UserId).HasMaxLength(450).IsRequired();
+            e.Property(n => n.Title).HasMaxLength(200).IsRequired();
+            e.Property(n => n.Body).HasMaxLength(1000);
+            e.Property(n => n.LinkUrl).HasMaxLength(300);
+            e.HasIndex(n => new { n.UserId, n.IsRead });
         });
 
         builder.Entity<Payment>(e =>

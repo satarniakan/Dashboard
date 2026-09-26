@@ -29,7 +29,7 @@ public class SalesServiceTests
         _unitOfWork.Setup(u => u.AuditLogs).Returns(_auditLogs.Object);
         _unitOfWork.Setup(u => u.CompleteAsync()).ReturnsAsync(1);
 
-        _sut = new SalesService(_unitOfWork.Object, Mock.Of<IJournalService>(), Mock.Of<ILogger<SalesService>>(), Mock.Of<IStockValidator>());
+        _sut = new SalesService(_unitOfWork.Object, Mock.Of<IJournalService>(), Mock.Of<ILogger<SalesService>>(), Mock.Of<IStockValidator>(), Mock.Of<INotificationService>());
     }
 
     [Fact]

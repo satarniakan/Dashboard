@@ -1,0 +1,115 @@
+@page "/admin/broadcast"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = Dashboard.Domain.Identity.Roles.Admin)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Domain.Enums
+@using Dashboard.Application.Helpers
+@inject INotificationService NotificationService
+@inject Dashboard.Web.Services.ToastService ToastService
+@inject ILogger<Dashboard.Web.Components.Pages.Admin.Broadcast> Logger
+<PageTitle>اعلان سراسری</PageTitle>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">اعلان سراسری</h3>
+        <div class="text-body-secondary small">ارسال اعلان هم‌زمان به همه‌ی کاربران یا اعضای یک نقش — در زنگ اعلان‌های آن‌ها نمایش داده می‌شود.</div>
+    </div>
+    <a href="/" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-right me-1"></i>بازگشت به پیشخوان</a>
+</div>
+
+<div class="card-panel" style="max-width: 640px;">
+    <EditForm Model="@model" OnValidSubmit="HandleSend" FormName="BroadcastForm">
+        <DataAnnotationsValidator />
+
+        <AppTextField @bind-Value="model.Title" Label="عنوان" Required="true"
+                      Placeholder="مثلاً: اطلاعیه‌ی تعطیلی رسمی" />
+
+        <AppTextArea @bind-Value="model.Body" Label="متن اعلان"
+                     Placeholder="متن پیام برای نمایش در زنگ اعلان کاربران…"
+                     Rows="4" MaxLength="1000" ShowCount="true" />
+
+        <div class="row">
+            <div class="col-md-6">
+                <AppDropdown Label="مخاطبان" @bind-Value="model.RoleName">
+                    <option value="">همه‌ی کاربران</option>
+                    <option value="@Dashboard.Domain.Identity.Roles.Admin">ادمین‌ها</option>
+                    <option value="@Dashboard.Domain.Identity.Roles.User">کاربران عادی</option>
+                    <option value="@Dashboard.Domain.Identity.Roles.WarehouseUser">کاربران انبار</option>
+                    <option value="@Dashboard.Domain.Identity.Roles.AccountingUser">کاربران حسابداری</option>
+                </AppDropdown>
+            </div>
+            <div class="col-md-6">
+                <AppDropdown Label="نوع اعلان" @bind-Value="model.Type">
+                    <option value="@NotificationType.System">سیستمی</option>
+                    <option value="@NotificationType.Order">سفارش</option>
+                    <option value="@NotificationType.Shipment">ارسال</option>
+                </AppDropdown>
+            </div>
+        </div>
+
+        <AppTextField @bind-Value="model.LinkUrl" Label="لینک (اختیاری)"
+                      Placeholder="مثلاً: /shop/products"
+                      Hint="با کلیک روی اعلان، کاربر به این مسیر هدایت می‌شود." />
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-3 mb-0"><i class="bi bi-exclamation-octagon me-1"></i>@errorMessage</div>
+        }
+
+        <div class="d-flex mt-3">
+            <button type="submit" class="btn btn-primary" disabled="@isSending">
+                @if (isSending)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                else
+                {
+                    <i class="bi bi-megaphone me-1"></i>
+                }
+                ارسال اعلان
+            </button>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private BroadcastDto? model { get; set; }
+
+    private bool isSending;
+    private string? errorMessage;
+
+    protected override void OnInitialized()
+    {
+        model ??= new();
+    }
+
+    private async Task HandleSend()
+    {
+        isSending = true;
+        errorMessage = null;
+        try
+        {
+            var count = await NotificationService.BroadcastAsync(
+                model!.Title.Trim(),
+                model.Body?.Trim(),
+                model.Type,
+                string.IsNullOrWhiteSpace(model.LinkUrl) ? null : model.LinkUrl.Trim(),
+                string.IsNullOrWhiteSpace(model.RoleName) ? null : model.RoleName);
+
+            ToastService.ShowSuccess($"اعلان به {count} کاربر ارسال شد.");
+            model = new();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در ارسال اعلان سراسری");
+            errorMessage = ErrorMessageHelper.ToUserMessage(ex);
+        }
+        finally
+        {
+            isSending = false;
+        }
+    }
+}

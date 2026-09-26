@@ -25,8 +25,9 @@ public class TreasuryService : ITreasuryService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IJournalService _journalService;
+    private readonly INotificationService _notifications;
 
-    public TreasuryService(IUnitOfWork unitOfWork, IJournalService journalService)
+    public TreasuryService(IUnitOfWork unitOfWork, IJournalService journalService, INotificationService notifications)
     {
         _unitOfWork = unitOfWork;
         _journalService = journalService;
@@ -118,6 +119,10 @@ public class TreasuryService : ITreasuryService
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("CustomerReceiptRegistered", userId, $"دریافت {receipt.ReceiptNumber} به مبلغ {dto.Amount} ثبت شد."));
         await _unitOfWork.CompleteAsync();
 
+        await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.AccountingUser,
+            "دریافت از مشتری ثبت شد", $"رسید {receipt.ReceiptNumber} به مبلغ {dto.Amount:0} تومان",
+            NotificationType.System, "/accounting/customer-receipts");
+
         // دریافت پول: بدهکار صندوق/بانک، بستانکار حساب‌های دریافتنی (طلب از مشتری کم می‌شود)
         await _journalService.PostEntryAsync(
             description: $"دریافت وجه طبق رسید {receipt.ReceiptNumber}",
@@ -169,6 +174,10 @@ public class TreasuryService : ITreasuryService
         await _unitOfWork.SupplierPayments.UpdateAsync(payment);
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SupplierPaymentRegistered", userId, $"پرداخت {payment.PaymentNumber} به مبلغ {dto.Amount} ثبت شد."));
         await _unitOfWork.CompleteAsync();
+
+        await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.AccountingUser,
+            "پرداخت به تأمین‌کننده ثبت شد", $"سند {payment.PaymentNumber} به مبلغ {dto.Amount:0} تومان",
+            NotificationType.System, "/accounting/supplier-payments");
 
         // پرداخت پول: بدهکار حساب‌های پرداختنی (بدهی کم می‌شود)، بستانکار صندوق/بانک
         await _journalService.PostEntryAsync(

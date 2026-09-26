@@ -31,6 +31,8 @@ public static class DependencyInjection
         services.AddScoped<ICatalogService, CatalogService>();
         services.AddScoped<IStorefrontService, StorefrontService>();
         services.AddScoped<ICartService, CartService>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IOutboxService, OutboxService>();
         services.AddScoped<IDiscountCodeService, DiscountCodeService>();
         services.AddScoped<IDashboardService, DashboardService>();
 

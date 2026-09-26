@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Dashboard.Application.DTOs;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Identity;
+using Dashboard.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 
@@ -34,7 +35,8 @@ public class AuthService : IAuthService
         RoleManager<IdentityRole> roleManager,
         IOtpService otpService,
         ILogger<AuthService> logger,
-        Microsoft.Extensions.Configuration.IConfiguration configuration)
+        Microsoft.Extensions.Configuration.IConfiguration configuration,
+        INotificationService notifications)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -43,9 +45,11 @@ public class AuthService : IAuthService
         _logger = logger;
         // شماره‌ی ادمین اول از تنظیمات «Identity:FirstAdminPhoneNumber»؛ fallback به ثابت قدیمی برای سازگاری
         _firstAdminPhoneNumber = configuration["Identity:FirstAdminPhoneNumber"] ?? Roles.FirstAdminPhoneNumber;
+        _notifications = notifications;
     }
 
     private readonly string _firstAdminPhoneNumber;
+    private readonly INotificationService _notifications;
 
     public async Task<PasswordLoginResult> LoginWithPasswordAsync(string email, string password)
     {
@@ -104,6 +108,10 @@ public class AuthService : IAuthService
 
             var roleToAssign = phoneNumber == _firstAdminPhoneNumber ? Roles.Admin : Roles.User;
             await _userManager.AddToRoleAsync(user, roleToAssign);
+
+            // اعلان به ادمین‌ها: کاربر جدید ثبت‌نام کرد
+            await _notifications.NotifyRoleAsync(Roles.Admin, "کاربر جدید ثبت‌نام کرد",
+                $"شماره {phoneNumber}", NotificationType.System, "/admin/users");
         }
 
         await _signInManager.SignInAsync(user, isPersistent: true);

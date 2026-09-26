@@ -50,13 +50,15 @@ public class StockService : IStockService
     private readonly ILogger<StockService> _logger;
     private readonly IJournalService _journalService;
     private readonly IStockValidator _stockValidator;
+    private readonly INotificationService _notifications;
 
-    public StockService(IUnitOfWork unitOfWork, ILogger<StockService> logger, IJournalService journalService, IStockValidator stockValidator)
+    public StockService(IUnitOfWork unitOfWork, ILogger<StockService> logger, IJournalService journalService, IStockValidator stockValidator, INotificationService notifications)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
         _journalService = journalService;
         _stockValidator = stockValidator;
+        _notifications = notifications;
     }
 
     // ---------------- انبارها / تأمین‌کنندگان ----------------
@@ -222,6 +224,9 @@ public class StockService : IStockService
         receipt.ReceiptNumber = DocumentNumberGenerator.Generate(receipt.ReceiptDate, receipt.SupplierId, receipt.Id);
         await _unitOfWork.PurchaseReceipts.UpdateAsync(receipt);
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("PurchaseReceiptRegistered", userId, $"رسید خرید {receipt.ReceiptNumber} ثبت شد."));
+        await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.WarehouseUser,
+            "رسید خرید ثبت شد", $"رسید {receipt.ReceiptNumber} با {dto.Items.Count} قلم کالا",
+            NotificationType.System, "/warehouse/purchase-receipts");
         await _unitOfWork.CompleteAsync();
 
         var totalAmount = receipt.Items.Sum(i => i.Quantity * i.UnitCost);
@@ -312,6 +317,9 @@ public class StockService : IStockService
         issue.IssueNumber = DocumentNumberGenerator.Generate(issue.IssueDate, issue.WarehouseId, issue.Id);
         await _unitOfWork.InternalIssues.UpdateAsync(issue);
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("InternalIssueRegistered", userId, $"حواله مصرف داخلی {issue.IssueNumber} ثبت شد."));
+        await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.WarehouseUser,
+            "حواله مصرف داخلی ثبت شد", $"حواله {issue.IssueNumber} با {dto.Items.Count} قلم کالا",
+            NotificationType.System, "/warehouse/internal-issues");
         await _unitOfWork.CompleteAsync();
 
         return issue.Id;
@@ -374,6 +382,9 @@ public class StockService : IStockService
         salesReturn.ReturnNumber = DocumentNumberGenerator.Generate(salesReturn.ReturnDate, salesReturn.WarehouseId, salesReturn.Id);
         await _unitOfWork.SalesReturns.UpdateAsync(salesReturn);
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesReturnRegistered", userId, $"برگشت از فروش {salesReturn.ReturnNumber} ثبت شد."));
+        await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.WarehouseUser,
+            "برگشت از فروش ثبت شد", $"برگشت {salesReturn.ReturnNumber} با {dto.Items.Count} قلم کالا",
+            NotificationType.System, "/warehouse/sales-returns");
         await _unitOfWork.CompleteAsync();
 
         return salesReturn.Id;
@@ -439,6 +450,9 @@ public class StockService : IStockService
         scrap.RecordNumber = DocumentNumberGenerator.Generate(scrap.RecordDate, scrap.WarehouseId, scrap.Id);
         await _unitOfWork.ScrapRecords.UpdateAsync(scrap);
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("ScrapRegistered", userId, $"ضایعات {scrap.RecordNumber} ثبت شد."));
+        await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.WarehouseUser,
+            "ضایعات ثبت شد", $"سند ضایعات {scrap.RecordNumber} با {dto.Items.Count} قلم کالا",
+            NotificationType.System, "/warehouse/scrap");
         await _unitOfWork.CompleteAsync();
 
         return scrap.Id;
@@ -517,6 +531,9 @@ public class StockService : IStockService
         transfer.TransferNumber = DocumentNumberGenerator.Generate(transfer.TransferDate, transfer.SourceWarehouseId, transfer.Id);
         await _unitOfWork.StockTransfers.UpdateAsync(transfer);
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("StockTransferRegistered", userId, $"انتقال {transfer.TransferNumber} ثبت شد."));
+        await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.WarehouseUser,
+            "انتقال بین انبار ثبت شد", $"سند {transfer.TransferNumber} با {dto.Items.Count} قلم کالا",
+            NotificationType.System, "/warehouse/transfers");
         await _unitOfWork.CompleteAsync();
 
         return transfer.Id;
@@ -654,6 +671,9 @@ public class StockService : IStockService
 
         await _unitOfWork.StockCounts.UpdateAsync(stockCount);
         await _unitOfWork.AuditLogs.AddAsync(new AuditLog("StockCountClosed", userId, $"انبارگردانی {stockCount.CountNumber} بسته شد."));
+        await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.WarehouseUser,
+            "انبارگردانی بسته شد", $"انبارگردانی {stockCount.CountNumber} بسته و موجودی‌ها تصحیح شد",
+            NotificationType.System, "/warehouse/stock-counts");
         await _unitOfWork.CompleteAsync();
     }
 

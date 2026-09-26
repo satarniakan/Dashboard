@@ -50,3 +50,9 @@ window.dashboardCartBadge = {
         } catch (e) { /*offline*/ }
     }
 };
+
+// فراخوانی ساده‌ی endpoint های JSON برای کامپوننت‌های تعاملی
+window.dashboardApi = {
+    get: async (url) => (await fetch(url)).json(),
+    post: async (url) => { await fetch(url, { method: 'POST' }); }
+};

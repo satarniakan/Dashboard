@@ -1,0 +1,175 @@
+@* Dashboard.Web/Components/Shared/NotificationBell.razor *@
+@* زنگ اعلان‌ها به سبک Tabler — جزیره‌ی تعاملی؛ داده از fetch به endpoint سبک JSON می‌آید
+   (نه از سرویس مدار) تا هم‌روندی DbContext با صفحات تعاملی پیش نیاید *@
+@rendermode InteractiveServer
+@using Dashboard.Application.DTOs
+@using Dashboard.Domain.Enums
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="notification-bell">
+    <button type="button" class="bell-btn" aria-label="اعلان‌ها" @onclick="ToggleOpen">
+        <i class="bi bi-bell"></i>
+        @if (UnreadCount > 0)
+        {
+            <span class="bell-badge">@UnreadCount</span>
+        }
+    </button>
+
+    @if (open)
+    {
+        <div class="notification-panel">
+            <div class="notif-header">
+                <span>اعلان‌ها</span>
+                @if (UnreadCount > 0)
+                {
+                    <button type="button" class="notif-mark-all" @onclick="MarkAllRead">علامت‌گذاری همه</button>
+                }
+            </div>
+
+            <div class="notif-list">
+                @if (items is null)
+                {
+                    <div class="notif-empty"><i class="bi bi-bell"></i></div>
+                }
+                else if (items.Count == 0)
+                {
+                    <div class="notif-empty">
+                        <i class="bi bi-bell-slash"></i>
+                        <div>اعلانی ندارید</div>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var n in items)
+                    {
+                        <a href="@(n.LinkUrl ?? "#")" class="notif-item @(n.IsRead ? "" : "is-unread")"
+                           @onclick="() => ItemClicked(n)">
+                            <span class="notif-icon"><i class="bi @IconFor(n.Type)"></i></span>
+                            <span class="notif-content">
+                                <span class="notif-title">@n.Title</span>
+                                @if (!string.IsNullOrEmpty(n.Body))
+                                {
+                                    <span class="notif-body">@n.Body</span>
+                                }
+                                <span class="notif-time">@RelativeTime(n.CreatedAt)</span>
+                            </span>
+                            @if (!n.IsRead)
+                            {
+                                <span class="notif-dot"></span>
+                            }
+                        </a>
+                    }
+                }
+            </div>
+
+            <a href="/notifications" class="notif-footer" @onclick="() => open = false">مشاهده‌ی همه‌ی اعلان‌ها</a>
+        </div>
+    }
+</div>
+
+@code {
+    private int UnreadCount;
+    private List<NotificationDto>? items;
+    private bool open;
+    private CancellationTokenSource? pollCts;
+
+    private static string IconFor(NotificationType type) => type switch
+    {
+        NotificationType.Order => "bi-bag-check",
+        NotificationType.Shipment => "bi-truck",
+        _ => "bi-info-circle"
+    };
+
+    private static string RelativeTime(DateTime utc)
+    {
+        var diff = DateTime.UtcNow - utc;
+        if (diff.TotalMinutes < 1) return "همین حالا";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes} دقیقه پیش";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours} ساعت پیش";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays} روز پیش";
+        return utc.ToString("yyyy/MM/dd");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RendererInfo.Name != "Static")
+        {
+            pollCts = new CancellationTokenSource();
+            _ = PollLoop(pollCts.Token);
+        }
+    }
+
+    // polling هر ۳۰ ثانیه — داده با fetch از endpoint سبک می‌آید (خارج از DbContext مدار)
+    private async Task PollLoop(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                await LoadFeed(ct);
+            }
+            catch (OperationCanceledException) { break; }
+            catch { /* خطای شبکه موقتی؛ دوره‌ی بعد تلاش می‌شود */ }
+
+            try { await Task.Delay(30_000, ct); }
+            catch (OperationCanceledException) { break; }
+        }
+    }
+
+    private async Task LoadFeed(CancellationToken ct)
+    {
+        var feed = await JS.InvokeAsync<NotificationFeedDto>("dashboardApi.get", "/notifications/recent");
+        if (ct.IsCancellationRequested) return;
+
+        UnreadCount = feed.UnreadCount;
+        items = feed.Items.ToList();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleOpen()
+    {
+        open = !open;
+        if (open) _ = RunSafeLoad();
+    }
+
+    private async Task RunSafeLoad()
+    {
+        try
+        {
+            if (pollCts is not null) await LoadFeed(pollCts.Token);
+        }
+        catch { }
+    }
+
+    private async Task ItemClicked(NotificationDto n)
+    {
+        if (!n.IsRead)
+        {
+            await JS.InvokeVoidAsync("dashboardApi.post", $"/notifications/{n.Id}/read");
+            UnreadCount = Math.Max(0, UnreadCount - 1);
+            n.IsRead = true;
+        }
+        if (n.LinkUrl is not null)
+        {
+            open = false;
+            await JS.InvokeVoidAsync("eval", $"location.href = '{n.LinkUrl}'");
+        }
+        StateHasChanged();
+    }
+
+    private async Task MarkAllRead()
+    {
+        await JS.InvokeVoidAsync("dashboardApi.post", "/notifications/read-all");
+        UnreadCount = 0;
+        if (items is not null)
+            foreach (var n in items) n.IsRead = true;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        pollCts?.Cancel();
+        pollCts?.Dispose();
+    }
+}

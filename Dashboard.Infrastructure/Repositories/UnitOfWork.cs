@@ -43,6 +43,8 @@ public class UnitOfWork : IUnitOfWork
     public ICartRepository Carts { get; private set; }
     public IDiscountCodeRepository DiscountCodes { get; private set; }
     public IOrderRepository Orders { get; private set; }
+    public INotificationRepository Notifications { get; private set; }
+    public IOutboxRepository Outbox { get; private set; }
 
 
     public UnitOfWork(
@@ -72,7 +74,9 @@ public class UnitOfWork : IUnitOfWork
         ILocationRepository location,
         ICartRepository carts,
         IDiscountCodeRepository discountCodes,
-        IOrderRepository orders
+        IOrderRepository orders,
+        INotificationRepository notifications,
+        IOutboxRepository outboxRepository
 
         )
     {
@@ -109,6 +113,8 @@ public class UnitOfWork : IUnitOfWork
         Carts = carts;
         DiscountCodes = discountCodes;
         Orders = orders;
+        Notifications = notifications;
+        Outbox = outboxRepository;
     }
 
     // این همان متد جادویی است که همه چیز را یک‌باره ذخیره می‌کند

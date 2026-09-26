@@ -24,7 +24,7 @@ public class StockServiceTests
         _unitOfWork.Setup(u => u.StockCounts).Returns(_stockCounts.Object);
         _unitOfWork.Setup(u => u.CompleteAsync()).ReturnsAsync(1);
 
-        _sut = new StockService(_unitOfWork.Object, Mock.Of<ILogger<StockService>>(), Mock.Of<IJournalService>(), _stockValidator.Object);
+        _sut = new StockService(_unitOfWork.Object, Mock.Of<ILogger<StockService>>(), Mock.Of<IJournalService>(), _stockValidator.Object, Mock.Of<INotificationService>());
     }
 
     [Fact]
