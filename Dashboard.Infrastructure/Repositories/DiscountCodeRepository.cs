@@ -39,4 +39,13 @@ public class DiscountCodeRepository : IDiscountCodeRepository
         if (code is not null)
             _context.DiscountCodes.Remove(code);
     }
+
+    public async Task<bool> TryConsumeUsageAsync(int discountCodeId)
+    {
+        var rows = await _context.DiscountCodes
+            .Where(d => d.Id == discountCodeId
+                     && (d.MaxUsageCount == null || d.UsageCount < d.MaxUsageCount))
+            .ExecuteUpdateAsync(s => s.SetProperty(d => d.UsageCount, d => d.UsageCount + 1));
+        return rows > 0;
+    }
 }

@@ -48,4 +48,10 @@ public interface IUnitOfWork
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();
     Task RollbackTransactionAsync();
+
+    /// <summary>
+    /// پاک‌کردن change tracker — بعد از rollback و قبل از تلاش مجدد لازم است تا
+    /// انتیتی‌های Added/Modified مانده از attempt قبلی باعث درج تکراری نشوند.
+    /// </summary>
+    void ClearChangeTracker();
 }

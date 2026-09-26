@@ -35,9 +35,16 @@ public class StockValidator : IStockValidator
     public async Task ValidateSufficientStockAsync(int warehouseId, List<StockItemInput> items)
     {
         foreach (var item in items)
-        {
             CommonValidations.ValidateQuantityPositive(item.Quantity);
 
+        // اقلام تکراری با یک ProductId جمع می‌شوند تا بررسی موجودی واقعی باشد
+        var aggregated = items
+            .GroupBy(i => i.ProductId)
+            .Select(g => (ProductId: g.Key, Quantity: g.Sum(i => i.Quantity)))
+            .ToList();
+
+        foreach (var item in aggregated)
+        {
             var level = await _unitOfWork.StockLevels.GetAsync(item.ProductId, warehouseId);
             var available = level?.QuantityOnHand ?? 0;
 

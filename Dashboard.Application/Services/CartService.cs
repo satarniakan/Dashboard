@@ -32,8 +32,13 @@ public interface ICartService
 public class CartService : ICartService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly StoreOptions _store;
 
-    public CartService(IUnitOfWork unitOfWork) => _unitOfWork = unitOfWork;
+    public CartService(IUnitOfWork unitOfWork, Microsoft.Extensions.Options.IOptions<StoreOptions> storeOptions)
+    {
+        _unitOfWork = unitOfWork;
+        _store = storeOptions.Value;
+    }
 
     public async Task<CartDto> GetCartAsync(string cookieId)
     {
@@ -59,7 +64,8 @@ public class CartService : ICartService
         if (product is null || !product.IsPublished)
             return new CartOperationResult(false, "این کالا در فروشگاه موجود نیست.");
 
-        var stock = await _unitOfWork.StockLevels.GetTotalStockAsync(new[] { productId });
+        // موجودی انبار فروشگاه — سفارش‌ها فقط از همین انبار کسر می‌شوند
+        var stock = await _unitOfWork.StockLevels.GetWarehouseStockAsync(new[] { productId }, _store.WarehouseId);
         var available = stock.TryGetValue(productId, out var s) ? s : 0;
         if (available <= 0)
             return new CartOperationResult(false, $"«{product.Name}» فعلاً ناموجود است.");
@@ -106,10 +112,20 @@ public class CartService : ICartService
             return new CartOperationResult(true);
         }
 
-        var stock = await _unitOfWork.StockLevels.GetTotalStockAsync(new[] { item.ProductId });
+        var stock = await _unitOfWork.StockLevels.GetWarehouseStockAsync(new[] { item.ProductId }, _store.WarehouseId);
         var available = stock.TryGetValue(item.ProductId, out var s) ? s : 0;
+
+        // موجودی تمام شده — قلم به‌جای ماندن با تعداد صفر، از سبد حذف می‌شود
+        if (available <= 0)
+        {
+            cart!.Items.Remove(item);
+            await _unitOfWork.Carts.UpdateAsync(cart);
+            await _unitOfWork.CompleteAsync();
+            return new CartOperationResult(true, "موجودی این کالا تمام شد و از سبد حذف گردید.");
+        }
+
         item.Quantity = Math.Min(quantity, available);
-        await _unitOfWork.Carts.UpdateAsync(cart);
+        await _unitOfWork.Carts.UpdateAsync(cart!);
         await _unitOfWork.CompleteAsync();
 
         return item.Quantity < quantity
@@ -202,7 +218,7 @@ public class CartService : ICartService
     private async Task<CartDto> BuildCartDtoAsync(Cart cart)
     {
         var productIds = cart.Items.Select(i => i.ProductId).ToList();
-        var stock = await _unitOfWork.StockLevels.GetTotalStockAsync(productIds);
+        var stock = await _unitOfWork.StockLevels.GetWarehouseStockAsync(productIds, _store.WarehouseId);
         var products = (await _unitOfWork.Products.GetByIdsAsync(productIds))
             .ToDictionary(p => p.Id);
 

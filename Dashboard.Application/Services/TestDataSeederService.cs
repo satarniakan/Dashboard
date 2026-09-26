@@ -305,16 +305,22 @@ public class TestDataSeederService : ITestDataSeederService
             var secondAmount = firstAmount;
             var thirdAmount = invoiceTotal - firstAmount - secondAmount;
 
-            await _installmentService.CreateInstallmentPlanAsync(new CreateInstallmentPlanDto
+            // مستقیم و بدون اعتبارسنجی سرویس ساخته می‌شود چون یکی از اقساط عمداً
+            // تاریخ گذشته دارد (برای دمو اقساط عقب‌افتاده) و سرویس آن را رد می‌کند.
+            var plan = new Dashboard.Domain.Entities.InstallmentPlan
             {
                 SalesInvoiceId = invoiceIds[i],
-                Installments = new List<InstallmentInput>
-                {
-                    new(DateTime.UtcNow.AddDays(-10), firstAmount), // این یکی عقب‌افتاده است
-                    new(DateTime.UtcNow.AddDays(20), secondAmount),
-                    new(DateTime.UtcNow.AddDays(50), thirdAmount)
-                }
-            }, userId);
+                CreatedByUserId = userId
+            };
+            plan.Installments.Add(new Dashboard.Domain.Entities.Installment
+            { SequenceNumber = 1, DueDate = DateTime.UtcNow.AddDays(-10), Amount = firstAmount });
+            plan.Installments.Add(new Dashboard.Domain.Entities.Installment
+            { SequenceNumber = 2, DueDate = DateTime.UtcNow.AddDays(20), Amount = secondAmount });
+            plan.Installments.Add(new Dashboard.Domain.Entities.Installment
+            { SequenceNumber = 3, DueDate = DateTime.UtcNow.AddDays(50), Amount = thirdAmount });
+
+            await _unitOfWork.InstallmentPlans.AddAsync(plan);
+            await _unitOfWork.CompleteAsync();
         }
 
         // ---------- ۱۲. صندوق/بانک ----------

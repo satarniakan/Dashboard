@@ -80,7 +80,12 @@ public class Product
 
     public void ApplyDiscount(decimal percent)
     {
-        Price -= Price * (percent / 100);
+        if (percent < 0 || percent > 100)
+            throw new ArgumentException("درصد تخفیف باید بین صفر تا صد باشد.", nameof(percent));
+
+        var newPrice = Math.Round(Price - Price * (percent / 100), 2, MidpointRounding.AwayFromZero);
+        if (newPrice < 0) throw new ArgumentException("قیمت پس از تخفیف نمی‌تواند منفی باشد.");
+        Price = newPrice;
     }
 
     // امضای قبلی — دست‌نخورده

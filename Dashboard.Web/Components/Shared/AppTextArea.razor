@@ -61,7 +61,7 @@
 
     private Dictionary<string, object>? ExtraAttributes =>
         ResolvedMaxLength is not null
-            ? new Dictionary<string, object?> { ["maxlength"] = ResolvedMaxLength.Value }
+            ? new Dictionary<string, object> { ["maxlength"] = ResolvedMaxLength.Value }
             : null;
 
     private Task OnInput(ChangeEventArgs e) => ValueChanged.InvokeAsync(e.Value?.ToString());

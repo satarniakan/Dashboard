@@ -38,6 +38,8 @@ public class OtpService : IOtpService
             IsUsed = false
         };
 
+        // کدهای معتبر قبلی باطل می‌شوند — فقط آخرین کد ارسال‌شده قابل استفاده است
+        await _otpRepository.InvalidatePreviousAsync(phoneNumber);
         await _otpRepository.AddAsync(otp);
         await _unitOfWork.CompleteAsync();
         await _smsSender.SendAsync(phoneNumber, $"کد ورود شما: {code}");
@@ -55,7 +57,13 @@ public class OtpService : IOtpService
             return false;
         }
 
-        await _otpRepository.MarkAsUsedAsync(otp.Id);
+        // مصرف اتمیک: اگر درخواست موازی دیگری قبلاً همین کد را مصرف کرده باشد، false می‌شود
+        if (!await _otpRepository.TryMarkAsUsedAsync(otp.Id))
+        {
+            _logger.LogWarning("OTP already consumed by a concurrent request for {PhoneNumber}", phoneNumber);
+            return false;
+        }
+
         await _unitOfWork.CompleteAsync();
         return true;
     }

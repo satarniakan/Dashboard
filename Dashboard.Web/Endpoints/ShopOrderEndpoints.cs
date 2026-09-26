@@ -5,7 +5,6 @@ using Dashboard.Application.Services;
 using Dashboard.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc;
 
 namespace Dashboard.Web.Endpoints;
 
@@ -103,7 +102,7 @@ public static class ShopOrderEndpoints
             if (!success)
                 return Results.Redirect($"/shop/orders/{order.Id}?error={Uri.EscapeDataString(error ?? "")}");
 
-            return Results.Redirect($"/shop/orders/{order.Id}?paid=1");
+            return Results.Redirect($"/shop/orders/{order.Id}?paid=true");
         });
 
         return app;

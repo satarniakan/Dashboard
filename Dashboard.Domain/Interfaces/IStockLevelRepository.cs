@@ -23,4 +23,8 @@ public interface IStockLevelRepository
 
     /// جمع موجودی هر کالا در کل انبارها — برای نمایش «موجود/ناموجود» در فروشگاه
     Task<Dictionary<int, decimal>> GetTotalStockAsync(IReadOnlyCollection<int> productIds);
+
+    /// موجودی هر کالا فقط در یک انبار مشخص — سفارش‌های فروشگاه از همین انبار کسر می‌شوند،
+    /// پس بررسی کفایت هم باید روی همان انبار باشد (نه جمع همه انبارها)
+    Task<Dictionary<int, decimal>> GetWarehouseStockAsync(IReadOnlyCollection<int> productIds, int warehouseId);
 }

@@ -8,8 +8,6 @@ public static class Roles
     public const string WarehouseUser = "WarehouseUser";
     public const string AccountingUser = "AccountingUser";
     public const string User = "User";
-    /// <summary>فقط به‌عنوان fallback؛ مقدار واقعی از «Identity:FirstAdminPhoneNumber» در appsettings/User Secrets خوانده می‌شود</summary>
-    public const string FirstAdminPhoneNumber = "09125993396";
     public static readonly string[] All =
     {
         Admin, Colleague, Salesperson, WarehouseUser, AccountingUser, User

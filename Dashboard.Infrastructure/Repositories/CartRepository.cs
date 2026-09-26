@@ -26,10 +26,8 @@ public class CartRepository : ICartRepository
 
     public async Task<Cart> GetOrCreateAsync(string cookieId)
     {
-        // پاک‌سازی فرصت‌طلبانه‌ی سبدهای منقضی (کوئری سبک؛ در نبود سبد منقضی هزینه‌ای ندارد)
-        var expired = await _context.Carts.Where(c => c.ExpiresAt < DateTime.UtcNow).ToListAsync();
-        if (expired.Count > 0)
-            _context.Carts.RemoveRange(expired);
+        // پاک‌سازی فرصت‌طلبانه‌ی سبدهای منقضی — مستقیم در دیتابیس، بدون بارگذاری در حافظه
+        await _context.Carts.Where(c => c.ExpiresAt < DateTime.UtcNow).ExecuteDeleteAsync();
 
         var cart = await _context.Carts.Include(c => c.Items).FirstOrDefaultAsync(c => c.CookieId == cookieId);
         if (cart is null)
@@ -55,10 +53,6 @@ public class CartRepository : ICartRepository
         await Task.CompletedTask;
     }
 
-    public async Task DeleteExpiredAsync()
-    {
-        var expired = await _context.Carts.Where(c => c.ExpiresAt < DateTime.UtcNow).ToListAsync();
-        _context.Carts.RemoveRange(expired);
-        await Task.CompletedTask;
-    }
+    public async Task DeleteExpiredAsync() =>
+        await _context.Carts.Where(c => c.ExpiresAt < DateTime.UtcNow).ExecuteDeleteAsync();
 }

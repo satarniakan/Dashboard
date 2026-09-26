@@ -31,7 +31,10 @@
         ToastService.OnShow += HandleShow;
     }
 
-    private async void HandleShow(ToastMessage toast)
+    // هندلر رویداد نباید async void باشد؛ استثنا در Task جداگانه مهار می‌شود
+    private void HandleShow(ToastMessage toast) => _ = HandleShowAsync(toast);
+
+    private async Task HandleShowAsync(ToastMessage toast)
     {
         // در رندر استاتیک (پیش‌رندر اولیه یا پردازش POST فرم بدون مدار تعاملی)
         // توست جایی برای نمایش ندارد و re-render وسط پاسخ استاتیک می‌تواند

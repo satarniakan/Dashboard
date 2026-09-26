@@ -109,7 +109,11 @@ public class SalesService : ISalesService
             total += item.Quantity * item.UnitPrice;
         }
 
-        invoice.TotalAmount = total - dto.DiscountAmount;
+        // تخفیف هرگز نمی‌تواند از جمع اقلام بیشتر باشد (TotalAmount منفی = سند حسابداری و طلب منفی)
+        if (dto.DiscountAmount > total)
+            throw new BusinessRuleException($"تخفیف ({dto.DiscountAmount:0.##}) نمی‌تواند از جمع اقلام فاکتور ({total:0.##}) بیشتر باشد.");
+
+        invoice.TotalAmount = Math.Round(total - dto.DiscountAmount, 2, MidpointRounding.AwayFromZero);
 
         await _unitOfWork.SalesInvoices.AddAsync(invoice);
         await _unitOfWork.CompleteAsync(); // اینجا Id واقعی ساخته می‌شود
@@ -204,8 +208,11 @@ public class SalesService : ISalesService
             }
             catch (DbUpdateConcurrencyException) when (attempt < maxRetries)
             {
-                // رکورد موجودی توسط یک درخواست همزمان دیگر تغییر کرده است؛ رول‌بک و تلاش دوباره از ابتدا
+                // رکورد موجودی توسط یک درخواست همزمان دیگر تغییر کرده است؛ رول‌بک و تلاش دوباره از ابتدا.
+                // پاک‌کردن tracker ضروری است: انتیتی‌های Added/Modified مانده از attempt قبلی
+                // در غیر این صورت دوباره (تکراری) ذخیره می‌شدند.
                 await _unitOfWork.RollbackTransactionAsync();
+                _unitOfWork.ClearChangeTracker();
                 _logger.LogWarning("Concurrency conflict while confirming invoice {InvoiceId}, retrying (attempt {Attempt})", invoiceId, attempt);
             }
             catch
@@ -294,6 +301,7 @@ public class SalesService : ISalesService
             catch (DbUpdateConcurrencyException) when (attempt < maxRetries)
             {
                 await _unitOfWork.RollbackTransactionAsync();
+                _unitOfWork.ClearChangeTracker();
                 _logger.LogWarning("Concurrency conflict while canceling invoice {InvoiceId}, retrying (attempt {Attempt})", invoiceId, attempt);
             }
             catch

@@ -31,13 +31,18 @@ public class ZarinpalPaymentGateway : IPaymentGateway
     private string BaseUrl => _sandbox ? "https://sandbox.zarinpal.com" : "https://payment.zarinpal.com";
     private string StartPayUrl => $"{BaseUrl}/StartPay/";
 
+    // گرد کردن (نه truncate) به ریال: مبلغ request و verify باید دقیقاً یکسان باشند،
+    // وگرنه تراکنشِ پرداخت‌شده در مرحله‌ی verify به‌خاطر اختلاف چند ریالی رد می‌شود
+    private static long ToRial(decimal amountInToman) =>
+        (long)Math.Round(amountInToman * 10m, 0, MidpointRounding.AwayFromZero);
+
     public async Task<PaymentRequestResult> RequestPaymentAsync(decimal amountInToman, string description, string callbackUrl)
     {
         if (string.IsNullOrWhiteSpace(_merchantId))
             return new PaymentRequestResult(false, null, null, "درگاه پرداخت پیکربندی نشده است (Zarinpal:MerchantId).");
 
         // زرین‌پال v4 مبلغ را به ریال می‌گیرد
-        var amountInRial = (long)(amountInToman * 10);
+        var amountInRial = ToRial(amountInToman);
 
         var payload = new
         {
@@ -50,16 +55,22 @@ public class ZarinpalPaymentGateway : IPaymentGateway
         try
         {
             var response = await _http.PostAsJsonAsync($"{BaseUrl}/pg/v4/payment/request.json", payload, JsonOpts);
-            response.EnsureSuccessStatusCode();
+
+            // در v4 خطاها با HTTP 4xx و بدنه‌ی JSON برمی‌گردند — اول بدنه خوانده می‌شود
+            // تا علت واقعی (مرچنت نامعتبر، مبلغ کمتر از کف و…) به کاربر برسد
             var body = await response.Content.ReadFromJsonAsync<ZarinpalResponse>(JsonOpts);
 
-            if (body?.Data is not null && body.Errors is null or { Count: 0 })
+            if (response.IsSuccessStatusCode && body?.Errors is null && body?.Data is not null)
             {
-                var authority = body.Data.Authority;
-                return new PaymentRequestResult(true, $"{StartPayUrl}{authority}", authority, null);
+                // code = 100 یعنی درخواست پرداخت با موفقیت ساخته شد
+                if (body.Data.Code == 100 && !string.IsNullOrEmpty(body.Data.Authority))
+                    return new PaymentRequestResult(true, $"{StartPayUrl}{body.Data.Authority}", body.Data.Authority, null);
+
+                return new PaymentRequestResult(false, null, null,
+                    $"درگاه درخواست پرداخت را نپذیرفت (کد {body.Data.Code}: {body.Data.Message ?? "بدون توضیح"}).");
             }
 
-            var error = body?.Errors is { Count: > 0 } ? $"{body.Errors[0].Code}: {body.Errors[0].Message}" : "پاسخ نامعتبر از درگاه";
+            var error = FormatError(body?.Errors) ?? $"درگاه با وضعیت HTTP {(int)response.StatusCode} پاسخ داد.";
             return new PaymentRequestResult(false, null, null, error);
         }
         catch (Exception ex)
@@ -70,7 +81,10 @@ public class ZarinpalPaymentGateway : IPaymentGateway
 
     public async Task<PaymentVerificationResult> VerifyPaymentAsync(decimal amountInToman, string authority)
     {
-        var amountInRial = (long)(amountInToman * 10);
+        if (string.IsNullOrWhiteSpace(_merchantId))
+            return new PaymentVerificationResult(false, null, "درگاه پرداخت پیکربندی نشده است (Zarinpal:MerchantId).");
+
+        var amountInRial = ToRial(amountInToman);
 
         var payload = new
         {
@@ -82,17 +96,19 @@ public class ZarinpalPaymentGateway : IPaymentGateway
         try
         {
             var response = await _http.PostAsJsonAsync($"{BaseUrl}/pg/v4/payment/verify.json", payload, JsonOpts);
-            response.EnsureSuccessStatusCode();
             var body = await response.Content.ReadFromJsonAsync<ZarinpalVerifyResponse>(JsonOpts);
 
-            if (body?.Data is not null && (body.Errors is null || body.Errors.Count == 0))
+            if (response.IsSuccessStatusCode && body?.Errors is null && body?.Data is not null)
             {
                 // code = 100 یعنی تأیید شد، 101 یعنی قبلاً تأیید شده (idempotent)
                 if (body.Data.Code is 100 or 101)
                     return new PaymentVerificationResult(true, body.Data.RefId?.ToString(), null);
+
+                return new PaymentVerificationResult(false, null,
+                    $"تأیید پرداخت ناموفق (کد {body.Data.Code}: {body.Data.Message ?? "بدون توضیح"}).");
             }
 
-            var error = body?.Errors is { Count: > 0 } ? $"{body.Errors[0].Code}: {body.Errors[0].Message}" : $"کد وضعیت: {body?.Data?.Code}";
+            var error = FormatError(body?.Errors) ?? $"کد وضعیت: {body?.Data?.Code}";
             return new PaymentVerificationResult(false, null, error);
         }
         catch (Exception ex)
@@ -101,11 +117,15 @@ public class ZarinpalPaymentGateway : IPaymentGateway
         }
     }
 
+    private static string? FormatError(ZarinpalErrorBody? errors) =>
+        errors is null ? null : $"خطای درگاه (کد {errors.Code}): {errors.Message ?? "بدون توضیح"}";
+
     // --- DTO های پاسخ زرین‌پال ---
+    // در v4 فیلد errors یک «آبجکت» است (نه آرایه): { code, message, validations }
     private sealed class ZarinpalResponse
     {
         [JsonPropertyName("data")] public ZarinpalRequestData? Data { get; set; }
-        [JsonPropertyName("errors")] public List<ZarinpalError>? Errors { get; set; }
+        [JsonPropertyName("errors")] public ZarinpalErrorBody? Errors { get; set; }
     }
 
     private sealed class ZarinpalRequestData
@@ -119,7 +139,7 @@ public class ZarinpalPaymentGateway : IPaymentGateway
     private sealed class ZarinpalVerifyResponse
     {
         [JsonPropertyName("data")] public ZarinpalVerifyData? Data { get; set; }
-        [JsonPropertyName("errors")] public List<ZarinpalError>? Errors { get; set; }
+        [JsonPropertyName("errors")] public ZarinpalErrorBody? Errors { get; set; }
     }
 
     private sealed class ZarinpalVerifyData
@@ -129,7 +149,7 @@ public class ZarinpalPaymentGateway : IPaymentGateway
         [JsonPropertyName("message")] public string? Message { get; set; }
     }
 
-    private sealed class ZarinpalError
+    private sealed class ZarinpalErrorBody
     {
         [JsonPropertyName("code")] public long Code { get; set; }
         [JsonPropertyName("message")] public string? Message { get; set; }

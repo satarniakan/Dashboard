@@ -17,4 +17,10 @@ public interface IDiscountCodeRepository
     Task UpdateAsync(DiscountCode discountCode);
 
     Task DeleteAsync(int id);
+
+    /// <summary>
+    /// افزایش اتمیک UsageCount فقط در صورت پر نبودن سقف مصرف (UPDATE مشروط در دیتابیس).
+    /// خروجی false یعنی سقف بین ثبت سفارش و پرداخت پر شده است.
+    /// </summary>
+    Task<bool> TryConsumeUsageAsync(int discountCodeId);
 }

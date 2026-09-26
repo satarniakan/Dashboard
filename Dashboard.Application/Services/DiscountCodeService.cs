@@ -49,8 +49,10 @@ public class DiscountCodeService : IDiscountCodeService
             MaxDiscountAmount = dto.MaxDiscountAmount,
             MinCartAmount = dto.MinCartAmount,
             MaxUsageCount = dto.MaxUsageCount,
-            StartsAt = dto.StartsAt,
-            ExpiresAt = dto.ExpiresAt
+            // تاریخ‌های واردشده در پنل مدیریت Kind ندارند و به وقت تهران تعبیر می‌شوند؛
+            // اعتبارسنجی IsValidNow با UtcNow مقایسه می‌کند، پس این‌جا به UTC نرمال می‌شوند.
+            StartsAt = ToUtc(dto.StartsAt),
+            ExpiresAt = ToUtc(dto.ExpiresAt)
         };
 
         await _unitOfWork.DiscountCodes.AddAsync(code);
@@ -78,4 +80,15 @@ public class DiscountCodeService : IDiscountCodeService
     private static DiscountCodeDto ToDto(DiscountCode d) => new(
         d.Id, d.Code, d.Type, d.Value, d.MaxDiscountAmount, d.MinCartAmount,
         d.MaxUsageCount, d.UsageCount, d.StartsAt, d.ExpiresAt, d.IsActive);
+
+    private static readonly TimeSpan TehranOffset = new(3, 30, 0);
+
+    private static DateTime? ToUtc(DateTime? value) => value switch
+    {
+        null => null,
+        { Kind: DateTimeKind.Utc } utc => utc,
+        { Kind: DateTimeKind.Local } local => local.ToUniversalTime(),
+        // تاریخ بدون Kind (ورودی فرم) به وقت تهران تعبیر می‌شود
+        { } unspecified => DateTime.SpecifyKind(unspecified - TehranOffset, DateTimeKind.Utc)
+    };
 }

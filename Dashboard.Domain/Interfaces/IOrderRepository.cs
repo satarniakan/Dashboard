@@ -21,6 +21,16 @@ public interface IOrderRepository
 
     Task UpdateAsync(Order order);
 
+    /// <summary>
+    /// claim اتمیک سفارش برای پرداخت: فقط اگر هنوز PendingPayment است آن را Paid/PaidAt می‌کند.
+    /// خروجی false یعنی درخواست همزمان دیگری زودتر پردازش کرده (یا سفارش لغو شده) —
+    /// محافظ idempotency در برابر callback تکراری/موازی درگاه پرداخت.
+    /// </summary>
+    Task<bool> TryClaimForPaymentAsync(int orderId);
+
+    /// <summary>وضعیت فعلی سفارش مستقیم از دیتابیس (بدون کشِ change tracker) — null یعنی سفارش وجود ندارد</summary>
+    Task<Domain.Enums.OrderStatus?> GetStatusAsync(int orderId);
+
     /// <summary>سفارش‌های PendingPayment قدیمی‌تر از عمر مشخص — برای انقضای خودکار</summary>
     Task<List<Order>> GetStalePendingPaymentAsync(TimeSpan maxAge);
 }

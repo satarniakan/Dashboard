@@ -37,4 +37,19 @@ public class OtpCodeRepository : IOtpRepository
             //await _context.SaveChangesAsync();
         }
     }
+
+    public async Task<bool> TryMarkAsUsedAsync(int id)
+    {
+        var rows = await _context.OtpCodes
+            .Where(o => o.Id == id && !o.IsUsed)
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.IsUsed, true));
+        return rows > 0;
+    }
+
+    public async Task InvalidatePreviousAsync(string phoneNumber)
+    {
+        await _context.OtpCodes
+            .Where(o => o.PhoneNumber == phoneNumber && !o.IsUsed && o.ExpiresAt > DateTime.UtcNow)
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.IsUsed, true));
+    }
 }

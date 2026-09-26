@@ -12,6 +12,7 @@ public class StockLevelRepository : IStockLevelRepository
 
     public async Task<StockLevel?> GetAsync(int productId, int warehouseId) =>
         await _context.StockLevels
+            .Include(s => s.Product)
             .FirstOrDefaultAsync(s => s.ProductId == productId && s.WarehouseId == warehouseId);
 
     public async Task<IEnumerable<StockLevel>> GetByWarehouseAsync(int warehouseId) =>
@@ -92,5 +93,14 @@ public class StockLevelRepository : IStockLevelRepository
             .GroupBy(sl => sl.ProductId)
             .Select(g => new { ProductId = g.Key, Total = g.Sum(x => x.QuantityOnHand) })
             .ToDictionaryAsync(x => x.ProductId, x => x.Total);
+    }
+
+    public async Task<Dictionary<int, decimal>> GetWarehouseStockAsync(IReadOnlyCollection<int> productIds, int warehouseId)
+    {
+        if (productIds.Count == 0) return new Dictionary<int, decimal>();
+
+        return await _context.StockLevels
+            .Where(sl => sl.WarehouseId == warehouseId && productIds.Contains(sl.ProductId))
+            .ToDictionaryAsync(sl => sl.ProductId, sl => sl.QuantityOnHand);
     }
 }

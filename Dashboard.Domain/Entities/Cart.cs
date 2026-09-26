@@ -7,9 +7,6 @@ public class Cart
     public int Id { get; set; }
     public string CookieId { get; set; } = string.Empty;
 
-    // پس از ورود کاربر (فاز پرداخت)، سبد مهمان به کاربر منتقل/اتصال داده می‌شود
-    public int? UserId { get; set; }
-
     /// <summary>کد تخفیف اعمال‌شده روی سبد (اعتبارسنجی مجدد هنگام تسویه)</summary>
     public int? DiscountCodeId { get; set; }
     public DiscountCode? DiscountCode { get; set; }

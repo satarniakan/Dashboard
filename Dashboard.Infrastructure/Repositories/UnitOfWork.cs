@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Interfaces;
@@ -124,6 +125,13 @@ public class UnitOfWork : IUnitOfWork
         {
             return await _context.SaveChangesAsync();
         }
+        // استثنای همزمانی (RowVersion) باید عیناً به تماس‌گیرنده برسد تا
+        // حلقه‌های retry در سرویس‌ها کار کنند؛ DbUpdateConcurrencyException
+        // زیرکلاس DbUpdateException است و اگر اول گرفته نشود، گم می‌شود.
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            throw;
+        }
         catch (Microsoft.EntityFrameworkCore.DbUpdateException)
         {
             throw new Dashboard.Domain.Exceptions.BusinessRuleException(
@@ -133,7 +141,14 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task BeginTransactionAsync()
     {
-        _transaction = await _context.Database.BeginTransactionAsync();
+        // تراکنش تو‌در‌تو مجاز نیست: تراکنش قبلی بدون Dispose بازنویسی می‌شد (نشت اتصال).
+        if (_transaction is not null)
+            throw new InvalidOperationException("یک تراکنش باز از قبل وجود دارد؛ BeginTransactionAsync تو‌در‌تو پشتیبانی نمی‌شود.");
+
+        // با EnableRetryOnFailure، شروع تراکنش دستی باید داخل ExecutionStrategy انجام شود،
+        // وگرنه EF بلافاصله InvalidOperationException می‌اندازد.
+        var strategy = _context.Database.CreateExecutionStrategy();
+        _transaction = await strategy.ExecuteAsync(() => _context.Database.BeginTransactionAsync());
     }
 
     public async Task CommitTransactionAsync()
@@ -151,4 +166,6 @@ public class UnitOfWork : IUnitOfWork
         await _transaction.DisposeAsync();
         _transaction = null;
     }
+
+    public void ClearChangeTracker() => _context.ChangeTracker.Clear();
 }

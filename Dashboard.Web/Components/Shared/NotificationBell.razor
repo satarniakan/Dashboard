@@ -5,6 +5,7 @@
 @using Dashboard.Application.DTOs
 @using Dashboard.Domain.Enums
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 @implements IDisposable
 
 <div class="notification-bell">
@@ -153,7 +154,7 @@
         if (n.LinkUrl is not null)
         {
             open = false;
-            await JS.InvokeVoidAsync("eval", $"location.href = '{n.LinkUrl}'");
+            Nav.NavigateTo(n.LinkUrl);
         }
         StateHasChanged();
     }

@@ -47,7 +47,7 @@ public static class AccountEndpoints
             }
 
             return result.IsNewUser
-                ? Results.Redirect("/profile?welcome=1")
+                ? Results.Redirect("/profile?welcome=true")
                 : Results.Redirect("/");
         }).RequireRateLimiting("otp-verify");
 

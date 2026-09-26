@@ -23,7 +23,7 @@
     <EditForm Model="@model" OnValidSubmit="HandleSend" FormName="BroadcastForm">
         <DataAnnotationsValidator />
 
-        <AppTextField @bind-Value="model.Title" Label="عنوان" Required="true"
+        <AppTextField @bind-Value="model!.Title" Label="عنوان" Required="true"
                       Placeholder="مثلاً: اطلاعیه‌ی تعطیلی رسمی" />
 
         <AppTextArea @bind-Value="model.Body" Label="متن اعلان"

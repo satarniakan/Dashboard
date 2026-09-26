@@ -27,6 +27,12 @@ public class InstallmentService : IInstallmentService
         if (dto.Installments.Count == 0)
             throw new BusinessRuleException("حداقل یک قسط لازم است.");
 
+        if (dto.Installments.Any(i => i.Amount <= 0))
+            throw new BusinessRuleException("مبلغ هر قسط باید بیشتر از صفر باشد.");
+
+        if (dto.Installments.Any(i => i.DueDate.Date < DateTime.UtcNow.Date))
+            throw new BusinessRuleException("سررسید قسط نمی‌تواند در گذشته باشد.");
+
         var invoice = await _unitOfWork.SalesInvoices.GetByIdAsync(dto.SalesInvoiceId)
             ?? throw new NotFoundException("فاکتور", dto.SalesInvoiceId);
 

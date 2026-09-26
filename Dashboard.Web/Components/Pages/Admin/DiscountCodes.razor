@@ -31,7 +31,7 @@
             <EditForm Model="@newCode" OnValidSubmit="HandleCreate" FormName="CreateDiscountForm">
                 <DataAnnotationsValidator />
 
-                <AppTextField @bind-Value="newCode.Code" Label="کد تخفیف" Required="true"
+                <AppTextField @bind-Value="newCode!.Code" Label="کد تخفیف" Required="true"
                               Placeholder="مثلاً: YALDA1404" Hint="با حروف بزرگ ذخیره می‌شود؛ باید یکتا باشد." />
 
                 <AppDropdown Label="نوع تخفیف" @bind-Value="newCode.Type" Required="true">

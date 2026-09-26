@@ -25,8 +25,7 @@ public static class ShopCartEndpoints
             var cookieId = GetOrCreateCartCookie(httpContext);
             var result = await cartService.AddToCartAsync(cookieId, productId, quantity);
 
-            var message = result.Message is null ? "" : $"?msg={Uri.EscapeDataString(result.Message)}";
-            return Results.Redirect("/shop/cart" + message);
+            return Results.Redirect(BuildRedirect(returnUrl, result.Message));
         });
 
         app.MapPost("/shop/cart/update", async (
@@ -41,8 +40,7 @@ public static class ShopCartEndpoints
                 return Results.Redirect("/shop/cart");
 
             var result = await cartService.UpdateQuantityAsync(cookieId, itemId, quantity);
-            var message = result.Message is null ? "" : $"?msg={Uri.EscapeDataString(result.Message)}";
-            return Results.Redirect("/shop/cart" + message);
+            return Results.Redirect(BuildRedirect(returnUrl, result.Message));
         });
 
         // شمارنده‌ی سبد برای بَج — fetch از JS (خارج از مدار Blazor، بدون تداخل DbContext)
@@ -94,6 +92,18 @@ public static class ShopCartEndpoints
 
         return app;
     }
+
+    /// <summary>مسیر بازگشت را فقط در صورت محلی (داخل سایت) بودن می‌پذیرد — جلوگیری از Open Redirect</summary>
+    private static string BuildRedirect(string? returnUrl, string? message)
+    {
+        var baseUrl = IsLocalUrl(returnUrl) ? returnUrl! : "/shop/cart";
+        if (string.IsNullOrEmpty(message)) return baseUrl;
+        var separator = baseUrl.Contains('?') ? "&" : "?";
+        return $"{baseUrl}{separator}msg={Uri.EscapeDataString(message)}";
+    }
+
+    private static bool IsLocalUrl(string? url) =>
+        url is not null && url.StartsWith('/') && !url.StartsWith("//") && !url.StartsWith("/\\");
 
     /// <summary>شناسه‌ی سبد را از کوکی می‌خواند؛ نبود آن را می‌سازد و همیشه کوکی را دوباره ست می‌کند
     /// (تا کوکی‌های قدیمی — مثلاً HttpOnly نسخه‌های قبلی — به تنظیمات جدید ارتقا یابند)</summary>

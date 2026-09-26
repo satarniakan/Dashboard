@@ -31,6 +31,26 @@ public class TreasuryService : ITreasuryService
     {
         _unitOfWork = unitOfWork;
         _journalService = journalService;
+        _notifications = notifications;
+    }
+
+    /// <summary>
+    /// اجرای عملیات چندمرحله‌ای (رسید + قسط + شماره‌گذاری + سند حسابداری) در یک تراکنش —
+    /// اگر سند حسابداری شکست بخورد، رسید و تغییر قسط هم commit نمی‌شوند (دفتر کل ناراست نمی‌شود).
+    /// </summary>
+    private async Task RunInTransactionAsync(Func<Task> action)
+    {
+        await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            await action();
+            await _unitOfWork.CommitTransactionAsync();
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync();
+            throw;
+        }
     }
 
     // هر صندوق/بانک جدید، خودش هم یک سرفصل حساب معادل در دفتر کل می‌سازد؛ چون اگر موجودی
@@ -84,58 +104,73 @@ public class TreasuryService : ITreasuryService
     {
         CommonValidations.ValidateAmountPositive(dto.Amount);
 
-        var financialAccount = await _unitOfWork.FinancialAccounts.GetByIdAsync(dto.FinancialAccountId)
-            ?? throw new NotFoundException("صندوق/بانک", dto.FinancialAccountId);
-
-        var receipt = new CustomerReceipt
+        var receiptId = 0;
+        await RunInTransactionAsync(async () =>
         {
-            CustomerId = dto.CustomerId,
-            FinancialAccountId = dto.FinancialAccountId,
-            ReceiptNumber = $"TEMP-{Guid.NewGuid():N}",
-            Amount = dto.Amount,
-            Method = Enum.Parse<PaymentMethod>(dto.Method),
-            ReceiptDate = dto.ReceiptDate,
-            ChequeNumber = dto.ChequeNumber,
-            ChequeDueDate = dto.ChequeDueDate,
-            Notes = dto.Notes,
-            InstallmentId = dto.InstallmentId,
-            CreatedByUserId = userId
-        };
+            var financialAccount = await _unitOfWork.FinancialAccounts.GetByIdAsync(dto.FinancialAccountId)
+                ?? throw new NotFoundException("صندوق/بانک", dto.FinancialAccountId);
 
-        await _unitOfWork.CustomerReceipts.AddAsync(receipt);
-
-        if (dto.InstallmentId.HasValue)
-        {
-            var installment = await _unitOfWork.InstallmentPlans.GetInstallmentByIdAsync(dto.InstallmentId.Value)
-                ?? throw new NotFoundException("قسط", dto.InstallmentId!.Value);
-
-            installment.PaidAmount += dto.Amount;
-        }
-
-        await _unitOfWork.CompleteAsync(); // اینجا receipt.Id واقعی ساخته می‌شود
-
-        receipt.ReceiptNumber = DocumentNumberGenerator.Generate(receipt.ReceiptDate, receipt.CustomerId, receipt.Id);
-        await _unitOfWork.CustomerReceipts.UpdateAsync(receipt);
-        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("CustomerReceiptRegistered", userId, $"دریافت {receipt.ReceiptNumber} به مبلغ {dto.Amount} ثبت شد."));
-        await _unitOfWork.CompleteAsync();
-
-        await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.AccountingUser,
-            "دریافت از مشتری ثبت شد", $"رسید {receipt.ReceiptNumber} به مبلغ {dto.Amount:0} تومان",
-            NotificationType.System, "/accounting/customer-receipts");
-
-        // دریافت پول: بدهکار صندوق/بانک، بستانکار حساب‌های دریافتنی (طلب از مشتری کم می‌شود)
-        await _journalService.PostEntryAsync(
-            description: $"دریافت وجه طبق رسید {receipt.ReceiptNumber}",
-            lines: new List<JournalLineInput>
+            var receipt = new CustomerReceipt
             {
-            new(financialAccount.Account!.Code, dto.Amount, 0, "افزایش موجودی صندوق/بانک"),
-            new(SystemAccountCodes.AccountsReceivable, 0, dto.Amount, "کاهش طلب از مشتری", "Customer", dto.CustomerId)
-            },
-            referenceType: nameof(CustomerReceipt),
-            referenceId: receipt.Id,
-            userId: userId);
+                CustomerId = dto.CustomerId,
+                FinancialAccountId = dto.FinancialAccountId,
+                ReceiptNumber = $"TEMP-{Guid.NewGuid():N}",
+                Amount = dto.Amount,
+                Method = Enum.Parse<PaymentMethod>(dto.Method),
+                ReceiptDate = dto.ReceiptDate,
+                ChequeNumber = dto.ChequeNumber,
+                ChequeDueDate = dto.ChequeDueDate,
+                Notes = dto.Notes,
+                InstallmentId = dto.InstallmentId,
+                CreatedByUserId = userId
+            };
 
-        return receipt.Id;
+            await _unitOfWork.CustomerReceipts.AddAsync(receipt);
+
+            if (dto.InstallmentId.HasValue)
+            {
+                var installment = await _unitOfWork.InstallmentPlans.GetInstallmentByIdAsync(dto.InstallmentId.Value)
+                    ?? throw new NotFoundException("قسط", dto.InstallmentId!.Value);
+
+                // قسط باید به همان مشتری تعلق داشته باشد
+                var installmentCustomerId = installment.InstallmentPlan?.SalesInvoice?.CustomerId;
+                if (installmentCustomerId != dto.CustomerId)
+                    throw new BusinessRuleException("این قسط به مشتری انتخاب‌شده تعلق ندارد.");
+
+                // پرداخت بیش از مانده قسط مجاز نیست
+                var remaining = installment.Amount - installment.PaidAmount;
+                if (dto.Amount > remaining)
+                    throw new BusinessRuleException($"مبلغ دریافتی از مانده‌ی قسط بیشتر است (مانده: {remaining:0.##}).");
+
+                installment.PaidAmount += dto.Amount;
+            }
+
+            await _unitOfWork.CompleteAsync(); // اینجا receipt.Id واقعی ساخته می‌شود
+            receiptId = receipt.Id;
+
+            receipt.ReceiptNumber = DocumentNumberGenerator.Generate(receipt.ReceiptDate, receipt.CustomerId, receipt.Id);
+            await _unitOfWork.CustomerReceipts.UpdateAsync(receipt);
+            await _unitOfWork.AuditLogs.AddAsync(new AuditLog("CustomerReceiptRegistered", userId, $"دریافت {receipt.ReceiptNumber} به مبلغ {dto.Amount} ثبت شد."));
+            await _unitOfWork.CompleteAsync();
+
+            await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.AccountingUser,
+                "دریافت از مشتری ثبت شد", $"رسید {receipt.ReceiptNumber} به مبلغ {dto.Amount:0} تومان",
+                NotificationType.System, "/accounting/customer-receipts");
+
+            // دریافت پول: بدهکار صندوق/بانک، بستانکار حساب‌های دریافتنی (طلب از مشتری کم می‌شود)
+            await _journalService.PostEntryAsync(
+                description: $"دریافت وجه طبق رسید {receipt.ReceiptNumber}",
+                lines: new List<JournalLineInput>
+                {
+                new(financialAccount.Account!.Code, dto.Amount, 0, "افزایش موجودی صندوق/بانک"),
+                new(SystemAccountCodes.AccountsReceivable, 0, dto.Amount, "کاهش طلب از مشتری", "Customer", dto.CustomerId)
+                },
+                referenceType: nameof(CustomerReceipt),
+                referenceId: receipt.Id,
+                userId: userId);
+        });
+
+        return receiptId;
     }
     public async Task<IEnumerable<CustomerReceiptDto>> GetCustomerReceiptsAsync()
     {
@@ -150,48 +185,53 @@ public class TreasuryService : ITreasuryService
     {
         CommonValidations.ValidateAmountPositive(dto.Amount);
 
-        var financialAccount = await _unitOfWork.FinancialAccounts.GetByIdAsync(dto.FinancialAccountId)
-            ?? throw new NotFoundException("صندوق/بانک", dto.FinancialAccountId);
-
-        var payment = new SupplierPayment
+        var paymentId = 0;
+        await RunInTransactionAsync(async () =>
         {
-            SupplierId = dto.SupplierId,
-            FinancialAccountId = dto.FinancialAccountId,
-            PaymentNumber = $"TEMP-{Guid.NewGuid():N}", // شماره موقت، فقط برای عبور از محدودیت Unique
-            Amount = dto.Amount,
-            Method = Enum.Parse<PaymentMethod>(dto.Method),
-            PaymentDate = dto.PaymentDate,
-            ChequeNumber = dto.ChequeNumber,
-            ChequeDueDate = dto.ChequeDueDate,
-            Notes = dto.Notes,
-            CreatedByUserId = userId
-        };
+            var financialAccount = await _unitOfWork.FinancialAccounts.GetByIdAsync(dto.FinancialAccountId)
+                ?? throw new NotFoundException("صندوق/بانک", dto.FinancialAccountId);
 
-        await _unitOfWork.SupplierPayments.AddAsync(payment);
-        await _unitOfWork.CompleteAsync(); // اینجا payment.Id واقعی ساخته می‌شود
-
-        payment.PaymentNumber = DocumentNumberGenerator.Generate(payment.PaymentDate, payment.SupplierId, payment.Id);
-        await _unitOfWork.SupplierPayments.UpdateAsync(payment);
-        await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SupplierPaymentRegistered", userId, $"پرداخت {payment.PaymentNumber} به مبلغ {dto.Amount} ثبت شد."));
-        await _unitOfWork.CompleteAsync();
-
-        await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.AccountingUser,
-            "پرداخت به تأمین‌کننده ثبت شد", $"سند {payment.PaymentNumber} به مبلغ {dto.Amount:0} تومان",
-            NotificationType.System, "/accounting/supplier-payments");
-
-        // پرداخت پول: بدهکار حساب‌های پرداختنی (بدهی کم می‌شود)، بستانکار صندوق/بانک
-        await _journalService.PostEntryAsync(
-            description: $"پرداخت وجه طبق سند {payment.PaymentNumber}",
-            lines: new List<JournalLineInput>
+            var payment = new SupplierPayment
             {
-                new(SystemAccountCodes.AccountsPayable, dto.Amount, 0, "کاهش بدهی به تأمین‌کننده", "Supplier", dto.SupplierId),
-                new(financialAccount.Account!.Code, 0, dto.Amount, "کاهش موجودی صندوق/بانک")
-            },
-            referenceType: nameof(SupplierPayment),
-            referenceId: payment.Id,
-            userId: userId);
+                SupplierId = dto.SupplierId,
+                FinancialAccountId = dto.FinancialAccountId,
+                PaymentNumber = $"TEMP-{Guid.NewGuid():N}", // شماره موقت، فقط برای عبور از محدودیت Unique
+                Amount = dto.Amount,
+                Method = Enum.Parse<PaymentMethod>(dto.Method),
+                PaymentDate = dto.PaymentDate,
+                ChequeNumber = dto.ChequeNumber,
+                ChequeDueDate = dto.ChequeDueDate,
+                Notes = dto.Notes,
+                CreatedByUserId = userId
+            };
 
-        return payment.Id;
+            await _unitOfWork.SupplierPayments.AddAsync(payment);
+            await _unitOfWork.CompleteAsync(); // اینجا payment.Id واقعی ساخته می‌شود
+            paymentId = payment.Id;
+
+            payment.PaymentNumber = DocumentNumberGenerator.Generate(payment.PaymentDate, payment.SupplierId, payment.Id);
+            await _unitOfWork.SupplierPayments.UpdateAsync(payment);
+            await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SupplierPaymentRegistered", userId, $"پرداخت {payment.PaymentNumber} به مبلغ {dto.Amount} ثبت شد."));
+            await _unitOfWork.CompleteAsync();
+
+            await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.AccountingUser,
+                "پرداخت به تأمین‌کننده ثبت شد", $"سند {payment.PaymentNumber} به مبلغ {dto.Amount:0} تومان",
+                NotificationType.System, "/accounting/supplier-payments");
+
+            // پرداخت پول: بدهکار حساب‌های پرداختنی (بدهی کم می‌شود)، بستانکار صندوق/بانک
+            await _journalService.PostEntryAsync(
+                description: $"پرداخت وجه طبق سند {payment.PaymentNumber}",
+                lines: new List<JournalLineInput>
+                {
+                    new(SystemAccountCodes.AccountsPayable, dto.Amount, 0, "کاهش بدهی به تأمین‌کننده", "Supplier", dto.SupplierId),
+                    new(financialAccount.Account!.Code, 0, dto.Amount, "کاهش موجودی صندوق/بانک")
+                },
+                referenceType: nameof(SupplierPayment),
+                referenceId: payment.Id,
+                userId: userId);
+        });
+
+        return paymentId;
     }
 
     public async Task<IEnumerable<SupplierPaymentDto>> GetSupplierPaymentsAsync()

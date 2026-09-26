@@ -195,6 +195,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.Property(s => s.QuantityOnHand).HasColumnType("decimal(18,3)");
             e.HasIndex(s => new { s.ProductId, s.WarehouseId }).IsUnique();
             e.Property(s => s.RowVersion).IsRowVersion(); // توکن همزمانی خوش‌بینانه برای جلوگیری از race condition در موجودی
+            // آخرین لایه‌ی دفاع در برابر موجودی منفی — حتی اگر کد برنامه دچار باگ شود، دیتابیس رد می‌کند
+            e.ToTable(t => t.HasCheckConstraint("CK_StockLevels_NonNegative", "[QuantityOnHand] >= 0"));
 
             e.HasOne(s => s.Product).WithMany().HasForeignKey(s => s.ProductId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.Warehouse).WithMany().HasForeignKey(s => s.WarehouseId).OnDelete(DeleteBehavior.Restrict);
@@ -298,6 +300,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Customer>(e =>
         {
             e.Property(c => c.Name).HasMaxLength(150).IsRequired();
+            e.Property(c => c.Phone).HasMaxLength(20);
+            // جست‌وجوی مشتری با شماره تلفن در ثبت سفارش فروشگاه انجام می‌شود؛
+            // بدون این ایندکس، درخواست‌های همزمان می‌توانند مشتری تکراری بسازند.
+            e.HasIndex(c => c.Phone).IsUnique().HasFilter("[Phone] IS NOT NULL");
         });
 
         // ---------- SalesInvoice ----------

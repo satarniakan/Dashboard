@@ -12,7 +12,8 @@
 
 @if (!string.IsNullOrEmpty(Msg))
 {
-    <div class="alert @(Msg.StartsWith("کد") || Msg.Contains("اعمال شد") ? "alert-success" : "alert-info")">@Msg</div>
+    @* فقط پیام موفقیت («اعمال شد»/«اضافه شد») سبز؛ بقیه — از جمله خطاهای «کد تخفیف یافت نشد» — info *@
+    <div class="alert @(Msg.Contains("اعمال شد") || Msg.Contains("اضافه شد") || Msg.Contains("حذف شد") ? "alert-success" : "alert-info")">@Msg</div>
 }
 
 @if (cart is null)
@@ -64,7 +65,7 @@ else
                                     }
                                     else if (line.Quantity >= line.AvailableStock)
                                     {
-                                        <span class="badge bg-warning-subtle text-warning-emphasis mt-1">حداکثر موجودی: QuantityFormatter.Format(line.AvailableStock) @line.Unit</span>
+                                        <span class="badge bg-warning-subtle text-warning-emphasis mt-1">حداکثر موجودی: @QuantityFormatter.Format(line.AvailableStock) @line.Unit</span>
                                     }
                                 </div>
                             </div>
@@ -74,8 +75,10 @@ else
                             <form method="post" action="/shop/cart/update" class="d-flex gap-1">
                                 <AntiforgeryToken />
                                 <input type="hidden" name="itemId" value="@line.ItemId" />
+                                @* مقدار input type=number باید عدد خام با نقطه‌ی اعشار باشد —
+                                    فرمت هزارگان («1,234») برای این فیلد نامعتبر است و بایندینگ decimal را می‌شکند *@
                                 <input type="number" name="quantity" class="form-control form-control-sm text-center"
-                                       value="QuantityFormatter.Format(line.Quantity)" min="0" step="any" style="max-width: 90px;" />
+                                       value="@line.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" min="0" step="any" style="max-width: 90px;" />
                                 <button type="submit" class="btn btn-sm btn-outline-primary" title="به‌روزرسانی تعداد">
                                     <i class="bi bi-check-lg"></i>
                                 </button>
@@ -150,10 +153,9 @@ else
                 </dl>
                 <div class="d-flex gap-2 mt-3">
                     <a href="/shop/products" class="btn btn-outline-secondary flex-grow-1">ادامه‌ی خرید</a>
-                    @* پرداخت در فاز ۴ فعال می‌شود *@
-                    <button type="button" class="btn btn-primary flex-grow-1" disabled title="پرداخت آنلاین به‌زودی فعال می‌شود">
+                    <a href="/shop/checkout" class="btn btn-primary flex-grow-1">
                         <i class="bi bi-credit-card me-1"></i>تسویه حساب
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>

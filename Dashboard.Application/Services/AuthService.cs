@@ -43,12 +43,13 @@ public class AuthService : IAuthService
         _roleManager = roleManager;
         _otpService = otpService;
         _logger = logger;
-        // شماره‌ی ادمین اول از تنظیمات «Identity:FirstAdminPhoneNumber»؛ fallback به ثابت قدیمی برای سازگاری
-        _firstAdminPhoneNumber = configuration["Identity:FirstAdminPhoneNumber"] ?? Roles.FirstAdminPhoneNumber;
+        // شماره‌ی ادمین اول فقط از تنظیمات «Identity:FirstAdminPhoneNumber» خوانده می‌شود.
+        // fallback سخت‌کد حذف شد: اگر تنظیم نباشد، هیچ شماره‌ای خودکار نقش Admin نمی‌گیرد.
+        _firstAdminPhoneNumber = configuration["Identity:FirstAdminPhoneNumber"];
         _notifications = notifications;
     }
 
-    private readonly string _firstAdminPhoneNumber;
+    private readonly string? _firstAdminPhoneNumber;
     private readonly INotificationService _notifications;
 
     public async Task<PasswordLoginResult> LoginWithPasswordAsync(string email, string password)
@@ -61,7 +62,7 @@ public class AuthService : IAuthService
             return new PasswordLoginResult(false);
         }
 
-        var result = await _signInManager.PasswordSignInAsync(user, password, isPersistent: true, lockoutOnFailure: false);
+        var result = await _signInManager.PasswordSignInAsync(user, password, isPersistent: true, lockoutOnFailure: true);
 
         if (!result.Succeeded)
         {
@@ -101,17 +102,31 @@ public class AuthService : IAuthService
             var createResult = await _userManager.CreateAsync(user);
             if (!createResult.Succeeded)
             {
-                _logger.LogWarning("User creation failed for {PhoneNumber}: {Errors}",
-                    phoneNumber, string.Join(" | ", createResult.Errors.Select(e => e.Description)));
-                return new OtpVerificationResult(false, false);
+                // دو درخواست موازی VerifyOtp برای شماره‌ی جدید: درخواست بازنده با
+                // DuplicateUserName شکست می‌خورد — کاربر تازه‌ساخته‌شده را دوباره می‌خوانیم
+                // و به‌جای برگرداندن «ناموفق»، او را لاگین می‌کنیم
+                if (createResult.Errors.Any(e => e.Code == nameof(IdentityErrorDescriber.DuplicateUserName)))
+                {
+                    user = await _userManager.FindByNameAsync(phoneNumber);
+                    isNewUser = false;
+                }
+                if (user is null)
+                {
+                    _logger.LogWarning("User creation failed for {PhoneNumber}: {Errors}",
+                        phoneNumber, string.Join(" | ", createResult.Errors.Select(e => e.Description)));
+                    return new OtpVerificationResult(false, false);
+                }
             }
 
-            var roleToAssign = phoneNumber == _firstAdminPhoneNumber ? Roles.Admin : Roles.User;
-            await _userManager.AddToRoleAsync(user, roleToAssign);
+            if (isNewUser)
+            {
+                var roleToAssign = phoneNumber == _firstAdminPhoneNumber ? Roles.Admin : Roles.User;
+                await _userManager.AddToRoleAsync(user, roleToAssign);
 
-            // اعلان به ادمین‌ها: کاربر جدید ثبت‌نام کرد
-            await _notifications.NotifyRoleAsync(Roles.Admin, "کاربر جدید ثبت‌نام کرد",
-                $"شماره {phoneNumber}", NotificationType.System, "/admin/users");
+                // اعلان به ادمین‌ها: کاربر جدید ثبت‌نام کرد
+                await _notifications.NotifyRoleAsync(Roles.Admin, "کاربر جدید ثبت‌نام کرد",
+                    $"شماره {phoneNumber}", NotificationType.System, "/admin/users");
+            }
         }
 
         await _signInManager.SignInAsync(user, isPersistent: true);

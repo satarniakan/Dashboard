@@ -51,7 +51,8 @@ public class JournalService : IJournalService
 
         var entry = new JournalEntry
         {
-            EntryNumber = $"JE-{DateTime.UtcNow:yyyyMMddHHmmssfff}",
+            // پسوند تصادفی: دو سند همزمان در یک ثانیه شماره‌ی تکراری نمی‌گیرند (ایندکس یکتا نقض نمی‌شود)
+            EntryNumber = $"JE-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}",
             Description = description,
             ReferenceType = referenceType,
             ReferenceId = referenceId,

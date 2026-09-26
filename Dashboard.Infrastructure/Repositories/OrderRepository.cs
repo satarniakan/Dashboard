@@ -64,6 +64,23 @@ public class OrderRepository : IOrderRepository
         return Task.CompletedTask;
     }
 
+    public async Task<bool> TryClaimForPaymentAsync(int orderId)
+    {
+        var paidAt = DateTime.UtcNow;
+        var rows = await _context.Orders
+            .Where(o => o.Id == orderId && o.Status == OrderStatus.PendingPayment)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(o => o.Status, OrderStatus.Paid)
+                .SetProperty(o => o.PaidAt, paidAt));
+        return rows > 0;
+    }
+
+    public async Task<OrderStatus?> GetStatusAsync(int orderId) =>
+        await _context.Orders
+            .Where(o => o.Id == orderId)
+            .Select(o => (OrderStatus?)o.Status)
+            .FirstOrDefaultAsync();
+
     public async Task<List<Order>> GetStalePendingPaymentAsync(TimeSpan maxAge)
     {
         // محاسبه‌ی مرز زمانی بیرون از عبارت — EF تفریق TimeSpan با پارامتر را ترجمه نمی‌کند
