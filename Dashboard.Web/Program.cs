@@ -38,7 +38,8 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
 
 // Razor Components (Blazor Server)
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents()
+    .AddCircuitOptions(o => o.DetailedErrors = builder.Environment.IsDevelopment());
 
 // Required for Blazor Server to flow auth state into components
 builder.Services.AddCascadingAuthenticationState();

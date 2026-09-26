@@ -3,7 +3,10 @@
 @using Dashboard.Domain.Identity
 <div class="page">
     <div class="sidebar">
-        <NavMenu @rendermode="InteractiveServer" />
+        @* منو بیرون باندیِ body است؛ بدون این گیت، خطای منو کل مدار را می‌اندازد *@
+        <AppErrorBoundary>
+            <NavMenu @rendermode="InteractiveServer" />
+        </AppErrorBoundary>
     </div>
 
     <main>

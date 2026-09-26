@@ -13,7 +13,16 @@
     </header>
 
     <main class="store-container store-main">
-        @Body
+        <AppErrorBoundary>
+            <ChildContent>@Body</ChildContent>
+            <ErrorContent>
+                <div class="text-center text-body-secondary py-5">
+                    <i class="bi bi-exclamation-triangle d-block mb-2" style="font-size: 2rem;"></i>
+                    <p class="mb-3">مشکلی در نمایش این صفحه پیش آمد.</p>
+                    <a href="/shop" class="btn btn-outline-primary">بازگشت به فروشگاه</a>
+                </div>
+            </ErrorContent>
+        </AppErrorBoundary>
     </main>
 
     <footer class="store-footer">

@@ -19,7 +19,11 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration, bool isDevelopment = false)
     {
         services.AddDbContext<AppDbContext>(opt =>
-            opt.UseSqlServer(configuration.GetConnectionString("Default")));
+            opt.UseSqlServer(configuration.GetConnectionString("Default"),
+                sql => sql.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorNumbersToAdd: null)));
 
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>
         {
