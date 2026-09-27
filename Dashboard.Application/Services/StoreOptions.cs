@@ -8,7 +8,10 @@ public class StoreOptions
 {
     public const string SectionName = "Store";
 
-    /// <summary>انبار مبدأ سفارش‌های آنلاین</summary>
+    /// <summary>
+    /// انبار مبدأ سفارش‌های آنلاین. این انبار خودکار ساخته نمی‌شود: باید در بخش
+    /// «انبارها» ساخته شده باشد و شماره‌اش همین‌جا ست شود، وگرنه ثبت سفارش رد می‌شود.
+    /// </summary>
     public int WarehouseId { get; set; } = 1;
 
     public string Name { get; set; } = "فروشگاه من";

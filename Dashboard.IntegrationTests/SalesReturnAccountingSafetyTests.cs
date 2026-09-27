@@ -2,6 +2,7 @@ using Dashboard.Application.DTOs;
 using Dashboard.Application.Services;
 using Dashboard.Domain.Accounting;
 using Dashboard.Domain.Entities;
+using Dashboard.Domain.Enums;
 using Dashboard.Domain.Exceptions;
 using Dashboard.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -75,6 +76,142 @@ public class SalesReturnAccountingSafetyTests
                      && returnIds.Contains(l.JournalEntry.ReferenceId!.Value)
                      && l.AccountId == revenueAccountId)
             .Sum(l => l.DebitAmount);
+    }
+
+    /// <summary>
+    /// رگرسیون: یک کالا با دو سطر و «مقدارهای نامساوی» در همان فاکتور فروش.
+    /// لغو فاکتور باید درآمد را به‌اندازهٔ جمع واقعی سطرها برگرداند
+    /// (۳۰×۱۰٬۰۰۰ + ۱۰×۲۰٬۰۰۰ = ۵۰۰٬۰۰۰). استفاده از Average ساده به‌جای
+    /// میانگین وزنی، درآمد را ۴۰×۱۵٬۰۰۰ = ۶۰۰٬۰۰۰ می‌کرد.
+    /// </summary>
+    [SkippableFact]
+    public async Task CancelInvoice_SameProductUnevenQuantities_ReversesActualRevenue()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 50);
+
+        int invoiceId;
+        using (var scope = _db.CreateScope())
+        {
+            var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var customer = new Customer("تست وزنی", "09121292002", "تهران");
+            ctx.Customers.Add(customer);
+            await ctx.SaveChangesAsync();
+
+            var sales = scope.ServiceProvider.GetRequiredService<ISalesService>();
+            invoiceId = await sales.CreateDraftInvoiceAsync(new CreateSalesInvoiceDto
+            {
+                CustomerId = customer.Id, WarehouseId = 1,
+                Items = new List<SalesInvoiceItemInput>
+                {
+                    new() { ProductId = product.Id, Quantity = 30, UnitPrice = 10_000 },
+                    new() { ProductId = product.Id, Quantity = 10, UnitPrice = 20_000 }
+                }
+            }, "u");
+            await sales.ConfirmInvoiceAsync(invoiceId, "u");
+        }
+
+        using (var scope = _db.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<ISalesService>().CancelInvoiceAsync(invoiceId, "u");
+        }
+
+        using var verify = _db.CreateScope();
+        var vCtx = verify.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // فروش ۵۰۰٬۰۰۰ ⇒ پس از لغو کامل، خالص درآمد فروش این فاکتور باید صفر باشد
+        Assert.Equal(0m, SalesInvoiceRevenueNet(vCtx, invoiceId));
+    }
+
+    /// <summary>
+    /// رگرسیون: برگشت وقتی فاکتور مرجع برای یک کالا «دو سطر» دارد. ساخت ToDictionary
+    /// روی ProductId با کلید تکراری خطا می‌داد؛ ضمناً درآمدِ برگشتی باید
+    /// ۲۰×۱۰٬۰۰۰ + ۱۰×۲۰٬۰۰۰ = ۴۰۰٬۰۰۰ باشد (میانگین وزنی، نه ساده).
+    /// </summary>
+    /// <summary>
+    /// ادعای باگ: اعتبارسنجی «مقدار &gt; ۰» فقط داخل شاخهٔ «با فاکتور مرجع» اجرا می‌شد.
+    /// مرجوعیِ بدون فاکتور هیچ بررسی‌ای نداشت ⇒ مقدار منفی یک «موجودی» منفی و یک
+    /// موجب تراکنشِ منفی می‌ساخت (یعنی به‌جای برگشت، موجودی را کم می‌کرد).
+    /// </summary>
+    [SkippableFact]
+    public async Task SalesReturn_WithoutReferenceInvoice_RejectsNonPositiveQuantity()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 10);
+
+        using var scope = _db.CreateScope();
+        var stock = scope.ServiceProvider.GetRequiredService<IStockService>();
+
+        // مرجوعی بدون فاکتور مرجع و با مقدار منفی ⇒ باید رد شود
+        var ex = await Assert.ThrowsAnyAsync<Exception>(() => stock.RegisterSalesReturnAsync(
+            new CreateSalesReturnDto
+            {
+                WarehouseId = 1, SalesInvoiceId = null,
+                Items = new List<StockItemInput> { new() { ProductId = product.Id, Quantity = -100 } }
+            }, "u"));
+
+        // باید «خطای کسب‌وکار» باشد (نه خطای فنی دیتابیس) — یعنی اعتبارسنجی خودمان کار کرده
+        Assert.IsType<BusinessRuleException>(ex);
+
+        // موجودی نباید تغییری کرده باشد
+        using var check = _db.CreateScope();
+        var cCtx = check.ServiceProvider.GetRequiredService<AppDbContext>();
+        var lvl = await cCtx.StockLevels
+            .SingleAsync(s => s.ProductId == product.Id && s.WarehouseId == 1);
+        Assert.Equal(10m, lvl.QuantityOnHand);
+
+        // هیچ تراکنش موجودیِ «برگشت فروش» برای این کالا ثبت نشده باشد
+        Assert.False(await cCtx.StockTransactions.AsNoTracking()
+            .AnyAsync(t => t.ProductId == product.Id && t.Type == StockTransactionType.SalesReturn));
+    }
+
+    [SkippableFact]
+    public async Task SalesReturn_InvoiceWithSameProductTwice_UsesWeightedPrice_AndDoesNotThrow()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 100);
+
+        int invoiceId, customerId;
+        using (var scope = _db.CreateScope())
+        {
+            var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var customer = new Customer("تست برگشت وزنی", "09121293003", "تهران");
+            ctx.Customers.Add(customer);
+            await ctx.SaveChangesAsync();
+            customerId = customer.Id;
+
+            var sales = scope.ServiceProvider.GetRequiredService<ISalesService>();
+            invoiceId = await sales.CreateDraftInvoiceAsync(new CreateSalesInvoiceDto
+            {
+                CustomerId = customerId, WarehouseId = 1,
+                Items = new List<SalesInvoiceItemInput>
+                {
+                    new() { ProductId = product.Id, Quantity = 20, UnitPrice = 10_000 },
+                    new() { ProductId = product.Id, Quantity = 10, UnitPrice = 20_000 }
+                }
+            }, "u");
+            await sales.ConfirmInvoiceAsync(invoiceId, "u");
+        }
+
+        // برگشت کل مقدار فروخته‌شده (۳۰ عدد) — نباید خطای کلید تکراری بدهد
+        using (var scope = _db.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<IStockService>().RegisterSalesReturnAsync(
+                new CreateSalesReturnDto
+                {
+                    WarehouseId = 1, SalesInvoiceId = invoiceId,
+                    Items = new List<StockItemInput> { new() { ProductId = product.Id, Quantity = 30 } }
+                }, "u");
+        }
+
+        using var verify = _db.CreateScope();
+        var vCtx = verify.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // فروش ۴۰۰٬۰۰۰ و برگشت کامل ⇒ هیچ درآمدی باقی نمانده باشد
+        Assert.Equal(0m, TotalReversedRevenue(vCtx, invoiceId) - 400_000m);
     }
 
     [SkippableFact]

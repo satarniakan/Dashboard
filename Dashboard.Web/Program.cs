@@ -287,6 +287,21 @@ await Dashboard.Infrastructure.RoleSeeder.SeedRolesAsync(app.Services);
 app.UseSerilogRequestLogging();
 await Dashboard.Infrastructure.ChartOfAccountsSeeder.SeedAsync(app.Services);
 await Dashboard.Infrastructure.IranLocationSeeder.SeedAsync(app.Services, app.Environment.ContentRootPath);
+
+// انبار فروشگاه («Store:WarehouseId») خودکار ساخته نمی‌شود. اگر به انبارِ ناموجود اشاره کند،
+// موجودی صفر خوانده می‌شود و همهٔ سفارش‌های آنلاین با پیام گمراه‌کنندهٔ «موجودی کافی نیست»
+// رد می‌شوند — پس همین‌جا موقع بالا آمدن با هشدار روشن اعلام می‌شود (بدون کرش کردن برنامه).
+using (var scope = app.Services.CreateScope())
+{
+    var storeOptions = scope.ServiceProvider
+        .GetRequiredService<Microsoft.Extensions.Options.IOptions<StoreOptions>>().Value;
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (!await db.Warehouses.AnyAsync(w => w.Id == storeOptions.WarehouseId))
+        Log.Warning(
+            "انبار فروشگاه با شناسه {WarehouseId} (تنظیمات «Store:WarehouseId») در پایگاه داده وجود ندارد؛ " +
+            "ثبت سفارش آنلاین تا ساخت آن در بخش «انبارها» یا اصلاح تنظیمات ممکن نیست.",
+            storeOptions.WarehouseId);
+}
 // Persian culture / RTL number formatting
 var supportedCultures = new[] { new CultureInfo("fa-IR") };
 app.UseRequestLocalization(new RequestLocalizationOptions

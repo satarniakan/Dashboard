@@ -313,6 +313,10 @@ public class SalesService : ISalesService
                         var totalCost = 0m;
                         var goodsRevenue = 0m;
 
+                        // جمع قیمت خامِ اقلامِ باقیمانده — مبنای نسبتِ تخفیفِ قابل‌برگشت
+                        var grossForRemaining = 0m;
+                        var totalSold = invoice.Items.Sum(i => i.Quantity);
+
                         foreach (var group in invoice.Items.GroupBy(i => i.ProductId))
                         {
                             var sold = group.Sum(x => x.Quantity);
@@ -320,21 +324,42 @@ public class SalesService : ISalesService
                             var remaining = sold - returned;
                             if (remaining <= 0) continue; // این قلم کاملاً برگشته شده
 
-                            var unitPrice = group.Average(x => x.UnitPrice);
-                            var unitCost = group.Average(x => x.CostPrice ?? x.Product?.CostPrice ?? 0);
+                            // مبنای هر سطر وزنی است، نه میانگین ساده: اگر یک کالا دو سطر با
+                            // مقدار/قیمت متفاوت داشته باشد (۳۰ عدد @۱۰٬۰۰۰ و ۱۰ عدد @۲۰٬۰۰۰)،
+                            // Average ساده ۱۵٬۰۰۰ می‌داد و درآمدِ برگشتی ۱۰۰٬۰۰۰ بیشتر می‌شد.
+                            var totalQty = group.Sum(x => x.Quantity);
+                            var unitPrice = totalQty == 0 ? 0 : group.Sum(x => x.Quantity * x.UnitPrice) / totalQty;
+                            var unitCost = totalQty == 0 ? 0 : group.Sum(x => x.Quantity * (x.CostPrice ?? x.Product?.CostPrice ?? 0)) / totalQty;
 
                             goodsRevenue += remaining * unitPrice;
                             totalCost += remaining * unitCost;
+                            grossForRemaining += remaining * unitPrice;
                         }
+
+                        // سهمِ تخفیفِ متناسب با باقیمانده. اگر همهٔ فاکتور باقی مانده باشد،
+                        // این مقدار دقیقاً برابر DiscountAmount فاکتور می‌شود.
+                        var totalGross = invoice.TotalAmount - invoice.ShippingAmount + invoice.DiscountAmount;
+                        var discountReversal = totalGross > 0
+                            ? invoice.DiscountAmount * (grossForRemaining / totalGross)
+                            : 0m;
+                        if (totalSold <= 0) discountReversal = 0;
 
                         if (goodsRevenue > 0 || totalCost > 0)
                         {
+                            // ⚠️ تخفیفِ فاکتور باید کسر شود: سند فروش درآمد را «بعد از تخفیف»
+                            // بستانکار کرده (TotalAmount − Shipping)، پس سند لغو هم باید همان مبلغ
+                            // خالص را برگرداند. بدون این کسر، برای فاکتور تخفیف‌دار حساب مشتری
+                            // به اندازهٔ تخفیف بیش از واقع بستانکار می‌شد (درآمد/طلب جعلی).
+                            // تخفیف به نسبتِ مقدارِ باقیماندهٔ هر قلم توزیع می‌شود تا اگر بخشی از
+                            // فاکتور قبلاً برگشته، فقط سهم همان بخش از تخفیف برگردد.
+                            var netRevenue = Math.Max(grossForRemaining - discountReversal, 0m);
+
                             // AR فقط به اندازهٔ باقیماندهٔ فاکتور (کالا + حمل) بستانکار می‌شود
-                            var receivableReversal = goodsRevenue + invoice.ShippingAmount;
+                            var receivableReversal = netRevenue + invoice.ShippingAmount;
 
                             var reversalLines = new List<JournalLineInput>
                             {
-                                new(SystemAccountCodes.SalesRevenue, goodsRevenue, 0, "برگشت درآمد فروش"),
+                                new(SystemAccountCodes.SalesRevenue, netRevenue, 0, "برگشت درآمد فروش"),
                                 new(SystemAccountCodes.AccountsReceivable, 0, receivableReversal, "بستانکار شدن حساب مشتری", "Customer", invoice.CustomerId),
                                 new(SystemAccountCodes.Inventory, totalCost, 0, "برگشت موجودی کالا"),
                                 new(SystemAccountCodes.CostOfGoodsSold, 0, totalCost, "برگشت بهای تمام‌شده")

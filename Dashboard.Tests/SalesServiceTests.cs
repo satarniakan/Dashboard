@@ -287,5 +287,53 @@ public class SalesServiceTests
         Assert.Equal(80_000m, shippingLine.Debit);
         Assert.Equal(lines.Sum(l => l.Debit), lines.Sum(l => l.Credit));
     }
+
+    /// <summary>
+    /// ادعای باگ: لغو فاکتورِ تخفیف‌دار باید «دقیقاً معکوس» سند فروش باشد.
+    /// سند فروش درآمد را «بعد از تخفیف» ثبت می‌کند (TotalAmount − Shipping)، ولی سند لغو
+    /// از قیمت خام (remaining × unitPrice) استفاده می‌کرد ⇒ مبلغ تخفیف هرگز برنمی‌گشت
+    /// و حساب مشتری بیش از واقع بدهکار می‌شد.
+    /// </summary>
+    [Fact]
+    public async Task CancelInvoiceAsync_WithDiscount_ReversesNetRevenueNotGross()
+    {
+        // یک عدد @ 100,000 با تخفیف 20,000 ⇒ مبلغ فاکتور 80,000 (بدون حمل‌ونقل)
+        var invoice = new SalesInvoice
+        {
+            Id = 1,
+            Status = SalesInvoiceStatus.Confirmed,
+            WarehouseId = 1,
+            CustomerId = 7,
+            DiscountAmount = 20_000m,
+            ShippingAmount = 0m,
+            TotalAmount = 80_000m,
+            Items = new List<SalesInvoiceItem>
+            {
+                new() { ProductId = 10, Quantity = 1, UnitPrice = 100_000m, CostPrice = 60_000m }
+            }
+        };
+        _salesInvoices.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(invoice);
+
+        List<JournalLineInput>? lines = null;
+        var journal = new Mock<IJournalService>();
+        journal.Setup(j => j.PostEntryAsync(It.IsAny<string>(), It.IsAny<List<JournalLineInput>>(),
+                It.IsAny<string?>(), It.IsAny<int?>(), It.IsAny<string?>()))
+            .Callback<string, List<JournalLineInput>, string?, int?, string?>((_, captured, _, _, _) => lines = captured)
+            .ReturnsAsync(1);
+
+        var sut = new SalesService(_unitOfWork.Object, journal.Object,
+            Mock.Of<ILogger<SalesService>>(), Mock.Of<IStockValidator>(), Mock.Of<INotificationService>());
+
+        await sut.CancelInvoiceAsync(1, "user1");
+
+        Assert.NotNull(lines);
+        // سند فروش درآمد را 80,000 بستانکار کرده بود ⇒ سند لغو باید 80,000 بدهکار کند، نه 100,000
+        var revenueLine = lines!.Single(l => l.AccountCode == SystemAccountCodes.SalesRevenue);
+        Assert.Equal(80_000m, revenueLine.Debit);
+
+        // حساب مشتری هم باید دقیقاً همان مبلغ فاکتور (بعد از تخفیف) بستانکار شود
+        var arLine = lines.Single(l => l.AccountCode == SystemAccountCodes.AccountsReceivable);
+        Assert.Equal(80_000m, arLine.Credit);
+    }
 }
 

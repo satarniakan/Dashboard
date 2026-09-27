@@ -18,6 +18,7 @@ public class OrderServiceTests
     private readonly Mock<IProductRepository> _products = new();
     private readonly Mock<IStockLevelRepository> _stockLevels = new();
     private readonly Mock<IDiscountCodeRepository> _discountCodes = new();
+    private readonly Mock<IWarehouseRepository> _warehouses = new();
     private readonly Mock<ISalesService> _sales = new();
     private readonly OrderService _sut;
 
@@ -29,6 +30,11 @@ public class OrderServiceTests
         _unitOfWork.Setup(u => u.StockLevels).Returns(_stockLevels.Object);
         _unitOfWork.Setup(u => u.DiscountCodes).Returns(_discountCodes.Object);
         _unitOfWork.Setup(u => u.CompleteAsync()).ReturnsAsync(1);
+
+        // ثبت سفارش اول انبارِ تنظیم‌شده («Store:WarehouseId»، پیش‌فرض ۱) را چک می‌کند؛
+        // بدون این ست، همهٔ تست‌های مسیر خرید با پیام «انبار تعریف نشده» رد می‌شدند
+        _unitOfWork.Setup(u => u.Warehouses).Returns(_warehouses.Object);
+        _warehouses.Setup(r => r.GetByIdAsync(It.IsAny<int>())).ReturnsAsync(new Warehouse("انبار فروشگاه"));
 
         _sut = new OrderService(
             _unitOfWork.Object,
@@ -217,6 +223,46 @@ public class OrderServiceTests
         Assert.NotNull(error);
         // رزروِ قلم اول باید فوراً آزاد شود تا موجودی برای دیگران بلااستفاده نماند
         _stockLevels.Verify(r => r.ReleaseReservationAsync(product.Id, 1, 1), Times.Once);
+        _orders.Verify(r => r.AddAsync(It.IsAny<Order>()), Times.Never);
+    }
+
+    // ---------------- F: ردِ سفارش بعد از رزرو باید رزرو را آزاد کند ----------------
+
+    /// <summary>
+    /// رگرسیون: سقف «مصرف هر مشتری» پر شده و سفارش رد می‌شود. رزروِ انجام‌شده در
+    /// <see cref="IStockLevelRepository.TryReserveAsync"/> باید آزاد شود، وگرنه موجودی
+    /// آن کالا برای همیشه از فروشگاه کنار گذاشته می‌شود.
+    /// </summary>
+    [Fact]
+    public async Task PlaceOrderAsync_WhenDiscountPerCustomerLimitReached_ReleasesReservation()
+    {
+        var product = new Product("SKU-LIM", "کالای محدود", 100m, 50m);
+        product.SetStoreDetails(true, "kala-lim", null);
+
+        var cart = new Cart { CookieId = "cookie-lim" };
+        cart.Items.Add(new CartItem { Id = 1, ProductId = product.Id, Quantity = 2 });
+
+        _carts.Setup(r => r.GetByCookieIdAsync("cookie-lim")).ReturnsAsync(cart);
+        _products.Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>()))
+            .ReturnsAsync(new List<Product> { product });
+        _stockLevels.Setup(r => r.GetAvailableForSaleAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<int>()))
+            .ReturnsAsync(new Dictionary<int, decimal> { [product.Id] = 10 });
+        _stockLevels.Setup(r => r.TryReserveAsync(product.Id, It.IsAny<int>(), It.IsAny<decimal>()))
+            .ReturnsAsync(true);
+
+        // کد تخفیف با سقف مصرف هر مشتری که قبلاً پر شده
+        var code = new DiscountCode { Code = "SAVE20", Value = 20m, MaxUsagePerCustomer = 1 };
+        _discountCodes.Setup(r => r.GetByIdAsync(It.IsAny<int>())).ReturnsAsync(code);
+        _orders.Setup(r => r.CountUserDiscountUsagesAsync("user-lim", "SAVE20")).ReturnsAsync(1);
+
+        // سبد به کد تخفیف وصل است
+        typeof(Cart).GetProperty(nameof(Cart.DiscountCodeId))!.SetValue(cart, 5);
+
+        var (_, error) = await _sut.PlaceOrderAsync("user-lim", "cookie-lim", Checkout());
+
+        Assert.NotNull(error);
+        // رزرو باید آزاد شده باشد — این همان چیزی است که قبلاً از قلم افتاده بود
+        _stockLevels.Verify(r => r.ReleaseReservationAsync(product.Id, 1, 2), Times.Once);
         _orders.Verify(r => r.AddAsync(It.IsAny<Order>()), Times.Never);
     }
 }

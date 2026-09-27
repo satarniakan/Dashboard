@@ -199,46 +199,62 @@ public class StockService : IStockService
                 CreatedByUserId = userId
             };
 
-            foreach (var item in dto.Items)
+            // هر کالا فقط یک‌بار پردازش می‌شود: فاکتور ممکن است چند سطر برای یک کالا داشته باشد
+            // و بدون جمع‌کردن، «موجودی قبل از رسید» هر سطر روی سطر قبلی بازنویسی می‌شد و
+            // میانگین موزون را غلط حساب می‌کرد (مثلاً ۵۵٬۰۰۰ به‌جای ۷۰٬۰۰۰).
+            foreach (var group in dto.Items.GroupBy(i => i.ProductId))
             {
-                CommonValidations.ValidateQuantityPositive(item.Quantity);
+                foreach (var item in group)
+                    CommonValidations.ValidateQuantityPositive(item.Quantity);
+
+                var incomingQuantity = group.Sum(i => i.Quantity);
+                var incomingCost = group.Sum(i => i.Quantity * i.UnitCost);
 
                 receipt.Items.Add(new PurchaseReceiptItem
                 {
-                    ProductId = item.ProductId,
-                    Quantity = item.Quantity,
-                    UnitCost = item.UnitCost
+                    ProductId = group.Key,
+                    Quantity = incomingQuantity,
+                    UnitCost = incomingQuantity == 0 ? 0 : incomingCost / incomingQuantity
                 });
 
-                // موجودی قبل از افزایش، برای محاسبهٔ میانگین موزون لازم است
-                var levelBefore = await _unitOfWork.StockLevels.GetAsync(item.ProductId, dto.WarehouseId);
-                previousQuantities[item.ProductId] = levelBefore?.QuantityOnHand ?? 0m;
+                // موجودی قبل از این رسید (مبنای میانگین موزون) — یک‌بار برای هر کالا
+                var levelBefore = await _unitOfWork.StockLevels.GetAsync(group.Key, dto.WarehouseId);
+                previousQuantities[group.Key] = levelBefore?.QuantityOnHand ?? 0m;
 
-                await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, dto.WarehouseId, item.Quantity);
+                await _unitOfWork.StockLevels.IncreaseOrCreateAsync(group.Key, dto.WarehouseId, incomingQuantity);
             }
 
             // هزینه‌یابی میانگین موزون: بهای تمام‌شدهٔ کالا با هر خرید به‌روز می‌شود تا
             // سود ناخالص فروش‌های بعدی با قیمت واقعیِ خرید محاسبه شود (نه قیمت اولیهٔ محصول)
-            foreach (var item in dto.Items)
+            // کالاها یک‌جا بارگذاری می‌شوند تا برای هر سطر یک کوئری اضافه نزنیم (N+1)
+            var incomingByProduct = receipt.Items.ToDictionary(i => i.ProductId);
+            var productIds = incomingByProduct.Keys.ToList();
+            var products = (await _unitOfWork.Products.GetByIdsAsync(productIds))
+                .ToDictionary(p => p.Id);
+
+            foreach (var productId in productIds)
             {
-                var product = await _unitOfWork.Products.GetByIdAsync(item.ProductId)
-                    ?? throw new NotFoundException("کالا", item.ProductId);
+                if (!products.TryGetValue(productId, out var product))
+                    throw new NotFoundException("کالا", productId);
 
-                var previousQuantity = previousQuantities.GetValueOrDefault(item.ProductId);
+                var previousQuantity = previousQuantities[productId];
+                var incomingQuantity = incomingByProduct[productId].Quantity;
+                var incomingUnitCost = incomingByProduct[productId].UnitCost;
 
-                product.ApplyWeightedAverageCost(previousQuantity, item.Quantity, item.UnitCost);
+                product.ApplyWeightedAverageCost(previousQuantity, incomingQuantity, incomingUnitCost);
                 await _unitOfWork.Products.UpdateAsync(product);
 
                 _logger.LogInformation(
                     "Weighted average cost for product {ProductId} updated to {Cost} (previous qty {PreviousQty}, incoming {IncomingQty} @ {UnitCost})",
-                    item.ProductId, product.CostPrice, previousQuantity, item.Quantity, item.UnitCost);
+                    productId, product.CostPrice, previousQuantity, incomingQuantity, incomingUnitCost);
             }
 
             await _unitOfWork.PurchaseReceipts.AddAsync(receipt);
             await _unitOfWork.CompleteAsync(); // اینجا receipt.Id واقعی ساخته می‌شود
 
-            // تراکنش‌های موجودی بعد از ساخت Id ثبت می‌شوند تا ReferenceId به سند مبدا قابل ردیابی باشد
-            foreach (var item in dto.Items)
+            // تراکنش‌های موجودی بعد از ساخت Id ثبت می‌شوند تا ReferenceId به سند مبدا قابل ردیابی باشد.
+            // از receipt.Items (تجمیع‌شده) استفاده می‌شود تا تعداد تراکنش‌ها با سطرهای رسید یکی بماند.
+            foreach (var item in receipt.Items)
             {
                 await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
                 {
@@ -257,7 +273,7 @@ public class StockService : IStockService
             await _unitOfWork.PurchaseReceipts.UpdateAsync(receipt);
             await _unitOfWork.AuditLogs.AddAsync(new AuditLog("PurchaseReceiptRegistered", userId, $"رسید خرید {receipt.ReceiptNumber} ثبت شد."));
             await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.WarehouseUser,
-                "رسید خرید ثبت شد", $"رسید {receipt.ReceiptNumber} با {dto.Items.Count} قلم کالا",
+                "رسید خرید ثبت شد", $"رسید {receipt.ReceiptNumber} با {receipt.Items.Count} قلم کالا",
                 NotificationType.System, "/warehouse/purchase-receipts");
             await _unitOfWork.CompleteAsync();
 
@@ -388,6 +404,16 @@ public class StockService : IStockService
         var salesReturnId = 0;
         await RunInTransactionAsync(async () =>
         {
+            // ⚠️ اعتبارسنجی مقدار باید بیرون از شاخهٔ «فاکتور مرجع» هم اجرا شود.
+            // پیش‌تر این بررسی فقط داخل `if (SalesInvoiceId is int)` بود و مرجوعیِ بدون
+            // فاکتور هیچ کنترلی نداشت؛ مقدار منفی یک تراکنشِ منفی (کسرِ موجودی به‌جای
+            // برگشت) می‌ساخت. دیتابیس فقط با CK_StockLevels_NonNegative جلوی فاجعه را می‌گرفت.
+            foreach (var item in dto.Items)
+            {
+                if (item.Quantity <= 0)
+                    throw new BusinessRuleException("مقدار برگشتی باید بزرگ‌تر از صفر باشد.");
+            }
+
             // فاکتور مرجع اختیاری است، ولی برای برگشتِ حسابداری لازم است: بدون آن
             // نمی‌دانیم چه مبلغی و با چه بهای تمام‌شده‌ای باید برگردد
             SalesInvoice? sourceInvoice = null;
@@ -404,12 +430,7 @@ public class StockService : IStockService
                     throw new BusinessRuleException(
                         $"برگشت فقط روی فاکتور تأییدشده ممکن است (وضعیت فعلی: {sourceInvoice.Status}).");
 
-                // مقدار برگشتی باید مثبت باشد (وگرنه سندِ جعلی با مبلغ منفی صادر می‌شود)
-                foreach (var item in dto.Items)
-                {
-                    if (item.Quantity <= 0)
-                        throw new BusinessRuleException("مقدار برگشتی باید بزرگ‌تر از صفر باشد.");
-                }
+                // مقدار برگشتی مثبت بودنش در ابتدای تراکنش (بیرون از این شاخه) بررسی شد
 
                 // GroupBy به‌جای ToDictionary: فاکتور ممکن است چند سطر برای یک کالا داشته باشد
                 var soldByProduct = sourceInvoice.Items
@@ -484,28 +505,68 @@ public class StockService : IStockService
             // معکوس سند فروش به‌ازای همان اقلام: کاهش درآمد و طلب مشتری، برگشت موجودی و COGS
             if (sourceInvoice is not null)
             {
-                var invoiceItems = sourceInvoice.Items.ToDictionary(i => i.ProductId);
+                // فاکتور مرجع می‌تواند برای یک کالا چند سطر داشته باشد؛ GroupBy لازم است
+                // چون ToDictionary با کلید تکراری خطا می‌داد و برگشت را کاملاً متوقف می‌کرد.
+                // میانگین «وزنی» گرفته می‌شود تا درآمد برگشتی با فروش اصلی هم‌خوان بماند.
+                var invoiceItems = sourceInvoice.Items
+                    .GroupBy(i => i.ProductId)
+                    .ToDictionary(g => g.Key, g =>
+                    {
+                        var qty = g.Sum(x => x.Quantity);
+                        return (
+                            UnitPrice: qty == 0 ? 0 : g.Sum(x => x.Quantity * x.UnitPrice) / qty,
+                            CostPrice: g.Sum(x => x.CostPrice ?? 0)
+                        );
+                    });
+
                 var returnLines = new List<DTOs.JournalLineInput>();
                 var revenueTotal = 0m;
+                var grossReturned = 0m;
 
-                foreach (var item in dto.Items)
+                foreach (var group in dto.Items.GroupBy(i => i.ProductId))
                 {
-                    var invoiceItem = invoiceItems[item.ProductId];
-                    var lineRevenue = item.Quantity * invoiceItem.UnitPrice;
-                    var lineCost = item.Quantity * (invoiceItem.CostPrice ?? 0m);
+                    var returnedQty = group.Sum(x => x.Quantity);
+                    if (!invoiceItems.TryGetValue(group.Key, out var invoiceItem))
+                        throw new BusinessRuleException($"کالای شماره {group.Key} در فاکتور مرجع نبوده است.");
+
+                    var lineRevenue = returnedQty * invoiceItem.UnitPrice;
+                    var lineCost = returnedQty * invoiceItem.CostPrice;
                     revenueTotal += lineRevenue;
+                    grossReturned += lineRevenue;
+                }
+
+                // ⚠️ تخفیفِ فاکتور مرجع هم باید کسر شود، وگرنه برگشتِ جزئی از فاکتورِ تخفیف‌دار
+                // بیش از مبلغ واقعیِ پرداخت‌شده طلب مشتری را کم می‌کرد (و درآمد جعلی می‌ساخت).
+                // سهم تخفیف به نسبتِ ارزشِ خامِ برگشتی به کل ارزشِ خامِ فاکتور محاسبه می‌شود.
+                var invoiceGross = sourceInvoice.TotalAmount - sourceInvoice.ShippingAmount
+                                   + sourceInvoice.DiscountAmount;
+                var discountShare = invoiceGross > 0
+                    ? sourceInvoice.DiscountAmount * (grossReturned / invoiceGross)
+                    : 0m;
+                var netRevenueTotal = Math.Max(revenueTotal - discountShare, 0m);
+
+                foreach (var group in dto.Items.GroupBy(i => i.ProductId))
+                {
+                    var returnedQty = group.Sum(x => x.Quantity);
+                    var invoiceItem = invoiceItems[group.Key];
+                    var lineRevenue = returnedQty * invoiceItem.UnitPrice;
+                    var lineCost = returnedQty * invoiceItem.CostPrice;
+
+                    // سهم تخفیف همین قلم (نسبتِ این قلم از کل برگشتی)
+                    var lineDiscount = revenueTotal > 0 ? discountShare * (lineRevenue / revenueTotal) : 0m;
+                    var netLineRevenue = Math.Max(lineRevenue - lineDiscount, 0m);
 
                     returnLines.Add(new DTOs.JournalLineInput(
-                        SystemAccountCodes.SalesRevenue, lineRevenue, 0, "برگشت درآمد فروش"));
+                        SystemAccountCodes.SalesRevenue, netLineRevenue, 0, "برگشت درآمد فروش"));
                     returnLines.Add(new DTOs.JournalLineInput(
                         SystemAccountCodes.Inventory, lineCost, 0, "برگشت موجودی کالا"));
                     returnLines.Add(new DTOs.JournalLineInput(
                         SystemAccountCodes.CostOfGoodsSold, 0, lineCost, "برگشت بهای تمام‌شده"));
                 }
 
-                // طلب مشتری به اندازهٔ مبلغ فروشِ برگشتی کم می‌شود (نه به اندازهٔ بهای تمام‌شده)
+                // طلب مشتری به اندازهٔ مبلغ فروشِ برگشتی (بعد از تخفیف) کم می‌شود
                 returnLines.Add(new DTOs.JournalLineInput(
-                    SystemAccountCodes.AccountsReceivable, 0, revenueTotal,
+                    SystemAccountCodes.AccountsReceivable, 0, netRevenueTotal,
                     "کاهش طلب مشتری بابت برگشت از فروش", "Customer", sourceInvoice.CustomerId));
 
                 await _journalService.PostEntryAsync(

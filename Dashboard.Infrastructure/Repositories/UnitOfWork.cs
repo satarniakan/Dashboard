@@ -132,10 +132,14 @@ public class UnitOfWork : IUnitOfWork
         {
             throw;
         }
-        catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+        // خطای «یکتایی» و برخورد فیلدها یک قاعدهٔ کسب‌وکار نیست؛ یک خطای فنی/داده‌ای است.
+        // اگر آن را BusinessRuleException کنیم، لایهٔ بالا (مثلاً پرداخت فروشگاه) آن را
+        // «موجودی تمام شده» تفسیر می‌کند و سفارشِ پول‌داده را لغو می‌کند. پس جدا نگه داشته
+        // می‌شود تا فراخواننده بتواند آن را به‌عنوان خطای فنی (نه منطقی) مدیریت کند.
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
         {
-            throw new Dashboard.Domain.Exceptions.BusinessRuleException(
-                "این عملیات با یک محدودیت داده‌ای برخورد کرد (مثلاً رکوردی که به این آیتم وابسته است). لطفاً وابستگی‌ها را بررسی کنید.");
+            throw new Dashboard.Domain.Exceptions.DataIntegrityException(
+                "این عملیات با یک محدودیت داده‌ای دیتابیس برخورد کرد (مثلاً مقدار تکراری در یک فیلد یکتا یا طول فیلد بیش از حد مجاز).", ex);
         }
     }
 

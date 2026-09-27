@@ -78,6 +78,14 @@ public class OrderService : IOrderService
         if (cart is null || cart.Items.Count == 0)
             return (default!, "سبد خرید شما خالی است.");
 
+        // انبار فروشگاه باید از قبل در سیستم تعریف شده باشد. «Store:WarehouseId» خودکار
+        // ساخته نمی‌شود، و اگر به انبار ناموجود اشاره کند موجودی صفر خوانده می‌شود؛ آن‌وقت
+        // همهٔ سفارش‌ها با پیام گمراه‌کنندهٔ «موجودی کافی نیست» رد می‌شدند در حالی که
+        // مشکل از تنظیمات است. اینجا پیام دقیق و قابل‌اجرایی به مدیر می‌دهیم.
+        if (await _unitOfWork.Warehouses.GetByIdAsync(_store.WarehouseId) is null)
+            return (default!, $"انبار فروشگاه (شناسهٔ {_store.WarehouseId}) در سیستم تعریف نشده است. " +
+                              "در بخش «انبارها» آن را بسازید یا شمارهٔ انبار صحیح را در تنظیمات («Store:WarehouseId») بگذارید.");
+
         // همهٔ کالاهای سبد خوانده می‌شوند تا برای کالای حذف‌شده/مخفی‌شده پیام دقیق داده شود
         // (فقط کالاهای منتشرشده قابل خریدند و جمع زیرمجموعه باید با سبد یکی باشد)
         var allProducts = (await _unitOfWork.Products.GetByIdsAsync(cart.Items.Select(i => i.ProductId).ToList()))
@@ -127,6 +135,28 @@ public class OrderService : IOrderService
             reserved.Add((item.ProductId, item.Quantity));
         }
 
+        // از این لحظه رزروها در انبار «قفل شده‌اند». هر مسیر خروجی قبل از ثبت نهایی سفارش
+        // باید آن‌ها را آزاد کند، وگرنه موجودی آن کالا برای همیشه از فروشگاه کنار می‌رود.
+        try
+        {
+            return await PlaceReservedOrderAsync(userId, dto, cart, products, reserved);
+        }
+        catch
+        {
+            await ReleaseReservationsAsync(reserved);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// ادامهٔ <see cref="PlaceOrderAsync"/> بعد از رزرو موفق موجودی: محاسبهٔ تخفیف/حمل،
+    /// ساخت سفارش و ثبت آن. اگر به هر دلیلی سفارش ثبت نشد، فراخواننده رزروها را آزاد می‌کند.
+    /// </summary>
+    private async Task<(OrderDto Order, string? Error)> PlaceReservedOrderAsync(
+        string userId, CheckoutDto dto, Cart cart,
+        Dictionary<int, Product> products,
+        List<(int ProductId, decimal Quantity)> reserved)
+    {
         // گرد کردن به ۲ رقم اعشار: مبلغ ارسالی به درگاه و مبلغ زمان verify باید
         // دقیقاً یکی باشند (مقدار ذخیره‌شده در DB با دقت decimal(18,2) گرد می‌شود)
         var subtotal = Math.Round(cart.Items.Sum(i => i.Quantity * (products.GetValueOrDefault(i.ProductId)?.Price ?? 0)), 2, MidpointRounding.AwayFromZero);
@@ -142,13 +172,17 @@ public class OrderService : IOrderService
                 && (appliedCode.MaxUsageCount is null || appliedCode.UsageCount < appliedCode.MaxUsageCount)
                 && appliedCode.CalculateDiscount(subtotal) > 0)
             {
-                // سقف «مصرف هر مشتری» — اگر پر شده باشد کد اعمال نمی‌شود و کاربر باید آن را از سبد حذف کند
+                // سقف «مصرف هر مشتری» — اگر پر شده باشد کد اعمال نمی‌شود و کاربر باید آن را از سبد حذف کنیم.
+                // نکته: از اینجا return می‌کنیم و رزروها را فراخواننده (try بالا) آزاد می‌کند.
                 if (appliedCode.MaxUsagePerCustomer is int maxPerCustomer && maxPerCustomer > 0)
                 {
                     var usedCount = await _unitOfWork.Orders.CountUserDiscountUsagesAsync(userId, appliedCode.Code);
                     if (usedCount >= maxPerCustomer)
+                    {
+                        await ReleaseReservationsAsync(reserved);
                         return (default!,
                             $"سقف مصرف این کد تخفیف برای شما پر شده است ({usedCount} از {maxPerCustomer} بار). کد را از سبد خرید حذف کنید.");
+                    }
                 }
 
                 discountAmount = Math.Round(appliedCode.CalculateDiscount(subtotal), 2, MidpointRounding.AwayFromZero);
@@ -188,18 +222,11 @@ public class OrderService : IOrderService
             });
         }
 
-        try
-        {
-            await _unitOfWork.Orders.AddAsync(order);
-            await _unitOfWork.CompleteAsync();
-        }
-        catch
-        {
-            // سفارش ثبت نشد ⇒ رزرو نباید در انبار بماند
-            await ReleaseReservationsAsync(reserved);
-            throw;
-        }
+        // ثبت نهایی سفارش. اگر شکست بخورد، استثنا بالا می‌رود و catchِ فراخواننده رزروها را آزاد می‌کند.
+        await _unitOfWork.Orders.AddAsync(order);
+        await _unitOfWork.CompleteAsync();
 
+        // سفارش ثبت شد ⇒ رزروها به «این سفارش» تعلق دارند و با پرداخت/انقضا آزاد می‌شوند
         return (ToDto(order), null);
     }
 
@@ -322,6 +349,26 @@ public class OrderService : IOrderService
                 NotificationType.Order, $"/admin/orders/{order.Id}");
 
             return (false, $"پرداخت انجام شد اما ثبت سفارش ناموفق بود: {ex.Message}");
+        }
+        catch (DataIntegrityException ex)
+        {
+            // ⚠️ خطای فنی دیتابیس (مثلاً تکراری‌شدن شمارهٔ مشتری یا طول فیلد) — این «نبودِ
+            // موجودی» نیست. لغوکردن سفارشِ پول‌داده اشتباه بود: مشتری پول داده و منتظر کالا
+            // است. سفارش Paid می‌ماند، برای بررسی/تلاش مجدد علامت می‌خورد و ادمین مطلع می‌شود.
+            if (invoiceId is not null)
+            {
+                try { await _salesService.CancelInvoiceAsync(invoiceId.Value, "store"); }
+                catch { /* بهترین‌تلاش */ }
+            }
+            order.AdminNote = $"پرداخت موفق؛ خطای فنی دیتابیس هنگام ثبت (نیازمند بررسی): {ex.Message}";
+            await _unitOfWork.Orders.UpdateAsync(order);
+            await _unitOfWork.CompleteAsync();
+
+            await _notifications.NotifyRoleAsync(Roles.Admin, $"خطای فنی در ثبت سفارش پرداخت‌شده {order.OrderNumber}",
+                $"پرداخت دریافت شد اما ثبت نهایی با خطای دیتابیس مواجه شد (نه مشکل موجودی). نیازمند بررسی فنی. جزئیات: {ex.Message}",
+                NotificationType.Order, $"/admin/orders/{order.Id}");
+
+            return (false, "پرداخت شما دریافت شد و سفارش برای بررسی در صف تیم پشتیبانی قرار گرفت.");
         }
         catch (Exception ex)
         {

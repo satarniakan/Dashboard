@@ -85,6 +85,66 @@ public class WeightedAverageCostTests
         Assert.Equal(20m, level.QuantityOnHand);
     }
 
+    /// <summary>
+    /// رگرسیون: یک کالا با دو سطر در همان رسید خرید. «موجودی قبل از رسید» باید یک‌بار
+    /// خوانده شود؛ قبلاً هر سطر مقدار سطر قبلی را بازنویسی می‌کرد و میانگین موزون
+    /// ۵۵٬۰۰۰ می‌شد به‌جای ۷۰٬۰۰۰.
+    /// </summary>
+    [SkippableFact]
+    public async Task SameProductTwiceInOneReceipt_ComputesCorrectWeightedAverage()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        var product = await _db.SeedProductAsync(price: 150_000, costPrice: 0, stockQty: 0);
+
+        int supplierId;
+        using (var scope = _db.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var supplier = new Supplier($"تأمین‌کننده {Guid.NewGuid():N}"[..18]);
+            context.Suppliers.Add(supplier);
+            await context.SaveChangesAsync();
+            supplierId = supplier.Id;
+        }
+
+        // یک کالا، دو سطر: ۱۰ عدد @۶۰٬۰۰۰ و ۱۰ عدد @۸۰٬۰۰۰
+        // انتظار: (۱۰×۶۰٬۰۰۰ + ۱۰×۸۰٬۰۰۰) ÷ ۲۰ = ۷۰٬۰۰۰
+        using (var scope = _db.CreateScope())
+        {
+            var stock = scope.ServiceProvider.GetRequiredService<IStockService>();
+            await stock.RegisterPurchaseReceiptAsync(new CreatePurchaseReceiptDto
+            {
+                SupplierId = supplierId,
+                WarehouseId = 1,
+                Items = new List<PurchaseReceiptItemInput>
+                {
+                    new() { ProductId = product.Id, Quantity = 10, UnitCost = 60_000 },
+                    new() { ProductId = product.Id, Quantity = 10, UnitCost = 80_000 }
+                }
+            }, "it-user");
+        }
+
+        using var verify = _db.CreateScope();
+        var vContext = verify.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        Assert.Equal(70_000m, CostOf(vContext, product.Id));
+
+        var level = await vContext.StockLevels
+            .SingleAsync(s => s.ProductId == product.Id && s.WarehouseId == 1);
+        Assert.Equal(20m, level.QuantityOnHand);
+
+        // دو سطر باید در یک سطرِ تجمیع‌شده ثبت شده باشند (مجموع مقدار = ۲۰)
+        var receiptId = await vContext.PurchaseReceipts
+            .Where(r => r.SupplierId == supplierId)
+            .OrderByDescending(r => r.Id)
+            .Select(r => r.Id)
+            .FirstAsync();
+        var item = await vContext.PurchaseReceiptItems
+            .SingleAsync(i => i.PurchaseReceiptId == receiptId);
+        Assert.Equal(20m, item.Quantity);
+        Assert.Equal(70_000m, item.UnitCost);
+    }
+
     [SkippableFact]
     public async Task Receipt_AfterPartialSale_UsesCurrentAverage_AndInvoiceSnapshotsIt()
     {

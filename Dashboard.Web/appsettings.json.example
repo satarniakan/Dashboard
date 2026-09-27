@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json.schemastore.org/appsettings.json",
+
+  "//": "قالب تنظیمات محلی — این فایل را در appsettings.json کپی کنید و مقادیر واقعی را بگذارید. خودِ appsettings.json در گیت ثبت نمی‌شود.",
+
+  "ConnectionStrings": {
+    "Default": "Server=localhost,1433;Database=DashboardDb;User Id=sa;Password=***;TrustServerCertificate=True"
+  },
+  "AllowedHosts": "*",
+
+  "PaymentGateway": {
+    "//": "فقط برای تست E2E/CI مقدار Fake بدهید؛ در بقیه حالت‌ها درگاه زرین‌پال استفاده می‌شود.",
+    "Provider": ""
+  },
+  "Zarinpal": {
+    "MerchantId": "",
+    "Sandbox": true
+  },
+
+  "Store": {
+    "//": "این انبار خودکار ساخته نمی‌شود؛ باید در بخش «انبارها» ساخته شده باشد و شماره‌اش اینجا ست شود.",
+    "WarehouseId": 1,
+    "Name": "فروشگاه من",
+    "PostShippingCost": 80000,
+    "CourierShippingCost": 50000,
+    "InPersonShippingCost": 0,
+    "//رسید": "اگر ست شود، بعد از پرداخت موفق آنلاین رسید دریافت خودکار ثبت می‌شود؛ خالی یعنی دستی.",
+    "OnlinePaymentFinancialAccountId": null,
+    "OrderPaymentWindowHours": 6
+  },
+  "Identity": {
+    "//": "اولین لاگین با این شماره، نقش ادمین می‌گیرد. خالی بگذارید تا هیچ شماره‌ای خودکار ادمین نشود.",
+    "FirstAdminPhoneNumber": ""
+  },
+  "Sms": {
+    "//": "مقدار Kavenegar یعنی ارسال واقعی؛ هر مقدار دیگری یعنی درگاه جعلی (پیش‌فرض توسعه).",
+    "Provider": "Fake",
+    "Kavenegar": {
+      "ApiKey": "",
+      "Sender": null
+    },
+    "MaxAttempts": 3,
+    "BatchSize": 20
+  },
+  "Email": {
+    "Smtp": {
+      "Host": "",
+      "Port": 587,
+      "Username": null,
+      "Password": null,
+      "FromAddress": "no-reply@localhost",
+      "FromName": "فروشگاه"
+    }
+  },
+  "ForwardedHeaders": {
+    "//": "پشت reverse proxy حتماً true کنید، وگرنه همهٔ کاربران یک سطل محدودیتِ نرخ می‌شوند.",
+    "TrustAllProxies": false
+  }
+}
