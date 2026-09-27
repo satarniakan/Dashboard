@@ -1,6 +1,7 @@
 ﻿using Dashboard.Application.DTOs;
 using Dashboard.Application.Validators;
 using Dashboard.Application.Helpers;
+using Dashboard.Domain.Accounting;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
 using Dashboard.Domain.Exceptions;
@@ -361,6 +362,29 @@ public class StockService : IStockService
         var salesReturnId = 0;
         await RunInTransactionAsync(async () =>
         {
+            // فاکتور مرجع اختیاری است، ولی برای برگشتِ حسابداری لازم است: بدون آن
+            // نمی‌دانیم چه مبلغی و با چه بهای تمام‌شده‌ای باید برگردد
+            Dashboard.Domain.Entities.SalesInvoice? sourceInvoice = null;
+            if (dto.SalesInvoiceId is int invoiceId)
+            {
+                sourceInvoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
+                    ?? throw new Dashboard.Domain.Exceptions.NotFoundException("فاکتور", invoiceId);
+
+                if (sourceInvoice.WarehouseId != dto.WarehouseId)
+                    throw new Dashboard.Domain.Exceptions.BusinessRuleException("انبار فاکتور با انبار برگشتی یکسان نیست.");
+
+                var invoiceQuantities = sourceInvoice.Items.ToDictionary(i => i.ProductId, i => i.Quantity);
+                foreach (var item in dto.Items)
+                {
+                    if (!invoiceQuantities.TryGetValue(item.ProductId, out var sold))
+                        throw new Dashboard.Domain.Exceptions.BusinessRuleException(
+                            $"کالای شماره {item.ProductId} در فاکتور مرجع نبوده است.");
+                    if (item.Quantity > sold)
+                        throw new Dashboard.Domain.Exceptions.BusinessRuleException(
+                            $"مقدار برگشتی ({item.Quantity:0.##}) بیشتر از مقدار فروش‌رفته ({sold:0.##}) است.");
+                }
+            }
+
             var salesReturn = new SalesReturn
             {
                 WarehouseId = dto.WarehouseId,
@@ -368,6 +392,7 @@ public class StockService : IStockService
                 ReturnDate = dto.ReturnDate,
                 CustomerReference = dto.CustomerReference,
                 Notes = dto.Notes,
+                SalesInvoiceId = sourceInvoice?.Id,
                 CreatedByUserId = userId
             };
 
@@ -398,6 +423,42 @@ public class StockService : IStockService
             salesReturn.ReturnNumber = DocumentNumberGenerator.Generate(salesReturn.ReturnDate, salesReturn.WarehouseId, salesReturn.Id);
             await _unitOfWork.SalesReturns.UpdateAsync(salesReturn);
             await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesReturnRegistered", userId, $"برگشت از فروش {salesReturn.ReturnNumber} ثبت شد."));
+
+            // سند حسابداری برگشت — فقط وقتی فاکتور مرجع دارد (وگرنه مبلغِ برگشتی مبهم است).
+            // معکوس سند فروش به‌ازای همان اقلام: کاهش درآمد و طلب مشتری، برگشت موجودی و COGS
+            if (sourceInvoice is not null)
+            {
+                var invoiceItems = sourceInvoice.Items.ToDictionary(i => i.ProductId);
+                var returnLines = new List<DTOs.JournalLineInput>();
+                var revenueTotal = 0m;
+
+                foreach (var item in dto.Items)
+                {
+                    var invoiceItem = invoiceItems[item.ProductId];
+                    var lineRevenue = item.Quantity * invoiceItem.UnitPrice;
+                    var lineCost = item.Quantity * (invoiceItem.CostPrice ?? 0m);
+                    revenueTotal += lineRevenue;
+
+                    returnLines.Add(new DTOs.JournalLineInput(
+                        SystemAccountCodes.SalesRevenue, lineRevenue, 0, "برگشت درآمد فروش"));
+                    returnLines.Add(new DTOs.JournalLineInput(
+                        SystemAccountCodes.Inventory, lineCost, 0, "برگشت موجودی کالا"));
+                    returnLines.Add(new DTOs.JournalLineInput(
+                        SystemAccountCodes.CostOfGoodsSold, 0, lineCost, "برگشت بهای تمام‌شده"));
+                }
+
+                // طلب مشتری به اندازهٔ مبلغ فروشِ برگشتی کم می‌شود (نه به اندازهٔ بهای تمام‌شده)
+                returnLines.Add(new DTOs.JournalLineInput(
+                    SystemAccountCodes.AccountsReceivable, 0, revenueTotal,
+                    "کاهش طلب مشتری بابت برگشت از فروش", "Customer", sourceInvoice.CustomerId));
+
+                await _journalService.PostEntryAsync(
+                    description: $"برگشت از فروش طبق سند {salesReturn.ReturnNumber}",
+                    lines: returnLines,
+                    referenceType: nameof(SalesReturn),
+                    referenceId: salesReturn.Id,
+                    userId: userId);
+            }
             await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.WarehouseUser,
                 "برگشت از فروش ثبت شد", $"برگشت {salesReturn.ReturnNumber} با {dto.Items.Count} قلم کالا",
                 NotificationType.System, "/warehouse/sales-returns");
