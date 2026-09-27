@@ -47,5 +47,13 @@ public class SalesInvoiceItem
     // قیمت لحظه فروش — عکس فوری، نه ارجاع زنده به قیمت محصول
     public decimal UnitPrice { get; set; }
 
+    /// <summary>
+    /// بهای تمام‌شدهٔ کالا در لحظهٔ صدور فاکتور — عکس فوری.
+    /// سند فروش و سندِ برگشتِ همین فاکتور باید با همین عدد ببندند، وگرنه
+    /// تغییر بعدیِ قیمت تمام‌شدهٔ کالا موجودی و سود ناخالص را نامیزان می‌کند.
+    /// null یعنی فاکتور قدیمی است که این مقدار را ندارد (محاسبه از قیمت روز کالا).
+    /// </summary>
+    public decimal? CostPrice { get; set; }
+
     public decimal LineTotal => Quantity * UnitPrice;
 }

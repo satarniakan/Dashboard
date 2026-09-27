@@ -7,6 +7,7 @@ using Dashboard.Domain.Exceptions;
 using Dashboard.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System.Collections.Generic;
 using Xunit;
 
 namespace Dashboard.Tests;
@@ -20,6 +21,7 @@ public class SalesServiceTests
     private readonly Mock<IStockLevelRepository> _stockLevels = new();
     private readonly Mock<IStockTransactionRepository> _stockTransactions = new();
     private readonly Mock<IAuditLogRepository> _auditLogs = new();
+    private readonly Mock<IProductRepository> _products = new();
     private readonly SalesService _sut; // Sut = System Under TestØŒ ÛŒØ¹Ù†ÛŒ Â«Ú†ÛŒØ²ÛŒ Ú©Ù‡ Ø¯Ø§Ø±ÛŒÙ… ØªØ³ØªØ´ Ù…ÛŒâ€ŒÚ©Ù†ÛŒÙ…Â»
 
     public SalesServiceTests()
@@ -28,6 +30,10 @@ public class SalesServiceTests
         _unitOfWork.Setup(u => u.StockLevels).Returns(_stockLevels.Object);
         _unitOfWork.Setup(u => u.StockTransactions).Returns(_stockTransactions.Object);
         _unitOfWork.Setup(u => u.AuditLogs).Returns(_auditLogs.Object);
+        // اسنپ‌شات بهای تمام‌شده در زمان صدور فاکتور از روی کالا خوانده می‌شود
+        _unitOfWork.Setup(u => u.Products).Returns(_products.Object);
+        _products.Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>()))
+            .ReturnsAsync(new List<Product>());
         _unitOfWork.Setup(u => u.CompleteAsync()).ReturnsAsync(1);
         // تراکنش در تست واقعی نیست؛ فقط عملیات را مستقیم اجرا می‌کند
         _unitOfWork.Setup(u => u.ExecuteInTransactionAsync(It.IsAny<Func<Task>>()))

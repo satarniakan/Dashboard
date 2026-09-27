@@ -404,4 +404,84 @@ public class StorePaymentAccountingTests
             .SingleAsync(s => s.ProductId == product.Id && s.WarehouseId == 1);
         Assert.Equal(1m, level.ReservedQuantity);
     }
+
+    [SkippableFact]
+    public async Task CancelInvoice_AfterCostPriceChanged_StillReversesTheOriginalAmount()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 10);
+
+        int invoiceId;
+        using (var scope = _db.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var customer = new Customer("مشتری تست", "09121240001", "تهران");
+            context.Customers.Add(customer);
+            await context.SaveChangesAsync();
+
+            var sales = scope.ServiceProvider.GetRequiredService<ISalesService>();
+            invoiceId = await sales.CreateDraftInvoiceAsync(new CreateSalesInvoiceDto
+            {
+                CustomerId = customer.Id,
+                WarehouseId = 1,
+                Items = new List<SalesInvoiceItemInput>
+                {
+                    new() { ProductId = product.Id, Quantity = 2, UnitPrice = 100_000 } // 200٬۰۰۰
+                }
+            }, "it-user");
+
+            await sales.ConfirmInvoiceAsync(invoiceId, "it-user");
+        }
+
+        // ادمین بهای تمام‌شدهٔ کالا را بعد از صدور فاکتور عوض می‌کند (۶۰ ← ۹۰ هزار)
+        using (var scope = _db.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var entity = await context.Products.SingleAsync(x => x.Id == product.Id);
+            entity.UpdateWarehouseDetails(entity.Sku!, entity.Barcode, entity.Unit, 90_000, null, null, null, null, 0);
+            await context.SaveChangesAsync();
+        }
+
+        // فاکتور قدیمی باید همان ۶۰٬۰۰۰ را برگرداند، نه ۹۰٬۰۰۰
+        using (var scope = _db.CreateScope())
+        {
+            var sales = scope.ServiceProvider.GetRequiredService<ISalesService>();
+            await sales.CancelInvoiceAsync(invoiceId, "it-user");
+        }
+
+        using var verify = _db.CreateScope();
+        var vContext = verify.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // موجودی دقیقاً به حالت اول برگشته باشد
+        var level = await vContext.StockLevels
+            .SingleAsync(s => s.ProductId == product.Id && s.WarehouseId == 1);
+        Assert.Equal(10m, level.QuantityOnHand);
+
+        // و سند برگشت دقیقاً معکوس سند فروش باشد
+        var entries = await vContext.JournalEntries
+            .Include(e => e.Lines)
+            .Where(e => e.ReferenceType == nameof(SalesInvoice) && e.ReferenceId == invoiceId)
+            .ToListAsync();
+        Assert.Equal(2, entries.Count);
+
+        var accountIds = await vContext.Accounts
+            .Where(a => a.Code == "5000" || a.Code == "1300")
+            .ToDictionaryAsync(a => a.Code, a => a.Id);
+
+        // سند اول = فروش (اول ساخته شده)، سند دوم = برگشت
+        var ordered = entries.OrderBy(e => e.Id).ToList();
+        var sale = ordered[0];
+        var reversal = ordered[1];
+
+        var saleCogs = sale.Lines.Single(l => l.AccountId == accountIds["5000"]).DebitAmount;
+        var reversalCogs = reversal.Lines.Single(l => l.AccountId == accountIds["5000"]).CreditAmount;
+
+        Assert.Equal(120_000m, saleCogs);      // ۲ × ۶۰٬۰۰۰ (بهای لحظهٔ صدور)
+        Assert.Equal(saleCogs, reversalCogs);  // برگشت نباید از ۹۰٬۰۰۰ استفاده کند
+
+        var saleInventory = sale.Lines.Single(l => l.AccountId == accountIds["1300"]).CreditAmount;
+        var reversalInventory = reversal.Lines.Single(l => l.AccountId == accountIds["1300"]).DebitAmount;
+        Assert.Equal(saleInventory, reversalInventory);
+    }
 }

@@ -94,6 +94,13 @@ public class SalesService : ISalesService
         };
 
         decimal total = 0;
+
+        // بهای تمام‌شدهٔ هر کالا در همین لحظه عکس‌برداری می‌شود تا سندِ برگشتِ همین
+        // فاکتور (حتی ماه‌ها بعد) دقیقاً معکوس همین سند فروش باشد
+        var productIds = dto.Items.Select(i => i.ProductId).Distinct().ToList();
+        var productCosts = (await _unitOfWork.Products.GetByIdsAsync(productIds))
+            .ToDictionary(p => p.Id, p => p.CostPrice);
+
         foreach (var item in dto.Items)
         {
             CommonValidations.ValidateQuantityPositive(item.Quantity);
@@ -103,7 +110,8 @@ public class SalesService : ISalesService
             {
                 ProductId = item.ProductId,
                 Quantity = item.Quantity,
-                UnitPrice = item.UnitPrice
+                UnitPrice = item.UnitPrice,
+                CostPrice = productCosts.GetValueOrDefault(item.ProductId)
             });
 
             total += item.Quantity * item.UnitPrice;
@@ -189,7 +197,7 @@ public class SalesService : ISalesService
                     // بهای تمام‌شده از روی CostPrice لحظه‌ای کالا محاسبه می‌شود (نه میانگین موزون واقعی)؛
                     // برای فاز اول کافی است، اما اگر کنترل دقیق‌تر سود ناخالص لازم شد باید این را
                     // به یک روش هزینه‌یابی واقعی (FIFO/میانگین موزون) ارتقا داد.
-                    var totalCost = invoice.Items.Sum(i => i.Quantity * (i.Product?.CostPrice ?? 0));
+                    var totalCost = invoice.Items.Sum(i => i.Quantity * (i.CostPrice ?? i.Product?.CostPrice ?? 0));
 
                     // درآمد کالا = مبلغ فاکتور منهای حمل‌ونقل؛ حمل‌ونقل سرفصل جدا دارد
                     var goodsRevenue = invoice.TotalAmount - invoice.ShippingAmount;
@@ -284,7 +292,7 @@ public class SalesService : ISalesService
                     await _unitOfWork.CompleteAsync();
                     if (wasConfirmed)
                     {
-                        var totalCost = invoice.Items.Sum(i => i.Quantity * (i.Product?.CostPrice ?? 0));
+                        var totalCost = invoice.Items.Sum(i => i.Quantity * (i.CostPrice ?? i.Product?.CostPrice ?? 0));
                         var goodsRevenue = invoice.TotalAmount - invoice.ShippingAmount;
 
                         var reversalLines = new List<JournalLineInput>

@@ -330,6 +330,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             e.Property(i => i.Quantity).HasColumnType("decimal(18,3)");
             e.Property(i => i.UnitPrice).HasColumnType("decimal(18,2)");
+            e.Property(i => i.CostPrice).HasColumnType("decimal(18,2)");
             e.HasOne(i => i.Product).WithMany().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);
         });
         // ---------- Account ----------
