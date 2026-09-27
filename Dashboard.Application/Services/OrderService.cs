@@ -44,6 +44,14 @@ public interface IOrderService
 
     /// <summary>انقضای سفارش‌های پرداخت‌نشده‌ی قدیمی — BackgroundService</summary>
     Task<int> ExpireStalePendingOrdersAsync(TimeSpan maxAge);
+
+    /// <summary>
+    /// تطبیق رزرو یتیم: ReservedQuantity انبار فروشگاه با جمع اقلام سفارش‌های پرداخت‌نشده
+    /// مقایسه و مازاد (کرش پروسه بین TryReserveAsync و درج سفارش) آزاد می‌شود.
+    /// فقط سطرهای «بیکار» (آخرین تغییر قدیمی‌تر از idleWindow) تصحیح می‌شوند تا رزروِ
+    /// کاربری که همین حالا در حال تسویه است حذف نشود. — BackgroundService
+    /// </summary>
+    Task<int> ReconcileOrphanReservationsAsync(TimeSpan idleWindow);
 }
 
 public class OrderService : IOrderService
@@ -413,17 +421,22 @@ public class OrderService : IOrderService
         if (order.Status != OrderStatus.PendingPayment)
             return (true, null);
 
+        var note = $"پرداخت ناموفق: {error}";
+
+        // لغو اتمیک با شرط «هنوز PendingPayment است»: اگر در همین فاصله verify موفق
+        // سفارش را Paid کرده باشد، این‌جا ۰ سطر برمی‌گردد و نباید پرداخت‌شده را لغو کرد.
+        if (!await _unitOfWork.Orders.TryCancelIfStillPendingAsync(order.Id, note))
+            return (true, null);
+
         var payment = order.Payments.FirstOrDefault(p => p.Authority == authority);
         if (payment is not null)
         {
             payment.Status = PaymentStatus.Failed;
             payment.VerifiedAt = DateTime.UtcNow;
         }
-
-        order.Status = OrderStatus.Canceled;
-        order.AdminNote = $"پرداخت ناموفق: {error}";
-        await ReleaseOrderReservationAsync(order);
         await _unitOfWork.CompleteAsync();
+
+        await ReleaseOrderReservationAsync(order);
         return (true, null);
     }
 
@@ -599,11 +612,16 @@ public class OrderService : IOrderService
     public async Task<int> ExpireStalePendingOrdersAsync(TimeSpan maxAge)
     {
         var stale = await _unitOfWork.Orders.GetStalePendingPaymentAsync(maxAge);
+        var expired = 0;
         foreach (var order in stale)
         {
-            order.Status = OrderStatus.Canceled;
-            order.AdminNote = "انقضای سفارش پرداخت‌نشده";
-            await _unitOfWork.Orders.UpdateAsync(order);
+            // لغو اتمیک: اگر دقیقاً بین این کوئری و نوشتن، پرداخت روی همین سفارش verify شده
+            // و TryClaimForPaymentAsync وضعیت را Paid کرده باشد، این ۰ سطر برمی‌گرداند و
+            // نباید سفارشِ پرداخت‌شده را لغو یا رزروش را آزاد کنیم (کلیدِ رفع ادعای Paid→Canceled).
+            if (!await _unitOfWork.Orders.TryCancelIfStillPendingAsync(order.Id, "انقضای سفارش پرداخت‌نشده"))
+                continue;
+
+            expired++;
             await ReleaseOrderReservationAsync(order);
 
             await _notifications.NotifyAsync(order.UserId,
@@ -611,9 +629,36 @@ public class OrderService : IOrderService
                 "به دلیل عدم پرداخت در مهلت مقرر لغو شد؛ در صورت تمایل می‌توانید دوباره خرید کنید.",
                 NotificationType.Order, $"/shop/orders/{order.Id}");
         }
-        if (stale.Count > 0)
-            await _unitOfWork.CompleteAsync();
-        return stale.Count;
+        return expired;
+    }
+
+    public async Task<int> ReconcileOrphanReservationsAsync(TimeSpan idleWindow)
+    {
+        // رزروی که «پشتوانه» دارد = جمع اقلام سفارش‌های هنوز PendingPayment.
+        var live = await _unitOfWork.Orders.GetLiveReservedQuantityByProductAsync();
+
+        // فقط سطرهای بیکار: رزری که همین حالا ساخته شده و سفارشش هنوز درج نشده
+        // در live نیست، پس نباید به‌اشتباه یتیم حساب و آزاد شود.
+        var idle = await _unitOfWork.StockLevels
+            .GetIdleReservedLevelsAsync(_store.WarehouseId, DateTime.UtcNow - idleWindow);
+
+        var now = DateTime.UtcNow;
+        var corrected = 0;
+        foreach (var (productId, reserved, onHand) in idle)
+        {
+            var expected = live.TryGetValue(productId, out var qty) ? qty : 0m;
+            if (reserved <= expected) continue; // کمبود رزرو نیست — دست نزن
+
+            if (await _unitOfWork.StockLevels
+                    .AlignReservedQuantityAsync(productId, _store.WarehouseId, expected, now))
+            {
+                corrected++;
+                _logger.LogWarning(
+                    "رزرو یتیم آزاد شد: کالای {ProductId} در انبار {WarehouseId} از {Reserved} به {Expected} رسید",
+                    productId, _store.WarehouseId, reserved, expected);
+            }
+        }
+        return corrected;
     }
 
     private static string GenerateOrderNumber()

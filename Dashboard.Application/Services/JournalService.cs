@@ -44,6 +44,23 @@ public class JournalService : IJournalService
         var totalDebit = lines.Sum(l => l.Debit);
         var totalCredit = lines.Sum(l => l.Credit);
 
+        // مبلغ منفی در سند یعنی همان مبلغ با علامت معکوس در سمت دیگر ثبت می‌شود؛
+        // این دفتر کل را در ترازِ عددی نگه می‌دارد ولی گزارش سود و زیان و مانده‌ی
+        // حساب را بی‌معنا می‌کند. «برگشت» با سندِ معکوسِ جدا انجام می‌شود، نه با عدد منفی.
+        if (lines.Any(l => l.Debit < 0 || l.Credit < 0))
+            throw new BusinessRuleException("مبلغ سطر سند نمی‌تواند منفی باشد؛ برای برگشت، سند معکوس ثبت کنید.");
+
+        // هر سطر باید یا بدهکار باشد یا بستانکار — نه هر دو و نه هیچ‌کدام.
+        foreach (var line in lines)
+        {
+            if (line.Debit > 0 && line.Credit > 0)
+                throw new BusinessRuleException(
+                    $"سطر سند نمی‌تواند هم‌زمان بدهکار و بستانکار باشد (حساب {line.AccountCode}).");
+            if (line.Debit == 0 && line.Credit == 0)
+                throw new BusinessRuleException(
+                    $"سطر سند نمی‌تواند هم بدهکار و هم بستانکار صفر باشد (حساب {line.AccountCode}).");
+        }
+
         // قانون طلایی حسابداری دوطرفه — اگر این‌جا نگه ندارید، هیچ گزارش مالی قابل اعتماد نخواهد بود
         if (totalDebit != totalCredit)
             throw new BusinessRuleException(

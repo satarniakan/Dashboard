@@ -75,6 +75,18 @@ public class OrderRepository : IOrderRepository
         return rows > 0;
     }
 
+    public async Task<bool> TryCancelIfStillPendingAsync(int orderId, string note)
+    {
+        var rows = await _context.Orders
+            .Where(o => o.Id == orderId
+                     && o.Status == OrderStatus.PendingPayment
+                     && !o.Payments.Any(p => p.Status == Domain.Entities.PaymentStatus.Success))
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(o => o.Status, OrderStatus.Canceled)
+                .SetProperty(o => o.AdminNote, note));
+        return rows > 0;
+    }
+
     public async Task<OrderStatus?> GetStatusAsync(int orderId) =>
         await _context.Orders
             .Where(o => o.Id == orderId)
@@ -110,4 +122,12 @@ public class OrderRepository : IOrderRepository
                           && o.DiscountAmount > 0
                           && o.Status != OrderStatus.Canceled);
     }
+
+    public async Task<Dictionary<int, decimal>> GetLiveReservedQuantityByProductAsync() =>
+        await _context.Orders
+            .Where(o => o.Status == OrderStatus.PendingPayment)
+            .SelectMany(o => o.Items)
+            .GroupBy(i => i.ProductId)
+            .Select(g => new { g.Key, Qty = g.Sum(i => i.Quantity) })
+            .ToDictionaryAsync(x => x.Key, x => x.Qty);
 }

@@ -146,4 +146,32 @@ public class StockLevelRepository : IStockLevelRepository
                 .SetProperty(x => x.ReservedQuantity, x => x.ReservedQuantity - quantity)
                 .SetProperty(x => x.LastUpdatedAt, now));
     }
+
+    public async Task<List<(int ProductId, decimal Reserved, decimal OnHand)>> GetIdleReservedLevelsAsync(
+        int warehouseId, DateTime notUpdatedAfter)
+    {
+        var rows = await _context.StockLevels
+            .Where(s => s.WarehouseId == warehouseId
+                     && s.ReservedQuantity > 0
+                     && s.LastUpdatedAt <= notUpdatedAfter)
+            .Select(s => new { s.ProductId, s.ReservedQuantity, s.QuantityOnHand })
+            .ToListAsync();
+
+        return rows.Select(r => (r.ProductId, r.ReservedQuantity, r.QuantityOnHand)).ToList();
+    }
+
+    public async Task<bool> AlignReservedQuantityAsync(int productId, int warehouseId, decimal expected, DateTime now)
+    {
+        // شرط QuantityOnHand >= expected از نقض CK_StockLevels_ReservedValid جلوگیری می‌کند؛
+        // شرط ReservedQuantity > expected هم نگه می‌دارد که این عملیات هرگز رزرو را افزایش ندهد.
+        var rows = await _context.StockLevels
+            .Where(s => s.ProductId == productId
+                     && s.WarehouseId == warehouseId
+                     && s.ReservedQuantity > expected
+                     && s.QuantityOnHand >= expected)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(x => x.ReservedQuantity, expected)
+                .SetProperty(x => x.LastUpdatedAt, now));
+        return rows > 0;
+    }
 }

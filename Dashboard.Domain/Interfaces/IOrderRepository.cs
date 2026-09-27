@@ -28,6 +28,13 @@ public interface IOrderRepository
     /// </summary>
     Task<bool> TryClaimForPaymentAsync(int orderId);
 
+    /// <summary>
+    /// لغو اتمیک: فقط اگر سفارش هنوز PendingPayment است و پرداخت موفقی ندارد آن را Canceled
+    /// (با یادداشت) می‌کند. false یعنی در این فاصله پرداخت claims/ثبیت شده — پس نباید
+    /// سفارشِ Paid لغو شود (جلوی بازگشت Paid → Canceled در رقابت با job انقضا و callback درگاه).
+    /// </summary>
+    Task<bool> TryCancelIfStillPendingAsync(int orderId, string note);
+
     /// <summary>وضعیت فعلی سفارش مستقیم از دیتابیس (بدون کشِ change tracker) — null یعنی سفارش وجود ندارد</summary>
     Task<Domain.Enums.OrderStatus?> GetStatusAsync(int orderId);
 
@@ -39,4 +46,10 @@ public interface IOrderRepository
     /// — برای اعمال سقف «مصرف هر مشتری» (MaxUsagePerCustomer)
     /// </summary>
     Task<int> CountUserDiscountUsagesAsync(string userId, string discountCode);
+
+    /// <summary>
+    /// جمع اقلام سفارش‌های هنوز-پرداخت‌نشده به تفکیک کالا — یعنی رزروی که «پشتوانه» دارد.
+    /// مابه‌التفاوت این با ReservedQuantity انبار، رزرو یتیم است (کرش پروسه بین رزرو و ثبت سفارش).
+    /// </summary>
+    Task<Dictionary<int, decimal>> GetLiveReservedQuantityByProductAsync();
 }

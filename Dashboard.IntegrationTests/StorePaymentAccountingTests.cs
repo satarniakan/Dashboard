@@ -30,6 +30,9 @@ public class StorePaymentAccountingTests
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 5);
 
         int financialAccountId;
@@ -148,6 +151,9 @@ public class StorePaymentAccountingTests
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         var product = await _db.SeedProductAsync(price: 50_000, costPrice: 30_000, stockQty: 3);
         var cookie = $"cookie-it-{Guid.NewGuid():N}"[..24];
 
@@ -205,6 +211,9 @@ public class StorePaymentAccountingTests
     public async Task Reservation_BlocksSecondBuyer_AndIsReleasedOnExpiry()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 1);
         const int warehouse = 1;
@@ -290,6 +299,9 @@ public class StorePaymentAccountingTests
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 2);
 
         int orderId;
@@ -349,6 +361,9 @@ public class StorePaymentAccountingTests
     public async Task PaymentJustInitiated_IsNotExpired_EvenIfOrderIsOld()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 1);
 
@@ -410,6 +425,9 @@ public class StorePaymentAccountingTests
     public async Task CancelInvoice_AfterCostPriceChanged_StillReversesTheOriginalAmount()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 10);
 

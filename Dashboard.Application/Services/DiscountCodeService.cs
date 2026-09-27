@@ -38,6 +38,21 @@ public class DiscountCodeService : IDiscountCodeService
         if (dto.Type == DiscountType.Percentage && dto.Value > 100)
             throw new BusinessRuleException("درصد تخفیف نمی‌تواند بیشتر از ۱۰۰ باشد.");
 
+        // مقدار منفی در محاسبه با Math.Clamp خنثی می‌شود (تخفیف صفر)، ولی ذخیرهٔ
+        // آن دادهٔ ناسالم است: در UI به‌صورت «تخفیف منفی» دیده می‌شود و گزارش مصرف
+        // کدها را آلوده می‌کند. ورودی نامعتبر باید رد شود، نه بی‌صدا خنثی.
+        if (dto.Value < 0)
+            throw new BusinessRuleException("مقدار تخفیف نمی‌تواند منفی باشد.");
+
+        if (dto.MaxDiscountAmount is < 0)
+            throw new BusinessRuleException("سقف مبلغ تخفیف نمی‌تواند منفی باشد.");
+
+        if (dto.MinCartAmount is < 0)
+            throw new BusinessRuleException("حداقل مبلغ سبد نمی‌تواند منفی باشد.");
+
+        if (dto.MaxUsageCount is <= 0)
+            throw new BusinessRuleException("سقف تعداد استفاده باید بزرگ‌تر از صفر باشد.");
+
         // مقایسه بعد از نرمال‌سازی پایان‌روز: ورود «شروع ۰۸:۰۰ / انقضا همان روز بدون ساعت» معتبر است
         var startsAt = ToUtc(dto.StartsAt);
         var expiresAt = ToUtc(EndOfDayIfMidnight(dto.ExpiresAt));

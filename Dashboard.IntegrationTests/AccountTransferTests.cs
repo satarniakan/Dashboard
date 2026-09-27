@@ -24,6 +24,9 @@ public class AccountTransferTests
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         int gatewayAccountId, bankAccountId;
         using (var scope = _db.CreateScope())
         {
@@ -79,6 +82,9 @@ public class AccountTransferTests
     public async Task Transfer_WhenSameAccount_Throws()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         int accountId;
         using (var scope = _db.CreateScope())

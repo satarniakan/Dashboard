@@ -72,7 +72,9 @@ jobs:
         env:
           BASE_URL: "http://localhost:5293"
           TEST_MSSQL_CONNECTION: "${{ env.E2E_CONNECTION }}"
-        run: dotnet test Dashboard.E2ETests --no-build --logger "console;verbosity=normal"
+        # مسیر کامل csproj + سقف زمانی: اگر اپ بالا نیامده باشد تست‌ها تا ابد
+        # منتظر می‌مانند و job می‌ماند. --blame-hang-timeout جلوی گیرکردن را می‌گیرد.
+        run: dotnet test Dashboard.E2ETests/Dashboard.E2ETests.csproj --no-build --logger "console;verbosity=normal" --blame-hang-timeout 5m
 
       - name: لاگ اپ در صورت شکست
         if: failure()

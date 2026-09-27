@@ -28,7 +28,7 @@ public class SmtpEmailSender : IEmailSender
         _fromName = fromName;
     }
 
-    public Task SendAsync(string to, string subject, string body)
+    public async Task SendAsync(string to, string subject, string body)
     {
         if (string.IsNullOrWhiteSpace(_host))
             throw new InvalidOperationException("پیکربندی ایمیل ناقص است (Email:Smtp:Host).");
@@ -52,6 +52,8 @@ public class SmtpEmailSender : IEmailSender
                 : new NetworkCredential(_username, _password)
         };
 
-        return client.SendMailAsync(message);
+        // await الزامی است: با بازگرداندن Task، «using var client» پیش از اتمام
+        // ارسال دیسپوز می‌شد و هر ایمیل با ObjectDisposedException شکست می‌خورد.
+        await client.SendMailAsync(message);
     }
 }

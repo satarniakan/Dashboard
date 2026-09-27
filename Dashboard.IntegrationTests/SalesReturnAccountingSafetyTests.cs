@@ -12,6 +12,168 @@ using Xunit;
 namespace Dashboard.IntegrationTests;
 
 /// <summary>
+/// مرحلهٔ ۱ بازبینی: قوانین بنیادی سند حسابداری.
+/// <see cref="Dashboard.Application.Services.JournalService"/> روی هر عملیات مالی سیستم
+/// (خرید، فروش، برگشت، انتقال، دریافت) صدا زده می‌شود؛ اگر این قوانین درست نباشد،
+/// هیچ گزارش مالیِ دیگری قابل اعتماد نیست.
+/// </summary>
+[Collection("Database")]
+public class JournalIntegrityTests
+{
+    private readonly TestDatabaseFixture _db;
+    public JournalIntegrityTests(TestDatabaseFixture db) => _db = db;
+
+    private static decimal DebitTotal(AppDbContext ctx, int entryId) =>
+        ctx.JournalEntryLines.AsNoTracking().Where(l => l.JournalEntryId == entryId).Sum(l => l.DebitAmount);
+
+    private static decimal CreditTotal(AppDbContext ctx, int entryId) =>
+        ctx.JournalEntryLines.AsNoTracking().Where(l => l.JournalEntryId == entryId).Sum(l => l.CreditAmount);
+
+    /// <summary>ترازی سند باید در دیتابیس هم حفظ شود، نه فقط در حافظه.</summary>
+    [SkippableFact]
+    public async Task PostEntry_BalancedEntry_IsPersistedBalanced()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
+        int entryId;
+        using (var scope = _db.CreateScope())
+        {
+            var journal = scope.ServiceProvider.GetRequiredService<IJournalService>();
+            entryId = await journal.PostEntryAsync(
+                "سند تست متعادل",
+                new List<JournalLineInput>
+                {
+                    new(SystemAccountCodes.Inventory, 500_000m, 0m, "خرید کالا"),
+                    new(SystemAccountCodes.AccountsPayable, 0m, 500_000m, "بدهی به فروشنده")
+                });
+        }
+
+        using var verify = _db.CreateScope();
+        var vCtx = verify.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(DebitTotal(vCtx, entryId), CreditTotal(vCtx, entryId));
+        Assert.Equal(500_000m, DebitTotal(vCtx, entryId));
+    }
+
+    /// <summary>سند نامتوازن نباید اصلاً ثبت شود.</summary>
+    [SkippableFact]
+    public async Task PostEntry_UnbalancedEntry_Throws_AndPersistsNothing()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
+        int before;
+        using (var scope = _db.CreateScope())
+        {
+            var journal = scope.ServiceProvider.GetRequiredService<IJournalService>();
+            before = await scope.ServiceProvider.GetRequiredService<AppDbContext>()
+                .JournalEntries.AsNoTracking().CountAsync();
+
+            await Assert.ThrowsAsync<BusinessRuleException>(() => journal.PostEntryAsync(
+                "سند نامتوازن",
+                new List<JournalLineInput>
+                {
+                    new(SystemAccountCodes.Inventory, 100_000m, 0m),
+                    new(SystemAccountCodes.AccountsPayable, 0m, 90_000m)
+                }));
+        }
+
+        using var verify = _db.CreateScope();
+        var vCtx = verify.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(before, await vCtx.JournalEntries.AsNoTracking().CountAsync());
+    }
+
+    /// <summary>کمتر از دو سطر، سند حسابداری نیست.</summary>
+    [SkippableFact]
+    public async Task PostEntry_SingleLine_Throws()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
+        using var scope = _db.CreateScope();
+        var journal = scope.ServiceProvider.GetRequiredService<IJournalService>();
+        await Assert.ThrowsAsync<BusinessRuleException>(() => journal.PostEntryAsync(
+            "تک‌سطری",
+            new List<JournalLineInput> { new(SystemAccountCodes.Inventory, 100_000m, 0m) }));
+    }
+
+    /// <summary>
+    /// شکاف واقعی: سرویس فقط «مجموع بدهکار = مجموع بستانکار» را چک می‌کند.
+    /// یک سطر که «هم‌زمان» بدهکار و بستانکار دارد، تراز کلی را خنثی می‌کند و سیستم
+    /// آن را می‌پذیرد — ولی در دفتر کل بی‌معناست (یک مبلغ هم به حساب بدهکار و هم بستانکار شد).
+    /// </summary>
+    [SkippableFact]
+    public async Task PostEntry_LineWithBothDebitAndCredit_Throws()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
+        using var scope = _db.CreateScope();
+        var journal = scope.ServiceProvider.GetRequiredService<IJournalService>();
+
+        // جمع بدهکار = 100,000 و جمع بستانکار = 100,000 ⇒ تراز است، ولی سطر اول
+        // ۵۰٬۰۰۰ بدهکار و ۵۰٬۰۰۰ بستانکار دارد که در حسابداری معتبر نیست.
+        await Assert.ThrowsAsync<BusinessRuleException>(() => journal.PostEntryAsync(
+            "سطر دوحالته",
+            new List<JournalLineInput>
+            {
+                new(SystemAccountCodes.Inventory, 50_000m, 50_000m, "هم بدهکار هم بستانکار"),
+                new(SystemAccountCodes.AccountsPayable, 50_000m, 100_000m)
+            }));
+    }
+
+    /// <summary>مبلغ منفی نباید در سند پذیرفته شود.</summary>
+    [SkippableFact]
+    public async Task PostEntry_NegativeAmount_Throws()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
+        using var scope = _db.CreateScope();
+        var journal = scope.ServiceProvider.GetRequiredService<IJournalService>();
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() => journal.PostEntryAsync(
+            "سند با مبلغ منفی",
+            new List<JournalLineInput>
+            {
+                new(SystemAccountCodes.Inventory, -100_000m, 0m),
+                new(SystemAccountCodes.AccountsPayable, 0m, -100_000m)
+            }));
+    }
+
+    /// <summary>کد حساب ناموجود نباید ساخته شود (وگرنه گزارش‌ها بی‌ردّ می‌مانند).</summary>
+    [SkippableFact]
+    public async Task PostEntry_UnknownAccountCode_Throws()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
+        using var scope = _db.CreateScope();
+        var journal = scope.ServiceProvider.GetRequiredService<IJournalService>();
+
+        await Assert.ThrowsAsync<NotFoundException>(() => journal.PostEntryAsync(
+            "کد حساب ناموجود",
+            new List<JournalLineInput>
+            {
+                new("9999", 100_000m, 0m),
+                new(SystemAccountCodes.AccountsPayable, 0m, 100_000m)
+            }));
+    }
+}
+
+/// <summary>
 /// ایمنی مالیِ برگشت از فروش و لغو فاکتور — سناریوهایی که می‌توانند
 /// درآمد/موجودی را چندبار برگردانند و دفتر کل را «تراز ولی غلط» کنند.
 /// </summary>
@@ -89,6 +251,9 @@ public class SalesReturnAccountingSafetyTests
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 50);
 
         int invoiceId;
@@ -125,11 +290,6 @@ public class SalesReturnAccountingSafetyTests
     }
 
     /// <summary>
-    /// رگرسیون: برگشت وقتی فاکتور مرجع برای یک کالا «دو سطر» دارد. ساخت ToDictionary
-    /// روی ProductId با کلید تکراری خطا می‌داد؛ ضمناً درآمدِ برگشتی باید
-    /// ۲۰×۱۰٬۰۰۰ + ۱۰×۲۰٬۰۰۰ = ۴۰۰٬۰۰۰ باشد (میانگین وزنی، نه ساده).
-    /// </summary>
-    /// <summary>
     /// ادعای باگ: اعتبارسنجی «مقدار &gt; ۰» فقط داخل شاخهٔ «با فاکتور مرجع» اجرا می‌شد.
     /// مرجوعیِ بدون فاکتور هیچ بررسی‌ای نداشت ⇒ مقدار منفی یک «موجودی» منفی و یک
     /// موجب تراکنشِ منفی می‌ساخت (یعنی به‌جای برگشت، موجودی را کم می‌کرد).
@@ -138,6 +298,9 @@ public class SalesReturnAccountingSafetyTests
     public async Task SalesReturn_WithoutReferenceInvoice_RejectsNonPositiveQuantity()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 10);
 
@@ -167,10 +330,18 @@ public class SalesReturnAccountingSafetyTests
             .AnyAsync(t => t.ProductId == product.Id && t.Type == StockTransactionType.SalesReturn));
     }
 
+    /// <summary>
+    /// رگرسیون: برگشت وقتی فاکتور مرجع برای یک کالا «دو سطر» دارد. ساخت ToDictionary
+    /// روی ProductId با کلید تکراری خطا می‌داد؛ ضمناً درآمدِ برگشتی باید
+    /// ۲۰×۱۰٬۰۰۰ + ۱۰×۲۰٬۰۰۰ = ۴۰۰٬۰۰۰ باشد (میانگین وزنی، نه ساده).
+    /// </summary>
     [SkippableFact]
     public async Task SalesReturn_InvoiceWithSameProductTwice_UsesWeightedPrice_AndDoesNotThrow()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 100);
 
@@ -218,6 +389,9 @@ public class SalesReturnAccountingSafetyTests
     public async Task PartialReturn_ThenCancelInvoice_ReversesOnlyTheRemaining()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 10);
         int invoiceId, customerId;
@@ -279,6 +453,9 @@ public class SalesReturnAccountingSafetyTests
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 5);
         int invoiceId;
         using (var scope = _db.CreateScope())
@@ -336,6 +513,9 @@ public class SalesReturnAccountingSafetyTests
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 5);
         int invoiceId;
         using (var scope = _db.CreateScope())
@@ -369,6 +549,9 @@ public class SalesReturnAccountingSafetyTests
     public async Task Return_ExceedingAlreadyReturned_IsRejected()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 10);
         int invoiceId;
@@ -413,6 +596,9 @@ public class SalesReturnAccountingSafetyTests
     public async Task Return_WithZeroOrNegativeQuantity_IsRejected()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 5);
         int invoiceId;

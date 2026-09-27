@@ -48,6 +48,9 @@ public class HttpEndpointTests : IAsyncLifetime
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         using var client = _factory!.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false
@@ -67,6 +70,9 @@ public class HttpEndpointTests : IAsyncLifetime
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         using var client = _factory!.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false
@@ -84,6 +90,9 @@ public class HttpEndpointTests : IAsyncLifetime
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         using var client = _factory!.CreateClient();
 
         Assert.Equal(System.Net.HttpStatusCode.OK, (await client.GetAsync("/login")).StatusCode);
@@ -94,6 +103,9 @@ public class HttpEndpointTests : IAsyncLifetime
     public async Task CheckoutPlace_WhenAnonymous_IsRejected_AndNoOrderIsCreated()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         const string userId = "it-http-anon-user";
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 1);

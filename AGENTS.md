@@ -137,7 +137,23 @@ PaymentGateway__Provider=Fake dotnet run --project Dashboard.Web
 ```
 
 **نکته:** اگر SQL Server در دسترس نباشد، تست‌های یکپارچگی **Skip** می‌شوند (نه Fail).
-پس «تست سبز» لزوماً یعنی تست اجرا شده — خروجی را چک کن.
+پس «تست سبز» لزوماً یعنی تست اجرا شده — خروجی را چک کن. CI این را خودکار بررسی
+می‌کند: اگر حتی یک تست Skip شده باشد build شکست می‌خورد
+(`ALLOW_SKIPPED_TESTS=true` برای اجازه‌دادن است).
+
+**ایزوله‌بودن دادهٔ تست:** `TestDatabaseFixture.ResetTestDataAsync()` در ابتدای هر
+تست اجرا می‌شود و داده را `TRUNCATE` می‌کند — که شمارندهٔ IDENTITY را هم صفر می‌کند
+تا «انبار ۱» واقعاً ۱ بماند و `WarehouseId=1` معتبر بماند. قیدهای خارجی موقتاً
+`DROP` و سپس با همان نام و ستون‌ها بازسازی می‌شوند؛ `Accounts`، `Warehouses` و
+جدول‌های هویتی دست‌نخورده می‌مانند چون دادهٔ مرجعِ تست‌ها هستند.
+
+> ⚠️ **اگر روزی این اسکریپت را خراب کردی، تست نگهبان را جدی بگیر:**
+> `CatalogAndStorefrontTests.Reset_KeepsSchemaIntact_AndReferenceData`. بدون آن ممکن است
+> قیدها بازسازی نشوند و **همهٔ تست‌ها سبز بمانند در حالی که دیتابیس بی‌قید است** —
+> یعنی هیچ بازرسیِ صحتِ داده‌ای انجام نمی‌شود (همان «تست سبزِ توهمی»).
+
+**اشکال‌زدایی:** با `KEEP_TEST_DB=1` دیتابیس تست در پایان حذف نمی‌شود تا بتوان
+اسکیمای باقی‌مانده را از بیرون بررسی کرد.
 
 `Dashboard.E2ETests` در `Dashboard.slnx` **نیست** (فقط در CI اضافه می‌شود).
 
@@ -150,6 +166,7 @@ PaymentGateway__Provider=Fake dotnet run --project Dashboard.Web
 | **مایگریشن در استارتاپ** | `Program.cs:284` و `TestDatabaseFixture.cs:75`، هر دو `MigrateAsync()`. تغییر اسکیما = migration جدید. **هرگز `EnsureCreated`** (با `Migrate` تداخل می‌کند). |
 | **ایندکس graphify نداریم** | پوشهٔ `graphify-out/` در ۲۰۲۶-۰۹-۲۷ **حذف شد**. دلیل: روی ویندوزِ شخص دیگر (`C:\Users\niakan-s\...`) ساخته شده بود، نام پوشه را با غلط `Dashboard.Apllication` ذخیره کرده بود و ۱۲۹ فایل سورس را ندیده بود. اگر دوباره ساختیش، **روی همین مک و از صفر** اجرا کن و قبل از استفاده تاریخش را چک کن. |
 | **رازها** | مقدار حساس نباید در `appsettings*.json` بنشیند. الگو: `Dashboard.Web/appsettings.json.example` |
+| **DbContext به‌ازای هر Circuit (دِفتِ شناخته‌شده)** | `AddDbContext` اسکوپ است و در Blazor Server («InteractiveServer»، `Program.cs:40-41`) اسکوپ = سیرکیت؛ پس همه‌ی کامپوننت‌های یک صفحه یک `AppDbContext` و یک `UnitOfWork` مشترک دارند → دو خطر: خطای «second operation started on this context» و اینکه `CompleteAsync` یک فرم، تغییرات track‌شده‌ی فرم دیگر را هم commit می‌کند. **رفع اصلی (ریفکتور جدا، هنوز انجام نشده):** `AddDbContextFactory` و context کوتاه‌عمر به‌ازای هر عملیات، یا `OwningComponentBase` برای صفحات چندفرمی. تا آن زمان، صفحات جدیدِ InteractiveServer را تک‌فرم نگه دارید و در سرویس، چند `CompleteAsync` متوالی را داخل `ExecuteInTransactionAsync` ببرید. **گزارشش به‌عنوان باگ جدید تکراری است.** |
 
 ---
 

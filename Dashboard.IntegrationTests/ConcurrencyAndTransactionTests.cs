@@ -21,6 +21,9 @@ public class ConcurrencyAndTransactionTests
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         using var scope = _db.CreateScope();
         var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
@@ -62,6 +65,9 @@ public class ConcurrencyAndTransactionTests
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         var product = await _db.SeedProductAsync(price: 1000, costPrice: 500, stockQty: 10);
 
         // دو scope مستقل، هر دو یک رکورد موجودی را می‌خوانند
@@ -86,6 +92,9 @@ public class ConcurrencyAndTransactionTests
     public async Task ConcurrentSaleOfLastItem_OnlyOneSucceeds_StockNeverNegative()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         var product = await _db.SeedProductAsync(price: 50_000, costPrice: 30_000, stockQty: 1);
 
@@ -136,6 +145,9 @@ public class ConcurrencyAndTransactionTests
     public async Task ConcurrentDiscountConsumption_RespectsUsageCap()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         int discountId;
         using (var scope = _db.CreateScope())

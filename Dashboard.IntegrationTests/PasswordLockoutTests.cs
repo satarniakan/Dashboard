@@ -21,6 +21,9 @@ public class PasswordLockoutTests
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         var email = $"lock-{Guid.NewGuid():N}@test.local";
 
         // ساخت کاربر با رمز عبور
@@ -73,6 +76,9 @@ public class PasswordLockoutTests
     public async Task LockoutAllowsLoginAfterReset()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         var email = $"unlock-{Guid.NewGuid():N}@test.local";
 

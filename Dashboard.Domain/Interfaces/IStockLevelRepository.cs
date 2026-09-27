@@ -44,4 +44,17 @@ public interface IStockLevelRepository
     /// (پس فراخوانی دوباره هم مشکلی ایجاد نمی‌کند).
     /// </summary>
     Task ReleaseReservationAsync(int productId, int warehouseId, decimal quantity);
+
+    /// <summary>
+    /// سطرهای رزروشده‌ی یک انبار که از «notUpdatedAfter» دست نخورده‌اند.
+    /// حاشیه‌ی زمانی لازم است: رزری که چند ثانیه پیش ساخته شده و هنوز سفارشش درج نشده
+    /// نباید به‌عنوان یتیم حذف شود.
+    /// </summary>
+    Task<List<(int ProductId, decimal Reserved, decimal OnHand)>> GetIdleReservedLevelsAsync(int warehouseId, DateTime notUpdatedAfter);
+
+    /// <summary>
+    /// هم‌تراز کردن رزرو یک کالا با مقدار پشتیبان‌شده (تطبیق رزرو یتیم).
+    /// فقط اگر رزرو فعلی بیشتر از expected و موجودی فیزیکی >= expected باشد؛ در غیر این صورت بی‌اثر.
+    /// </summary>
+    Task<bool> AlignReservedQuantityAsync(int productId, int warehouseId, decimal expected, DateTime now);
 }

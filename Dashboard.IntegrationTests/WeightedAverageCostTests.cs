@@ -27,6 +27,9 @@ public class WeightedAverageCostTests
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         // موجودی اولیه صفر تا «اولین خرید» محاسبهٔ میانگین را قطعی تست کند
         var product = await _db.SeedProductAsync(price: 150_000, costPrice: 0, stockQty: 0);
 
@@ -95,6 +98,9 @@ public class WeightedAverageCostTests
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         var product = await _db.SeedProductAsync(price: 150_000, costPrice: 0, stockQty: 0);
 
         int supplierId;
@@ -149,6 +155,9 @@ public class WeightedAverageCostTests
     public async Task Receipt_AfterPartialSale_UsesCurrentAverage_AndInvoiceSnapshotsIt()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         var product = await _db.SeedProductAsync(price: 150_000, costPrice: 0, stockQty: 0);
 
@@ -242,6 +251,9 @@ public class WeightedAverageCostTests
     public async Task ConcurrentReceipts_KeepStockAndCostConsistent()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         var product = await _db.SeedProductAsync(price: 150_000, costPrice: 0, stockQty: 0);
 

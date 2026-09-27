@@ -47,6 +47,9 @@ public class StoreWarehouseConfigTests
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         // کالا در انبار واقعی (۱) موجودی کافی دارد، ولی تنظیم به انبارِ ناموجود است
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 5);
 
@@ -70,6 +73,9 @@ public class StoreWarehouseConfigTests
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 5);
 
         using var scope = _db.CreateScope();
@@ -92,6 +98,9 @@ public class StoreWarehouseConfigTests
     public async Task App_WithMissingStoreWarehouse_StillBoots()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         using var factory = new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>

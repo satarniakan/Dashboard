@@ -27,6 +27,9 @@ public class StockReferenceIdTests
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         var product = await _db.SeedProductAsync(price: 10_000, costPrice: 6_000, stockQty: 10);
 
         int issueId;
@@ -56,6 +59,9 @@ public class StockReferenceIdTests
     public async Task StockTransfer_BothDirections_PointToTransferId()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         var product = await _db.SeedProductAsync(price: 10_000, costPrice: 6_000, stockQty: 10);
 
@@ -105,6 +111,9 @@ public class StockReferenceIdTests
     public async Task SalesReturn_AgainstInvoice_PostsReversalJournalEntry()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 10);
 
@@ -183,6 +192,9 @@ public class StockReferenceIdTests
     public async Task SalesReturn_WhenQuantityExceedsInvoiced_Throws()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 10);
 

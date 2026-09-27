@@ -25,8 +25,12 @@ public class DashboardService : IDashboardService
         var today = DateTime.UtcNow.Date;
         var monthStart = new DateTime(today.Year, today.Month, 1);
 
+        // ⚠️ فقط فاکتور «تأییدشده» فروش واقعی است. پیش‌نویس هنوز فروشی نیست (ممکن است
+        // هرگز تأیید نشود) و اگر در آمار بیاید، «فروش امروز» و نمودار روند و «کالای
+        // پرفروش» عددی را نشان می‌دهند که هرگز واقعی نشده است. لغوشده هم که قبلاً
+        // کنار گذاشته شده بود.
         var allInvoices = (await _unitOfWork.SalesInvoices.GetAllAsync())
-            .Where(i => i.Status != SalesInvoiceStatus.Canceled)
+            .Where(i => i.Status == SalesInvoiceStatus.Confirmed)
             .ToList();
 
         var todayInvoices = allInvoices.Where(i => i.InvoiceDate.Date == today).ToList();

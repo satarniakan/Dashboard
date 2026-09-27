@@ -34,6 +34,12 @@ public class OrderExpiryService : BackgroundService
                 var expired = await orderService.ExpireStalePendingOrdersAsync(window);
                 if (expired > 0)
                     _logger.LogInformation("سفارش‌های پرداخت‌نشده‌ی منقضی: {Count} (مهلت: {Hours:F0} ساعت)", expired, window.TotalHours);
+
+                // بعد از انقضا: رزروهایی که هیچ سفارش پرداخت‌نشده‌ای پشتشان نیست
+                // (کرش پروسه بین رزرو موجودی و درج سفارش) آزاد می‌شوند
+                var orphans = await orderService.ReconcileOrphanReservationsAsync(TimeSpan.FromMinutes(10));
+                if (orphans > 0)
+                    _logger.LogWarning("رزرو یتیم آزادشده: {Count} کالا", orphans);
             }
             catch (Exception ex)
             {

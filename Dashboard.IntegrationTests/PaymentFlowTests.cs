@@ -19,6 +19,9 @@ public class PaymentFlowTests
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
 
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
+
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 3);
         var authority = $"AUTH-{Guid.NewGuid():N}";
         var orderNumber = $"ORD-IT-{Guid.NewGuid():N}"[..24];
@@ -103,6 +106,9 @@ public class PaymentFlowTests
     public async Task PaymentOnCanceledOrder_FlagsForRefund_AndNotifiesAdmin()
     {
         Skip.IfNot(_db.Available, _db.SkipReason);
+
+        // هر تست از دادهٔ خالی شروع می‌شود تا به دادهٔ تست‌های دیگر وابسته نباشد
+        await _db.ResetTestDataAsync();
 
         var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 5);
         var authority = $"AUTH-{Guid.NewGuid():N}";
