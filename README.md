@@ -52,6 +52,14 @@ dotnet test Dashboard.Tests
 # اگر SQL Server در دسترس نباشد، تست‌ها Skip می‌شوند (نه Fail).
 TEST_MSSQL_CONNECTION="Server=localhost,1433;User Id=sa;Password=***;TrustServerCertificate=True" \
   dotnet test Dashboard.IntegrationTests
+
+# تست‌های E2E (Playwright) — در Dashboard.slnx نیستند و جدا اجرا می‌شوند.
+# ۱) اپ را با درگاه Fake روشن کنید (OTP فقط در Development در لاگ نوشته می‌شود):
+#    PaymentGateway__Provider=Fake dotnet run --project Dashboard.Web   (لاگ: /tmp/dash-web.log)
+# ۲) سپس:
+TEST_MSSQL_CONNECTION="Server=localhost,1433;Database=DashboardDb;User Id=sa;Password=***;TrustServerCertificate=True" \
+  BASE_URL="http://localhost:5293" \
+  dotnet test Dashboard.E2ETests
 ```
 
-CI (`.github/workflows/build.yml`) هر push/PR هر دو مجموعه را با سرویس SQL Server اجرا می‌کند.
+CI: تست‌های واحد/یکپارچگی در `.github/workflows/build.yml` و تست E2E در `.github/workflows/e2e.yml` (با سرویس SQL Server و مرورگر Chromium).

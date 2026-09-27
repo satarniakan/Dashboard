@@ -35,6 +35,8 @@
     }
 </form>
 
+@* ناحیه‌ی نتایج — جست‌وجوی زنده (store-search.js) فقط innerHTML این ظرف را جایگزین می‌کند *@
+<div id="product-results">
 @if (items is null)
 {
     <LoadingSkeleton />
@@ -75,6 +77,7 @@ else
         </nav>
     }
 }
+</div>
 
 @code {
     // پارامترهای کوئری‌استرینگ — در Static SSR از URL پر می‌شوند
