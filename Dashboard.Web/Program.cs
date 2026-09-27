@@ -210,6 +210,18 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(15),
                 QueueLimit = 0
             }));
+
+    // تکمیل پروفایل/گذاشتن رمز عبور — عملیات گرانِ bcrypt است و قبلاً هیچ محدودیتی نداشت،
+    // پس یک اسکریپت می‌توانست با درخواست‌های مکرر، CPU سرور را بسوزاند
+    options.AddPolicy("profile", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0
+            }));
 });
 builder.Services.AddScoped<Dashboard.Web.Services.ToastService>();
 builder.Services.AddHostedService<Dashboard.Web.Services.OrderExpiryService>();

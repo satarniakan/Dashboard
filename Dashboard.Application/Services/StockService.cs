@@ -182,8 +182,13 @@ public class StockService : IStockService
         CommonValidations.ValidateItemsNotEmpty(dto.Items);
 
         PurchaseReceipt receipt = null!;
-        await _unitOfWork.ExecuteInTransactionAsync(async () =>
+        // RunInTransactionAsync (نه ExecuteInTransactionAsync) چون با RowVersion روی محصول،
+        // دو رسید خریدِ هم‌زمانِ یک کالا می‌توانند تصادم بگیرند؛ این پوشش، تلاش مجدد می‌کند
+        await RunInTransactionAsync(async () =>
         {
+            // موجودی هر کالا قبل از این رسید (مبنای میانگین موزون)
+            var previousQuantities = new Dictionary<int, decimal>();
+
             receipt = new PurchaseReceipt
             {
                 SupplierId = dto.SupplierId,
@@ -205,7 +210,28 @@ public class StockService : IStockService
                     UnitCost = item.UnitCost
                 });
 
+                // موجودی قبل از افزایش، برای محاسبهٔ میانگین موزون لازم است
+                var levelBefore = await _unitOfWork.StockLevels.GetAsync(item.ProductId, dto.WarehouseId);
+                previousQuantities[item.ProductId] = levelBefore?.QuantityOnHand ?? 0m;
+
                 await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, dto.WarehouseId, item.Quantity);
+            }
+
+            // هزینه‌یابی میانگین موزون: بهای تمام‌شدهٔ کالا با هر خرید به‌روز می‌شود تا
+            // سود ناخالص فروش‌های بعدی با قیمت واقعیِ خرید محاسبه شود (نه قیمت اولیهٔ محصول)
+            foreach (var item in dto.Items)
+            {
+                var product = await _unitOfWork.Products.GetByIdAsync(item.ProductId)
+                    ?? throw new NotFoundException("کالا", item.ProductId);
+
+                var previousQuantity = previousQuantities.GetValueOrDefault(item.ProductId);
+
+                product.ApplyWeightedAverageCost(previousQuantity, item.Quantity, item.UnitCost);
+                await _unitOfWork.Products.UpdateAsync(product);
+
+                _logger.LogInformation(
+                    "Weighted average cost for product {ProductId} updated to {Cost} (previous qty {PreviousQty}, incoming {IncomingQty} @ {UnitCost})",
+                    item.ProductId, product.CostPrice, previousQuantity, item.Quantity, item.UnitCost);
             }
 
             await _unitOfWork.PurchaseReceipts.AddAsync(receipt);

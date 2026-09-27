@@ -32,6 +32,13 @@ public static class DependencyInjection
             options.Password.RequireUppercase = false;
             options.Password.RequireLowercase = false;
             options.Password.RequireDigit = false;
+
+            // AuthService با lockoutOnFailure:true (در Identity پیش‌فرض FALSE است) قفل موقت
+            // حساب را می‌خواهد؛ بدون این تنظیم، آن پارامتر بی‌اثر بود و مهاجم می‌توانست
+            // بی‌نهایت رمز را روی یک حساب امتحان کند (محدودیت نرخ فقط جلوی انبوه IP را می‌گیرد).
+            options.Lockout.AllowedForNewUsers = true;
+            options.Lockout.MaxFailedAccessAttempts = 5; // بعد از ۵ تلاش ناموفق
+            options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
         })
      .AddEntityFrameworkStores<AppDbContext>()
      .AddDefaultTokenProviders()

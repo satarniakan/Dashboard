@@ -83,6 +83,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(p => p.Sku).IsUnique();
             e.HasIndex(p => p.Barcode).IsUnique().HasFilter("[Barcode] IS NOT NULL");
             e.Property(p => p.ImageUrl).HasMaxLength(500);
+            e.Property(p => p.RowVersion).IsRowVersion(); // همزمانی خوش‌بینانه روی مشخصات کالا (از جمله بهای تمام‌شده)
             e.Property(p => p.Slug).HasMaxLength(150);
             e.HasIndex(p => p.Slug).IsUnique().HasFilter("[Slug] IS NOT NULL");
             e.Property(p => p.HtmlDescription);

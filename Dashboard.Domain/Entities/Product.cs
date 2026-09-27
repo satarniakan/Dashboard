@@ -14,6 +14,11 @@ public class Product
     public string Sku { get; private set; } = string.Empty;
     public string? Barcode { get; private set; }
     public string Unit { get; private set; } = "عدد";
+    /// <summary>
+    /// بهای تمام‌شدهٔ جاری کالا (به روش میانگین موزون) — با هر رسید خرید به‌روز می‌شود.
+    /// فاکتورهای فروش، «اسنپ‌شات» همین مقدار را نگه می‌دارند تا سند برگشتِ فاکتورهای
+    /// قدیمی هم با همان عدد بسته شود.
+    /// </summary>
     public decimal CostPrice { get; private set; }
     public decimal? Weight { get; private set; }
     public decimal? Length { get; private set; }
@@ -22,6 +27,14 @@ public class Product
     public int ReorderPoint { get; private set; }
     public bool IsActive { get; private set; } = true;
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// توکن همزمانی خوش‌بینانه — جلوگیری از «نوشتنِ گمشده» روی بهای تمام‌شده و سایر
+    /// مشخصات کالا وقتی دو درخواست هم‌زمان (مثلاً دو رسید خرید) آن را تغییر می‌دهند.
+    /// همان الگویی که StockLevel برای موجودی دارد.
+    /// </summary>
+    [System.ComponentModel.DataAnnotations.Timestamp]
+    public byte[] RowVersion { get; private set; } = null!;
     // اگر این محصول یکی از Variant های یک گروه محصول باشد (برای فروشگاه اینترنتی)، این مقدار پر می‌شود
     public int? ProductGroupId { get; private set; }
     public ProductGroup? ProductGroup { get; private set; }
@@ -120,6 +133,27 @@ public class Product
         Width = width;
         Height = height;
         ReorderPoint = reorderPoint;
+    }
+
+    /// <summary>
+    /// به‌روزرسانی بهای تمام‌شده به روش «میانگین موزون» پس از خرید جدید:
+    /// میانگین = (مقدار قبلی × بهای قبلی + مقدار خریداری‌شده × بهای خرید) ÷ (مقدار کل)
+    /// اگر موجودی قبلی صفر باشد (اولین خرید)، بهای خرید مستقیم می‌شود.
+    /// </summary>
+    public void ApplyWeightedAverageCost(decimal previousQuantity, decimal incomingQuantity, decimal incomingUnitCost)
+    {
+        if (incomingQuantity < 0) throw new ArgumentOutOfRangeException(nameof(incomingQuantity));
+        if (incomingUnitCost < 0) throw new ArgumentOutOfRangeException(nameof(incomingUnitCost));
+        if (previousQuantity < 0) throw new ArgumentOutOfRangeException(nameof(previousQuantity));
+
+        var newQuantity = previousQuantity + incomingQuantity;
+        if (newQuantity <= 0) return; // چیزی برای میانگین‌گیری نیست
+
+        CostPrice = previousQuantity <= 0
+            ? incomingUnitCost
+            : Math.Round(
+                ((previousQuantity * CostPrice) + (incomingQuantity * incomingUnitCost)) / newQuantity,
+                2, MidpointRounding.AwayFromZero);
     }
 
     public void Deactivate() => IsActive = false;
