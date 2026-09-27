@@ -321,3 +321,6 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+// نقطهٔ ورود قابل ارجاع برای WebApplicationFactory در تست‌های یکپارچگی
+public partial class Program;
