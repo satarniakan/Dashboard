@@ -126,16 +126,24 @@ builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.Is
 
 // --- فروشگاه اینترنتی: درگاه پرداخت و سرویس سفارش ---
 // MerchantId/Sandbox از «Zarinpal:*»؛ انبار فروش از «Store:WarehouseId»
-builder.Services.AddHttpClient("Zarinpal", client => client.Timeout = TimeSpan.FromSeconds(30));
-builder.Services.AddScoped<IPaymentGateway>(sp =>
+// «PaymentGateway:Provider=Fake» درگاه محلی و بدون شبکه را جایگزین می‌کند (فقط تست E2E/CI)
+if (string.Equals(builder.Configuration["PaymentGateway:Provider"], "Fake", StringComparison.OrdinalIgnoreCase))
 {
-    var config = sp.GetRequiredService<IConfiguration>();
-    var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("Zarinpal");
-    return new ZarinpalPaymentGateway(
-        client,
-        config["Zarinpal:MerchantId"] ?? string.Empty,
-        config.GetValue("Zarinpal:Sandbox", true));
-});
+    builder.Services.AddScoped<IPaymentGateway, FakePaymentGateway>();
+}
+else
+{
+    builder.Services.AddHttpClient("Zarinpal", client => client.Timeout = TimeSpan.FromSeconds(30));
+    builder.Services.AddScoped<IPaymentGateway>(sp =>
+    {
+        var config = sp.GetRequiredService<IConfiguration>();
+        var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("Zarinpal");
+        return new ZarinpalPaymentGateway(
+            client,
+            config["Zarinpal:MerchantId"] ?? string.Empty,
+            config.GetValue("Zarinpal:Sandbox", true));
+    });
+}
 builder.Services.Configure<StoreOptions>(builder.Configuration.GetSection(StoreOptions.SectionName));
 builder.Services.AddScoped<IOrderService>(sp =>
 {
@@ -200,6 +208,18 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = 10,
                 Window = TimeSpan.FromMinutes(15),
+                QueueLimit = 0
+            }));
+
+    // تکمیل پروفایل/گذاشتن رمز عبور — عملیات گرانِ bcrypt است و قبلاً هیچ محدودیتی نداشت،
+    // پس یک اسکریپت می‌توانست با درخواست‌های مکرر، CPU سرور را بسوزاند
+    options.AddPolicy("profile", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(10),
                 QueueLimit = 0
             }));
 });

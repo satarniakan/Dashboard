@@ -1,0 +1,79 @@
+name: E2E (Playwright)
+
+# تست سرتاسری فروشگاه: جست‌وجو، سبد، چک‌اوت و پرداخت با درگاه Fake
+# جدا از build.yml اجرا می‌شود چون به مرورگر نصب‌شده و اپ در حال اجرا نیاز دارد
+on:
+  push:
+    branches: [ "master", "main" ]
+  pull_request:
+    branches: [ "master", "main" ]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "YourStrong@Passw0rd"
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -C -Q 'SELECT 1' || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      E2E_CONNECTION: "Server=localhost,1433;Database=DashboardDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;MultipleActiveResultSets=true"
+
+    steps:
+      - name: Checkout کد
+        uses: actions/checkout@v4
+
+      - name: نصب .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore و Build اپ
+        run: |
+          dotnet restore Dashboard.Web/Dashboard.Web.csproj
+          dotnet build Dashboard.Web/Dashboard.Web.csproj --no-restore -c Release
+
+      - name: اجرای اپ (با درگاه Fake برای تست)
+        run: |
+          ASPNETCORE_ENVIRONMENT=Development \
+          ASPNETCORE_URLS=http://localhost:5293 \
+          ConnectionStrings__Default="$E2E_CONNECTION" \
+          PaymentGateway__Provider=Fake \
+          Store__WarehouseId=2002 \
+          dotnet run --project Dashboard.Web --no-build -c Release > /tmp/dash-web.log 2>&1 &
+          for i in $(seq 1 40); do
+            sleep 3
+            if [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:5293/health)" = "200" ]; then
+              echo "app healthy"; exit 0
+            fi
+          done
+          echo "app failed to start"; cat /tmp/dash-web.log; exit 1
+
+      - name: Restore و Build تست‌های E2E
+        run: |
+          dotnet restore Dashboard.E2ETests/Dashboard.E2ETests.csproj
+          dotnet build Dashboard.E2ETests/Dashboard.E2ETests.csproj --no-restore
+
+      - name: نصب مرورگر Playwright
+        run: pwsh Dashboard.E2ETests/bin/Debug/net10.0/playwright.ps1 install chromium --with-deps
+
+      - name: اجرای تست‌های E2E
+        env:
+          BASE_URL: "http://localhost:5293"
+          TEST_MSSQL_CONNECTION: "${{ env.E2E_CONNECTION }}"
+        run: dotnet test Dashboard.E2ETests --no-build --logger "console;verbosity=normal"
+
+      - name: لاگ اپ در صورت شکست
+        if: failure()
+        run: cat /tmp/dash-web.log

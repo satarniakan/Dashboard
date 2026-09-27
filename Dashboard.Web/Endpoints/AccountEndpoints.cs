@@ -78,7 +78,7 @@ public static class AccountEndpoints
                 ProfileUpdateStatus.UserNotFound => Results.Redirect("/login"),
                 _ => Results.Redirect($"/profile?error={result.Status}")
             };
-        });
+        }).RequireRateLimiting("profile");
 
         app.MapPost("/logout", async (IAuthService authService) =>
         {

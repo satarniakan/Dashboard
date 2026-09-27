@@ -7,6 +7,8 @@ using Dashboard.Domain.Enums;
 using Dashboard.Domain.Exceptions;
 using Dashboard.Domain.Interfaces;
 
+using Microsoft.Extensions.Logging;
+
 namespace Dashboard.Application.Services;
 
 public interface ITreasuryService
@@ -19,6 +21,9 @@ public interface ITreasuryService
 
     Task<int> RegisterSupplierPaymentAsync(CreateSupplierPaymentDto dto, string? userId);
     Task<IEnumerable<SupplierPaymentDto>> GetSupplierPaymentsAsync();
+
+    /// <summary>انتقال وجه بین دو صندوق/بانک (مثلاً تسویهٔ پولِ درگاه به حساب بانک)</summary>
+    Task PostAccountTransferAsync(TransferBetweenAccountsDto dto, string? userId);
 }
 
 public class TreasuryService : ITreasuryService
@@ -26,12 +31,15 @@ public class TreasuryService : ITreasuryService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IJournalService _journalService;
     private readonly INotificationService _notifications;
+    private readonly ILogger<TreasuryService> _logger;
 
-    public TreasuryService(IUnitOfWork unitOfWork, IJournalService journalService, INotificationService notifications)
+    public TreasuryService(IUnitOfWork unitOfWork, IJournalService journalService, INotificationService notifications,
+        ILogger<TreasuryService> logger)
     {
         _unitOfWork = unitOfWork;
         _journalService = journalService;
         _notifications = notifications;
+        _logger = logger;
     }
 
     /// <summary>
@@ -227,5 +235,53 @@ public class TreasuryService : ITreasuryService
         var payments = await _unitOfWork.SupplierPayments.GetAllAsync();
         return payments.Select(p => new SupplierPaymentDto(
             p.Id, p.PaymentNumber, p.PaymentDate, p.Supplier?.Name ?? "-", p.FinancialAccount?.Name ?? "-", p.Amount, p.Method.ToString()));
+    }
+
+    // ---------------- انتقال بین صندوق/بانک ----------------
+
+    /// <summary>
+    /// انتقال وجه بین دو صندوق/بانک — فقط یک سند دوطرفه (بدهکار مبدأ، بستانکار مقصد).
+    /// برای تسویهٔ پولِ پرداخت آنلاین لازم است: رسید خودکار، صندوق درگاه را بدهکار می‌کند و
+    /// این سند، همان پول را به حساب بانکی منتقله می‌کند (وگرنه سود ناخالص از تراز می‌افتد).
+    /// </summary>
+    public async Task PostAccountTransferAsync(TransferBetweenAccountsDto dto, string? userId)
+    {
+        CommonValidations.ValidateAmountPositive(dto.Amount);
+
+        if (dto.FromFinancialAccountId == dto.ToFinancialAccountId)
+            throw new BusinessRuleException("صندوق/بانک مبدأ و مقصد نمی‌توانند یکسان باشند.");
+
+        var from = await _unitOfWork.FinancialAccounts.GetByIdAsync(dto.FromFinancialAccountId)
+            ?? throw new NotFoundException("صندوق/بانک مبدأ", dto.FromFinancialAccountId);
+        var to = await _unitOfWork.FinancialAccounts.GetByIdAsync(dto.ToFinancialAccountId)
+            ?? throw new NotFoundException("صندوق/بانک مقصد", dto.ToFinancialAccountId);
+
+        if (!from.IsActive || !to.IsActive)
+            throw new BusinessRuleException("انتقال فقط بین صندوق/بانک‌های فعال مجاز است.");
+
+        if (from.Account is null || to.Account is null)
+            throw new BusinessRuleException("سرفصل حساب یکی از صندوق/بانک‌ها پیدا نشد.");
+
+        var description = dto.Notes is { Length: > 0 } note
+            ? $"انتقال بین حساب‌ها: {note}"
+            : "انتقال بین حساب‌ها";
+
+        await RunInTransactionAsync(async () =>
+        {
+            await _journalService.PostEntryAsync(
+                description: description,
+                lines: new List<JournalLineInput>
+                {
+                    new(from.Account.Code, dto.Amount, 0, $"برداشت از {from.Name}"),
+                    new(to.Account.Code, 0, dto.Amount, $"واریز به {to.Name}")
+                },
+                referenceType: "AccountTransfer",
+                referenceId: null,
+                userId: userId);
+        });
+
+        _logger.LogInformation(
+            "Account transfer of {Amount} from {From} to {To} by {UserId}",
+            dto.Amount, from.Name, to.Name, userId);
     }
 }

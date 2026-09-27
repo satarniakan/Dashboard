@@ -1,6 +1,7 @@
 ﻿using Dashboard.Application.DTOs;
 using Dashboard.Application.Validators;
 using Dashboard.Application.Helpers;
+using Dashboard.Domain.Accounting;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
 using Dashboard.Domain.Exceptions;
@@ -181,8 +182,13 @@ public class StockService : IStockService
         CommonValidations.ValidateItemsNotEmpty(dto.Items);
 
         PurchaseReceipt receipt = null!;
-        await _unitOfWork.ExecuteInTransactionAsync(async () =>
+        // RunInTransactionAsync (نه ExecuteInTransactionAsync) چون با RowVersion روی محصول،
+        // دو رسید خریدِ هم‌زمانِ یک کالا می‌توانند تصادم بگیرند؛ این پوشش، تلاش مجدد می‌کند
+        await RunInTransactionAsync(async () =>
         {
+            // موجودی هر کالا قبل از این رسید (مبنای میانگین موزون)
+            var previousQuantities = new Dictionary<int, decimal>();
+
             receipt = new PurchaseReceipt
             {
                 SupplierId = dto.SupplierId,
@@ -204,7 +210,28 @@ public class StockService : IStockService
                     UnitCost = item.UnitCost
                 });
 
+                // موجودی قبل از افزایش، برای محاسبهٔ میانگین موزون لازم است
+                var levelBefore = await _unitOfWork.StockLevels.GetAsync(item.ProductId, dto.WarehouseId);
+                previousQuantities[item.ProductId] = levelBefore?.QuantityOnHand ?? 0m;
+
                 await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, dto.WarehouseId, item.Quantity);
+            }
+
+            // هزینه‌یابی میانگین موزون: بهای تمام‌شدهٔ کالا با هر خرید به‌روز می‌شود تا
+            // سود ناخالص فروش‌های بعدی با قیمت واقعیِ خرید محاسبه شود (نه قیمت اولیهٔ محصول)
+            foreach (var item in dto.Items)
+            {
+                var product = await _unitOfWork.Products.GetByIdAsync(item.ProductId)
+                    ?? throw new NotFoundException("کالا", item.ProductId);
+
+                var previousQuantity = previousQuantities.GetValueOrDefault(item.ProductId);
+
+                product.ApplyWeightedAverageCost(previousQuantity, item.Quantity, item.UnitCost);
+                await _unitOfWork.Products.UpdateAsync(product);
+
+                _logger.LogInformation(
+                    "Weighted average cost for product {ProductId} updated to {Cost} (previous qty {PreviousQty}, incoming {IncomingQty} @ {UnitCost})",
+                    item.ProductId, product.CostPrice, previousQuantity, item.Quantity, item.UnitCost);
             }
 
             await _unitOfWork.PurchaseReceipts.AddAsync(receipt);
@@ -361,6 +388,29 @@ public class StockService : IStockService
         var salesReturnId = 0;
         await RunInTransactionAsync(async () =>
         {
+            // فاکتور مرجع اختیاری است، ولی برای برگشتِ حسابداری لازم است: بدون آن
+            // نمی‌دانیم چه مبلغی و با چه بهای تمام‌شده‌ای باید برگردد
+            Dashboard.Domain.Entities.SalesInvoice? sourceInvoice = null;
+            if (dto.SalesInvoiceId is int invoiceId)
+            {
+                sourceInvoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
+                    ?? throw new Dashboard.Domain.Exceptions.NotFoundException("فاکتور", invoiceId);
+
+                if (sourceInvoice.WarehouseId != dto.WarehouseId)
+                    throw new Dashboard.Domain.Exceptions.BusinessRuleException("انبار فاکتور با انبار برگشتی یکسان نیست.");
+
+                var invoiceQuantities = sourceInvoice.Items.ToDictionary(i => i.ProductId, i => i.Quantity);
+                foreach (var item in dto.Items)
+                {
+                    if (!invoiceQuantities.TryGetValue(item.ProductId, out var sold))
+                        throw new Dashboard.Domain.Exceptions.BusinessRuleException(
+                            $"کالای شماره {item.ProductId} در فاکتور مرجع نبوده است.");
+                    if (item.Quantity > sold)
+                        throw new Dashboard.Domain.Exceptions.BusinessRuleException(
+                            $"مقدار برگشتی ({item.Quantity:0.##}) بیشتر از مقدار فروش‌رفته ({sold:0.##}) است.");
+                }
+            }
+
             var salesReturn = new SalesReturn
             {
                 WarehouseId = dto.WarehouseId,
@@ -368,6 +418,7 @@ public class StockService : IStockService
                 ReturnDate = dto.ReturnDate,
                 CustomerReference = dto.CustomerReference,
                 Notes = dto.Notes,
+                SalesInvoiceId = sourceInvoice?.Id,
                 CreatedByUserId = userId
             };
 
@@ -398,6 +449,42 @@ public class StockService : IStockService
             salesReturn.ReturnNumber = DocumentNumberGenerator.Generate(salesReturn.ReturnDate, salesReturn.WarehouseId, salesReturn.Id);
             await _unitOfWork.SalesReturns.UpdateAsync(salesReturn);
             await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SalesReturnRegistered", userId, $"برگشت از فروش {salesReturn.ReturnNumber} ثبت شد."));
+
+            // سند حسابداری برگشت — فقط وقتی فاکتور مرجع دارد (وگرنه مبلغِ برگشتی مبهم است).
+            // معکوس سند فروش به‌ازای همان اقلام: کاهش درآمد و طلب مشتری، برگشت موجودی و COGS
+            if (sourceInvoice is not null)
+            {
+                var invoiceItems = sourceInvoice.Items.ToDictionary(i => i.ProductId);
+                var returnLines = new List<DTOs.JournalLineInput>();
+                var revenueTotal = 0m;
+
+                foreach (var item in dto.Items)
+                {
+                    var invoiceItem = invoiceItems[item.ProductId];
+                    var lineRevenue = item.Quantity * invoiceItem.UnitPrice;
+                    var lineCost = item.Quantity * (invoiceItem.CostPrice ?? 0m);
+                    revenueTotal += lineRevenue;
+
+                    returnLines.Add(new DTOs.JournalLineInput(
+                        SystemAccountCodes.SalesRevenue, lineRevenue, 0, "برگشت درآمد فروش"));
+                    returnLines.Add(new DTOs.JournalLineInput(
+                        SystemAccountCodes.Inventory, lineCost, 0, "برگشت موجودی کالا"));
+                    returnLines.Add(new DTOs.JournalLineInput(
+                        SystemAccountCodes.CostOfGoodsSold, 0, lineCost, "برگشت بهای تمام‌شده"));
+                }
+
+                // طلب مشتری به اندازهٔ مبلغ فروشِ برگشتی کم می‌شود (نه به اندازهٔ بهای تمام‌شده)
+                returnLines.Add(new DTOs.JournalLineInput(
+                    SystemAccountCodes.AccountsReceivable, 0, revenueTotal,
+                    "کاهش طلب مشتری بابت برگشت از فروش", "Customer", sourceInvoice.CustomerId));
+
+                await _journalService.PostEntryAsync(
+                    description: $"برگشت از فروش طبق سند {salesReturn.ReturnNumber}",
+                    lines: returnLines,
+                    referenceType: nameof(SalesReturn),
+                    referenceId: salesReturn.Id,
+                    userId: userId);
+            }
             await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.WarehouseUser,
                 "برگشت از فروش ثبت شد", $"برگشت {salesReturn.ReturnNumber} با {dto.Items.Count} قلم کالا",
                 NotificationType.System, "/warehouse/sales-returns");

@@ -87,3 +87,20 @@ public class CreateSupplierPaymentDto
 }
 
 public record SupplierPaymentDto(int Id, string PaymentNumber, DateTime PaymentDate, string SupplierName, string FinancialAccountName, decimal Amount, string Method);
+
+public class TransferBetweenAccountsDto
+{
+    [Range(1, int.MaxValue, ErrorMessage = "انتخاب صندوق/بانک مبدأ الزامی است.")]
+    public int FromFinancialAccountId { get; set; }
+
+    [Range(1, int.MaxValue, ErrorMessage = "انتخاب صندوق/بانک مقصد الزامی است.")]
+    public int ToFinancialAccountId { get; set; }
+
+    [Range(0.01, double.MaxValue, ErrorMessage = "مبلغ باید بزرگتر از صفر باشد.")]
+    public decimal Amount { get; set; }
+
+    public DateTime TransferDate { get; set; } = DateTime.UtcNow;
+
+    [StringLength(500, ErrorMessage = "توضیحات نمی‌تواند بیشتر از ۵۰۰ کاراکتر باشد.")]
+    public string? Notes { get; set; }
+}

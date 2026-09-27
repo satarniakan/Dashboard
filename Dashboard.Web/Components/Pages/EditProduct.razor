@@ -71,7 +71,7 @@ else
                         <div class="col-md-6">
                             <AppPriceField TValue="decimal" @bind-Value="editModel.CostPrice" Label="بهای تمام‌شده (تومان)"
                                            Placeholder="0" WrapperClass="" ShowWords="true"
-                                           Hint="قیمت خرید یا تولید؛ مبنای محاسبه‌ی سود" />
+                                           Hint="@costPriceHint" />
                         </div>
                     </div>
                 </div>
@@ -235,6 +235,28 @@ else
     private bool isSaving;
     private bool isUploading;
     private bool notFound;
+
+    /// <summary>
+    /// راهنمای فیلد بهای تمام‌شده: این عدد «میانگین موزون» است و با هر رسید خرید
+    /// خودکار به‌روز می‌شود؛ ویرایش دستی آن یعنی «تصحیح میانگین فعلی».
+    /// حاشیهٔ سود و وضعیت آن را هم نشان می‌دهد تا اشتباه تایپی دیده شود.
+    /// </summary>
+    private string costPriceHint
+    {
+        get
+        {
+            const string method = "میانگین موزون — با هر رسید خرید خودکار به‌روز می‌شود؛ ویرایش دستی = تصحیح میانگین فعلی.";
+
+            var cost = editModel?.CostPrice ?? 0;
+            var price = editModel?.Price ?? 0;
+            if (cost <= 0) return method + " بهای تمام‌شده هنوز ثبت نشده است.";
+            if (price <= 0) return method;
+
+            var margin = Math.Round((price - cost) / price * 100, 1);
+            var warning = margin < 0 ? " ⚠️ حاشیهٔ سود منفی است (فروش زیر بهای تمام‌شده)." : string.Empty;
+            return method + $" حاشیهٔ سود فعلی: {margin:0.##}٪{warning}";
+        }
+    }
     private bool dimsOpen;
     private string? errorMessage;
 

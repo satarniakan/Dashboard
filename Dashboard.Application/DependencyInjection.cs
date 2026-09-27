@@ -7,6 +7,10 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        // شمارندهٔ تلاش ناموفقِ OTP (و هر حافظهٔ موقت دیگر) — سرویس‌های اسکوپ‌دار
+        // به آن تزریق می‌شوند
+        services.AddMemoryCache();
+
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IOtpService, OtpService>();

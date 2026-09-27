@@ -162,7 +162,9 @@ a {
 @media print {
     .sidebar,
     .top-row,
-    .no-print {
+    .no-print,
+    .store-header,
+    .store-footer {
         display: none !important;
     }
 

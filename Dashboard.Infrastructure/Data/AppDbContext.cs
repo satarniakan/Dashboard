@@ -83,6 +83,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.HasIndex(p => p.Sku).IsUnique();
             e.HasIndex(p => p.Barcode).IsUnique().HasFilter("[Barcode] IS NOT NULL");
             e.Property(p => p.ImageUrl).HasMaxLength(500);
+            e.Property(p => p.RowVersion).IsRowVersion(); // همزمانی خوش‌بینانه روی مشخصات کالا (از جمله بهای تمام‌شده)
             e.Property(p => p.Slug).HasMaxLength(150);
             e.HasIndex(p => p.Slug).IsUnique().HasFilter("[Slug] IS NOT NULL");
             e.Property(p => p.HtmlDescription);
@@ -330,6 +331,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             e.Property(i => i.Quantity).HasColumnType("decimal(18,3)");
             e.Property(i => i.UnitPrice).HasColumnType("decimal(18,2)");
+            e.Property(i => i.CostPrice).HasColumnType("decimal(18,2)");
             e.HasOne(i => i.Product).WithMany().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);
         });
         // ---------- Account ----------
