@@ -11,7 +11,10 @@ public static class DocumentNumberGenerator
     public static string Generate(DateTime date, int? relatedId, int recordId)
     {
         var pc = new PersianCalendar();
-        var datePart = $"{pc.GetYear(date):0000}{pc.GetMonth(date):00}{pc.GetDayOfMonth(date):00}";
+        // تاریخ‌ها در دیتابیس UTC ذخیره می‌شوند؛ بخشِ تاریخِ شماره باید مثل ToPersianDate
+        // روی ساعت تهران محاسبه شود، وگرنه در ۰۰:۰۰–۰۳:۳۰ تهران یک روز از تاریخ نمایشی عقب می‌ماند.
+        var tehran = PersianDateHelper.ToTehran(date);
+        var datePart = $"{pc.GetYear(tehran):0000}{pc.GetMonth(tehran):00}{pc.GetDayOfMonth(tehran):00}";
         var relatedPart = (relatedId ?? 0).ToString();
         return $"{datePart}-{relatedPart}-{recordId}";
     }

@@ -11,8 +11,14 @@ public static class PersianDateHelper
     // ایران از ۱۴۰۱ ساعت تابستانی ندارد، پس اختلاف همیشه ۳:۳۰+ ثابت است.
     private static readonly TimeSpan TehranOffset = new(3, 30, 0);
 
-    private static DateTime ToTehran(DateTime dateTime) =>
+    // چرا public: گزارش‌ها (مثل داشبورد) باید «امروز/ابتدای ماه» را بر مبنای همان روز
+    // تهرانی که کاربر در جدول می‌بیند بسازند، نه روز گرگوری UTC. در غیر این صورت در
+    // بازه‌ی ۰۰:۰۰ تا ۰۳:۳۰ تهران، UTC هنوز روز قبل است و آمار یک روز عقب می‌ماند.
+    public static DateTime ToTehran(DateTime dateTime) =>
         dateTime.Kind == DateTimeKind.Local ? dateTime : dateTime.Add(TehranOffset);
+
+    /// <summary>تاریخ (بدون ساعت) بر مبنای منطقه‌ی زمانی تهران، برای گروه‌بندی روزانه‌ی گزارش‌ها.</summary>
+    public static DateTime ToTehranDate(this DateTime dateTime) => ToTehran(dateTime).Date;
 
     public static string ToPersianDate(this DateTime dateTime)
     {

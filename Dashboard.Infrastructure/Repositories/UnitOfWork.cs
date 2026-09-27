@@ -158,8 +158,17 @@ public class UnitOfWork : IUnitOfWork
         }
 
         var strategy = _context.Database.CreateExecutionStrategy();
+        var attempt = 0;
         await strategy.ExecuteAsync(async () =>
         {
+            // تلاش مجددِ strategy (خطای موقت SQL/failover) همان delegate را از اول اجرا می‌کند،
+            // ولی change tracker هنوز سطرهای Added/Modified و افزایش‌های in-memory تلاش قبلی را
+            // نگه داشته — بدون پاک‌کردن، یک کسر موجودی یا یک سند دوباره اعمال می‌شد.
+            // تلاش اول پاک نمی‌شود: فراخوانی‌کننده ممکن است پیش از ورود به تراکن چیزی
+            // بارگذاری/تغییر داده باشد که هنوز commit نشده است.
+            if (attempt++ > 0)
+                _context.ChangeTracker.Clear();
+
             await using var transaction = await _context.Database.BeginTransactionAsync();
             _transactionDepth = 1;
             try

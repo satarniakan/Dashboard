@@ -22,6 +22,15 @@ public static class SystemAccountCodes
     /// <summary>حساب‌های پرداختنی تجاری (بدهی به تأمین‌کنندگان)</summary>
     public const string AccountsPayable = "2100";
 
+    /// <summary>
+    /// اوراق دریافتنی (چک/سفتهٔ دریافتی از مشتری) — دارایی. وصول چک نقد شدن این سند است،
+    /// نه ثبت آن روی روزِ دریافت؛ پس چک روزِ دریافت به صندوق/بانک نمی‌خورد.
+    /// </summary>
+    public const string NotesReceivable = "1140";
+
+    /// <summary>اوراق پرداختنی (چک/سفتهٔ صادره به تأمین‌کننده) — بدهی.</summary>
+    public const string NotesPayable = "2200";
+
     /// <summary>درآمد فروش کالا</summary>
     public const string SalesRevenue = "4000";
 
@@ -30,4 +39,16 @@ public static class SystemAccountCodes
 
     /// <summary>بهای تمام‌شده‌ی کالای فروش‌رفته (COGS)</summary>
     public const string CostOfGoodsSold = "5000";
+
+    /// <summary>هزینهٔ کالای مصرف‌شده با حوالهٔ داخلی (غیرفروش)</summary>
+    public const string InternalIssueExpense = "6100";
+
+    /// <summary>هزینهٔ ضایعات انبار</summary>
+    public const string ScrapExpense = "6200";
+
+    /// <summary>کسری شمارش انبارگردانی (اختلاف منفی)</summary>
+    public const string InventoryShortage = "6300";
+
+    /// <summary>اضافات کشف‌شده در انبارگردانی (اختلاف مثبت) — سایر درآمدها</summary>
+    public const string InventorySurplus = "4900";
 }

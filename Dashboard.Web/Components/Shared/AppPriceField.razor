@@ -62,10 +62,21 @@
     [Parameter] public bool ShowWords { get; set; }
     [Parameter] public long[]? QuickAmounts { get; set; }
 
-    private string? WordsText =>
-        ShowWords && Value != default
-            ? PersianNumberToWords.ToTomanWords((long)decimal.CreateChecked(Value))
-            : null;
+    private string? WordsText
+    {
+        get
+        {
+            if (!ShowWords || Value.Equals(default(TValue))) return null;
+            // چرا نه (long)CreateChecked: آن کست بخش اعشاری را بی‌صدا حذف می‌کرد و در مقادیر
+            // خارج از بازهٔ long می‌چرخید (wrap). اینجا از روی رشته parse می‌کنیم (جلوگیری از
+            // سرریز decimal برای double بزرگ)، به نزدیک‌ترین عدد صحیح گرد می‌کنیم، و محدودهٔ long را چک می‌کنیم.
+            if (!decimal.TryParse(Value.ToString("0.################", Cn), NumberStyles.Number, Cn, out var amount))
+                return null;
+            amount = Math.Round(amount, 0, MidpointRounding.AwayFromZero);
+            if (amount < long.MinValue || amount > long.MaxValue) return null;
+            return PersianNumberToWords.ToTomanWords((long)amount);
+        }
+    }
 
     [Parameter] public TValue Value { get; set; }
     [Parameter] public EventCallback<TValue> ValueChanged { get; set; }

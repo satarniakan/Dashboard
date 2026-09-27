@@ -21,6 +21,7 @@ public interface IJournalEntryRepository
     // گزارش‌های مالی: تجمیع مستقیم در دیتابیس انجام می‌شود تا کل سطرها به حافظه بارگذاری نشود
     Task<IEnumerable<TrialBalanceRow>> GetTrialBalanceRowsAsync();
     Task<IEnumerable<SubsidiaryLineRow>> GetSubsidiaryLinesAsync(string subsidiaryType, int subsidiaryId);
-    Task<IEnumerable<AccountTypeSumRow>> GetRevenueExpenseSumsAsync(DateTime? from, DateTime? to);
+    // «to» ابتدای روزِ «تا» است؛ مرز بالا باز (exclusive) اعمال می‌شود تا کل آن روز داخل گزارش بماند
+    Task<IEnumerable<AccountTypeSumRow>> GetRevenueExpenseSumsAsync(DateTime? from, DateTime? toExclusive);
     Task<decimal> GetAccountNetBalanceAsync(string accountCode);
 }

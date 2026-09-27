@@ -11,9 +11,11 @@ public class CreateCustomerDto
     public string Name { get; set; } = string.Empty;
 
     // ارقام فارسی/عربی و نویسه‌های متعارف شماره تلفن را می‌پذیرد؛ مقدار خالی هم مجاز است (فیلد اختیاری).
-    [RegularExpression(@"^(?:[0-9٠-٩۰-۹+\-\s\(\)\.]{7,})?$",
-        ErrorMessage = "شماره تلفن معتبر نیست.")]
-    [StringLength(50, ErrorMessage = "تلفن نمی‌تواند بیشتر از ۵۰ کاراکتر باشد.")]
+    // سقف ۲۰ عمداً با اندازهٔ ستون Customer.Phone در دیتابیس (nvarchar(20)) هم‌خط است؛
+    // در غیر این صورت مقدار ۲۱ تا ۵۰ نویسه از اعتبارسنجی رد می‌شد ولی موقع ذخیره خطای truncate می‌داد.
+    [RegularExpression(@"^(?:[0-9٠-٩۰-۹+\-\s\(\)\.]{7,20})?$",
+        ErrorMessage = "شماره تلفن معتبر نیست (بین ۷ تا ۲۰ نویسه).")]
+    [StringLength(20, ErrorMessage = "تلفن نمی‌تواند بیشتر از ۲۰ کاراکتر باشد.")]
     public string? Phone { get; set; }
 
     [StringLength(500, ErrorMessage = "آدرس نمی‌تواند بیشتر از ۵۰۰ کاراکتر باشد.")]

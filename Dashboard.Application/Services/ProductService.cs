@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Ganss.Xss;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Exceptions;
 using Dashboard.Domain.Interfaces;
@@ -20,6 +21,32 @@ public class ProductService : IProductService
     // تغییر اصلی: فقط UnitOfWork را داریم
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ProductService> _logger;
+
+    // گندزدای HTML برای توضیحات محصول: توضیحات به‌صورت خام در صفحه‌ی عمومی فروشگاه رندر می‌شود
+    // (MarkupString)، پس هر اسکریپت/رویداد/طرح‌نویس مخرب باید پیش از ذخیره حذف شود.
+    // whitelist تا حد «قالب‌بندی متن» محدود شده و پروتکل‌ها به http/https/mailto بسته شده‌اند.
+    private static readonly HtmlSanitizer DescriptionSanitizer = BuildDescriptionSanitizer();
+
+    private static HtmlSanitizer BuildDescriptionSanitizer()
+    {
+        var s = new HtmlSanitizer();
+        s.AllowedTags.Clear();
+        foreach (var t in new[] { "p", "br", "hr", "strong", "b", "em", "i", "u", "s",
+                                  "ul", "ol", "li", "h2", "h3", "h4", "h5", "h6",
+                                  "span", "div", "a", "img", "blockquote",
+                                  "table", "thead", "tbody", "tr", "td", "th" })
+            s.AllowedTags.Add(t);
+        s.AllowedAttributes.Clear();
+        foreach (var a in new[] { "href", "src", "alt", "title", "class", "style" })
+            s.AllowedAttributes.Add(a);
+        s.AllowedSchemes.Clear();
+        foreach (var scheme in new[] { "http", "https", "mailto" })
+            s.AllowedSchemes.Add(scheme);
+        return s;
+    }
+
+    private static string? SanitizeHtml(string? html) =>
+        string.IsNullOrWhiteSpace(html) ? null : DescriptionSanitizer.Sanitize(html);
 
     public ProductService(
         IUnitOfWork unitOfWork,
@@ -136,7 +163,7 @@ public class ProductService : IProductService
             if (duplicate is not null && duplicate.Id != excludeProductId)
                 throw new BusinessRuleException("این نشان (Slug) قبلاً برای کالای دیگری ثبت شده است.");
         }
-        product.SetStoreDetails(isPublished, normalized, htmlDescription);
+        product.SetStoreDetails(isPublished, normalized, SanitizeHtml(htmlDescription));
     }
 
     public async Task<bool> DeleteProductAsync(int id, string? userEmail)

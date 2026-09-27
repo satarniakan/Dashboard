@@ -21,6 +21,17 @@ public class InstallmentPlanRepository : IInstallmentPlanRepository
             .Include(i => i.InstallmentPlan).ThenInclude(p => p!.SalesInvoice)
             .FirstOrDefaultAsync(i => i.Id == installmentId);
 
+    // همزمانی: «خواندن-تغییر-نوشتن» PaidAmount روی قسط هیچ RowVersion ندارد، پس دو رسیدِ هم‌زمان
+    // می‌توانند هر دو یک «مانده» را ببینند و مجموعاً از مبلغ قسط رد شوند. این UPDATE شرطی اتمیک
+    // مستقیماً در دیتابیس بررسی می‌کند «PaidAmount + مبلغ ≤ Amount»؛ اگر شرط نخورد ۰ ردیف برمی‌گردد.
+    public async Task<bool> TryAddPaymentAsync(int installmentId, decimal amount)
+    {
+        var rows = await _context.Installments
+            .Where(i => i.Id == installmentId && i.PaidAmount + amount <= i.Amount)
+            .ExecuteUpdateAsync(s => s.SetProperty(i => i.PaidAmount, i => i.PaidAmount + amount));
+        return rows > 0;
+    }
+
     public async Task AddAsync(InstallmentPlan plan) =>
         await _context.InstallmentPlans.AddAsync(plan);
 

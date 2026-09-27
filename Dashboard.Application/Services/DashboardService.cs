@@ -1,6 +1,7 @@
 ﻿using Dashboard.Domain.Enums;
 using Dashboard.Domain.Interfaces;
 using Dashboard.Application.DTOs;
+using Dashboard.Application.Helpers;
 using Dashboard.Domain.Accounting;
 namespace Dashboard.Application.Services;
 
@@ -22,8 +23,12 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardDataDto> GetDashboardDataAsync()
     {
-        var today = DateTime.UtcNow.Date;
-        var monthStart = new DateTime(today.Year, today.Month, 1);
+        // «امروز» و «ابتدای ماه» بر مبنای روز تهرانی محاسبه می‌شوند، نه UTC؛ وگرنه در بازهٔ
+        // ۰۰:۰۰ تا ۰۳:۳۰ تهران (که UTC هنوز روز قبل است) آمار یک روز عقب می‌ماند و با تاریخ
+        // شمسی‌ای که کاربر در جدول می‌بیند نمی‌خواند.
+        var tehranNow = PersianDateHelper.ToTehran(DateTime.UtcNow);
+        var today = tehranNow.Date;
+        var monthStart = new DateTime(tehranNow.Year, tehranNow.Month, 1);
 
         // ⚠️ فقط فاکتور «تأییدشده» فروش واقعی است. پیش‌نویس هنوز فروشی نیست (ممکن است
         // هرگز تأیید نشود) و اگر در آمار بیاید، «فروش امروز» و نمودار روند و «کالای
@@ -33,13 +38,15 @@ public class DashboardService : IDashboardService
             .Where(i => i.Status == SalesInvoiceStatus.Confirmed)
             .ToList();
 
-        var todayInvoices = allInvoices.Where(i => i.InvoiceDate.Date == today).ToList();
-        var monthInvoices = allInvoices.Where(i => i.InvoiceDate.Date >= monthStart).ToList();
+        var todayInvoices = allInvoices.Where(i => i.InvoiceDate.ToTehranDate() == today).ToList();
+        var monthInvoices = allInvoices.Where(i => i.InvoiceDate.ToTehranDate() >= monthStart).ToList();
 
         var todaySales = todayInvoices.Sum(i => i.TotalAmount);
         var monthSales = monthInvoices.Sum(i => i.TotalAmount);
 
-        var pnl = await _journalService.GetProfitAndLossAsync(monthStart, today.AddDays(1).AddTicks(-1));
+        // «to» اینیسیالو «تا پایان همان روز» فهمیده می‌شود (سرویس خودش روز بعد می‌سازد)،
+        // پس دیگر لازم نیست AddTicks(-1) دست‌کاری شود.
+        var pnl = await _journalService.GetProfitAndLossAsync(monthStart, today);
 
         var overdue = await _unitOfWork.InstallmentPlans.GetOverdueInstallmentsAsync();
         var overdueList = overdue.ToList();
@@ -78,12 +85,12 @@ public class DashboardService : IDashboardService
     private static List<SalesTrendPointDto> BuildSalesTrend(List<Domain.Entities.SalesInvoice> invoices, int days)
     {
         var result = new List<SalesTrendPointDto>();
-        var today = DateTime.UtcNow.Date;
+        var today = PersianDateHelper.ToTehran(DateTime.UtcNow).Date; // روز تهرانی، هم‌راستا با KPIهای بالا
 
         for (var i = days - 1; i >= 0; i--)
         {
             var day = today.AddDays(-i);
-            var total = invoices.Where(inv => inv.InvoiceDate.Date == day).Sum(inv => inv.TotalAmount);
+            var total = invoices.Where(inv => inv.InvoiceDate.ToTehranDate() == day).Sum(inv => inv.TotalAmount);
             result.Add(new SalesTrendPointDto(day, total));
         }
 

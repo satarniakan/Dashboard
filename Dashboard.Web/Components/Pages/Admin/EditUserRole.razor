@@ -119,7 +119,12 @@ else
         errorMessage = null;
         try
         {
-            await UserAdminService.SetRolesAsync(UserId, selectedRoles);
+            var result = await UserAdminService.SetRolesAsync(UserId, selectedRoles);
+            if (!result.Succeeded)
+            {
+                errorMessage = string.Join(" | ", result.Errors.Select(e => e.Description));
+                return;
+            }
             ToastService.ShowSuccess("نقش‌های کاربر به‌روزرسانی شد.");
             NavigationManager.NavigateTo("/admin/users?success=1");
         }

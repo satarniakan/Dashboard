@@ -82,6 +82,11 @@ public class JournalService : IJournalService
             var account = await _unitOfWork.Accounts.GetByCodeAsync(line.AccountCode)
                 ?? throw new NotFoundException("حساب", line.AccountCode);
 
+            // حساب غیرفعال نباید سطر جدید بگیرد؛ اگر گرفته شود تراز آزمایشی سرفصلی را
+            // نشان می‌دهد که در UI «بسته» شده و گردشش گم می‌شود.
+            if (!account.IsActive)
+                throw new BusinessRuleException($"حساب {line.AccountCode} غیرفعال است؛ نمی‌توان روی آن سطر سند زد.");
+
             entry.Lines.Add(new JournalEntryLine
             {
                 AccountId = account.Id,
@@ -160,7 +165,10 @@ public class JournalService : IJournalService
 
     public async Task<ProfitAndLossDto> GetProfitAndLossAsync(DateTime? from = null, DateTime? to = null)
     {
-        var sums = (await _unitOfWork.JournalEntries.GetRevenueExpenseSumsAsync(from, to)).ToList();
+        // «تا تاریخ» یک روزِ تقویمی است (پیکر ابتدای روز می‌دهد) و باید *شامل* آن روز باشد،
+        // پس مرز بالا به ابتدای روز بعد تبدیل و به‌صورت exclusive اعمال می‌شود.
+        var toExclusive = to?.Date.AddDays(1);
+        var sums = (await _unitOfWork.JournalEntries.GetRevenueExpenseSumsAsync(from?.Date, toExclusive)).ToList();
 
         var revenueBreakdown = sums
             .Where(s => s.AccountType == Domain.Enums.AccountType.Revenue)

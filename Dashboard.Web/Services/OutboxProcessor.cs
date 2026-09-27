@@ -10,6 +10,8 @@ namespace Dashboard.Web.Services;
 /// هر ۳۰ ثانیه صف پیام‌ها (Outbox) را می‌گیرد و بر اساس کانال با ISmsSender یا
 /// IEmailSender می‌فرستد. تلاش ناموفق تا سقف مشخص دوباره تلاش می‌شود؛
 /// بعد از سقف، Failed دائمی ثبت می‌گردد.
+/// ارسال «دست‌کم‌به‌یک» است: هر پیام پیش از ارسال با یک UPDATE شرطی claim می‌شود
+/// تا دو instance (یا دو دور هم‌پوشان) یکی را دوباره نفرستند.
 /// </summary>
 public class OutboxProcessor : BackgroundService
 {
@@ -34,46 +36,55 @@ public class OutboxProcessor : BackgroundService
             {
                 using var scope = _scopeFactory.CreateScope();
                 var outboxRepo = scope.ServiceProvider.GetRequiredService<IOutboxRepository>();
-                var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
                 var smsSender = scope.ServiceProvider.GetRequiredService<ISmsSender>();
                 var emailSender = scope.ServiceProvider.GetRequiredService<IEmailSender>();
+
+                // رکورد Processingِ مانده از دور یا پروسهٔ قبل یعنی کرش وسط ارسال —
+                // باید پیش از خواندن صف و وقتی ارسال جاری‌ای نداریم به Pending برگردد.
+                var reclaimed = await outboxRepo.ReclaimAbandonedAsync();
+                if (reclaimed > 0)
+                    _logger.LogWarning("{Count} پیام مانده در Processing به صف برگشت (ارسال تکراری ممکن است)", reclaimed);
 
                 foreach (OutboxChannel channel in new[] { OutboxChannel.Sms, OutboxChannel.Email })
                 {
                     var pending = await outboxRepo.GetPendingAsync(channel, _maxAttempts, _batchSize);
                     foreach (var message in pending)
                     {
-                        message.Attempts++;
+                        if (!await outboxRepo.TryClaimForSendingAsync(message.Id, _maxAttempts))
+                            continue; // دور/instance دیگری زودتر آن را برداشته
+
+                        var attempts = message.Attempts + 1;
+                        string? error = null;
                         try
                         {
                             if (message.Channel == OutboxChannel.Email)
                                 await emailSender.SendAsync(message.Recipient, message.Subject ?? "", message.Body);
                             else
                                 await smsSender.SendAsync(message.Recipient, message.Body);
-
-                            message.Status = OutboxStatus.Sent;
-                            message.SentAt = DateTime.UtcNow;
-                            message.LastError = null;
-                            _logger.LogInformation("پیام {Channel} به {Recipient} ارسال شد", message.Channel, message.Recipient);
                         }
                         catch (Exception ex)
                         {
-                            message.LastError = ex.Message;
-                            if (message.Attempts >= _maxAttempts)
-                            {
-                                message.Status = OutboxStatus.Failed;
-                                _logger.LogError(ex, "پیام {Channel} به {Recipient} پس از {Attempts} تلاش ناموفق ماند", message.Channel, message.Recipient, message.Attempts);
-                            }
-                            else
-                            {
-                                _logger.LogWarning(ex, "ارسال {Channel} به {Recipient} ناموفق (تلاش {Attempts})", message.Channel, message.Recipient, message.Attempts);
-                            }
+                            error = ex.Message;
                         }
-                        await outboxRepo.UpdateAsync(message);
-                    }
 
-                    if (pending.Count > 0)
-                        await unitOfWork.CompleteAsync();
+                        await outboxRepo.FinishSendingAsync(message.Id, error is null, attempts, _maxAttempts,
+                            error, DateTime.UtcNow);
+
+                        if (error is null)
+                        {
+                            _logger.LogInformation("پیام {Channel} به {Recipient} ارسال شد", message.Channel, message.Recipient);
+                        }
+                        else if (attempts >= _maxAttempts)
+                        {
+                            _logger.LogError("پیام {Channel} به {Recipient} پس از {Attempts} تلاش ناموفق ماند: {Error}",
+                                message.Channel, message.Recipient, attempts, error);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("ارسال {Channel} به {Recipient} ناموفق (تلاش {Attempts}): {Error}",
+                                message.Channel, message.Recipient, attempts, error);
+                        }
+                    }
                 }
             }
             catch (Exception ex)

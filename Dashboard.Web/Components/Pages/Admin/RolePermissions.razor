@@ -108,8 +108,11 @@
         {
             if (selectedRole is not null)
             {
-                await PermissionService.SetPermissionsForRoleAsync(selectedRole, currentPermissions);
-                Success = true;
+                var result = await PermissionService.SetPermissionsForRoleAsync(selectedRole, currentPermissions);
+                if (result.Succeeded)
+                    Success = true;
+                else
+                    errorMessage = string.Join(" | ", result.Errors.Select(e => e.Description));
             }
         }
         catch (Exception ex)

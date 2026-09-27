@@ -372,6 +372,24 @@ public class StockService : IStockService
                 "حواله مصرف داخلی ثبت شد", $"حواله {issue.IssueNumber} با {dto.Items.Count} قلم کالا",
                 NotificationType.System, "/warehouse/internal-issues");
             await _unitOfWork.CompleteAsync();
+
+            // خروج کالا از انبار باید در دفتر کل هم بنشیند، وگرنه ماندهٔ ۱۳۰۰ (موجودی کالا)
+            // از جمع تراکنش‌های انبار جدا می‌افتد و تراز آزمایشی دیگر با انبار نمی‌خواند.
+            var issuedCost = await SumCostByQuantityAsync(
+                dto.Items.Select(i => (i.ProductId, i.Quantity)).ToList());
+            if (issuedCost > 0)
+            {
+                await _journalService.PostEntryAsync(
+                    description: $"حواله مصرف داخلی {issue.IssueNumber}",
+                    lines: new List<JournalLineInput>
+                    {
+                        new(SystemAccountCodes.InternalIssueExpense, issuedCost, 0, "مصرف داخلی کالا"),
+                        new(SystemAccountCodes.Inventory, 0, issuedCost, "خروج کالا از انبار")
+                    },
+                    referenceType: nameof(InternalIssue),
+                    referenceId: issue.Id,
+                    userId: userId);
+            }
         });
 
         return issueId;
@@ -657,6 +675,23 @@ public class StockService : IStockService
                 "ضایعات ثبت شد", $"سند ضایعات {scrap.RecordNumber} با {dto.Items.Count} قلم کالا",
                 NotificationType.System, "/warehouse/scrap");
             await _unitOfWork.CompleteAsync();
+
+            // ضایعات هم مثل حواله باید سند بخورد (بدهکار هزینه ضایعات / بستانکار موجودی کالا)
+            var scrapCost = await SumCostByQuantityAsync(
+                dto.Items.Select(i => (i.ProductId, i.Quantity)).ToList());
+            if (scrapCost > 0)
+            {
+                await _journalService.PostEntryAsync(
+                    description: $"ضایعات {scrap.RecordNumber}",
+                    lines: new List<JournalLineInput>
+                    {
+                        new(SystemAccountCodes.ScrapExpense, scrapCost, 0, "هزینه ضایعات انبار"),
+                        new(SystemAccountCodes.Inventory, 0, scrapCost, "خروج کالا از انبار بابت ضایعات")
+                    },
+                    referenceType: nameof(ScrapRecord),
+                    referenceId: scrap.Id,
+                    userId: userId);
+            }
         });
 
         return scrapId;
@@ -899,10 +934,58 @@ public class StockService : IStockService
                 "انبارگردانی بسته شد", $"انبارگردانی {stockCount.CountNumber} بسته و موجودی‌ها تصحیح شد",
                 NotificationType.System, "/warehouse/stock-counts");
             await _unitOfWork.CompleteAsync();
+
+            // اختلاف شمارش باید به حسابِ خودِ اختلاف برود تا ۱۳۰۰ با انبار هم‌خوان بماند:
+            // کسری → بدهکار «کسری انبار»، اضافه → بستانکار «اضافات کشف‌شده».
+            var discrepancies = stockCount.Items
+                .Select(i => (i.ProductId, i.Discrepancy))
+                .Where(i => i.Discrepancy != 0)
+                .ToList();
+            var shortageCost = await SumCostByQuantityAsync(
+                discrepancies.Where(i => i.Discrepancy < 0).Select(i => (i.ProductId, -i.Discrepancy)).ToList());
+            var surplusCost = await SumCostByQuantityAsync(
+                discrepancies.Where(i => i.Discrepancy > 0).Select(i => (i.ProductId, i.Discrepancy)).ToList());
+
+            var countLines = new List<JournalLineInput>();
+            if (shortageCost > 0)
+            {
+                countLines.Add(new JournalLineInput(SystemAccountCodes.InventoryShortage, shortageCost, 0, "کسری شمارش انبارگردانی"));
+                countLines.Add(new JournalLineInput(SystemAccountCodes.Inventory, 0, shortageCost, "اصلاح موجودی بابت کسری"));
+            }
+            if (surplusCost > 0)
+            {
+                countLines.Add(new JournalLineInput(SystemAccountCodes.Inventory, surplusCost, 0, "اصلاح موجودی بابت اضافات"));
+                countLines.Add(new JournalLineInput(SystemAccountCodes.InventorySurplus, 0, surplusCost, "اضافات کشف‌شده در انبارگردانی"));
+            }
+            if (countLines.Count > 0)
+            {
+                await _journalService.PostEntryAsync(
+                    description: $"اختلاف انبارگردانی {stockCount.CountNumber}",
+                    lines: countLines,
+                    referenceType: nameof(StockCount),
+                    referenceId: stockCount.Id,
+                    userId: userId);
+            }
         });
     }
 
     // ---------------- کمکی ----------------
+
+    /// <summary>
+    /// جمع بهای تمام‌شدهٔ اقلام (مقدار × CostPrice جاری = میانگین موزون) برای سند انبار.
+    /// یک کوئری تجمیعی برای همهٔ کالاها — نه به‌ازای هر سطر (N+1).
+    /// </summary>
+    private async Task<decimal> SumCostByQuantityAsync(IReadOnlyCollection<(int ProductId, decimal Quantity)> items)
+    {
+        if (items.Count == 0) return 0m;
+
+        var ids = items.Select(i => i.ProductId).Distinct().ToList();
+        var products = await _unitOfWork.Products.GetByIdsAsync(ids);
+        var costs = products.ToDictionary(p => p.Id, p => p.CostPrice);
+
+        return Math.Round(items.Sum(i => i.Quantity * (costs.TryGetValue(i.ProductId, out var c) ? c : 0m)), 2,
+            MidpointRounding.AwayFromZero);
+    }
 
     /// <summary>
     /// اجرای یک عملیات چندمرحله‌ای در تراکنش دیتابیس با retry روی تصادم همزمانی (RowVersion).

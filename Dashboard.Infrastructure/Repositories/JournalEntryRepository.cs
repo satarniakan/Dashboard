@@ -46,11 +46,13 @@ public class JournalEntryRepository : IJournalEntryRepository
                 l.DebitAmount, l.CreditAmount))
             .ToListAsync();
 
-    public async Task<IEnumerable<AccountTypeSumRow>> GetRevenueExpenseSumsAsync(DateTime? from, DateTime? to) =>
+    public async Task<IEnumerable<AccountTypeSumRow>> GetRevenueExpenseSumsAsync(DateTime? from, DateTime? toExclusive) =>
         await _context.JournalEntryLines
             .Where(l => (l.Account!.Type == AccountType.Revenue || l.Account!.Type == AccountType.Expense)
                         && (from == null || l.JournalEntry!.EntryDate >= from)
-                        && (to == null || l.JournalEntry!.EntryDate <= to))
+                        // «toExclusive» ابتدای روزِ «تا» است و EntryDate درون همان روز وقت دارد؛
+                        // پس مرز بالا باز (<) است، وگرنه کل روزِ آخر از گزارش حذف می‌شد.
+                        && (toExclusive == null || l.JournalEntry!.EntryDate < toExclusive))
             .GroupBy(l => new { l.Account!.Type, l.Account.Name })
             .Select(g => new AccountTypeSumRow(g.Key.Type, g.Key.Name,
                 g.Sum(l => l.DebitAmount), g.Sum(l => l.CreditAmount)))

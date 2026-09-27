@@ -355,6 +355,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             e.Property(l => l.DebitAmount).HasColumnType("decimal(18,2)");
             e.Property(l => l.CreditAmount).HasColumnType("decimal(18,2)");
+            // اعتبارسنجی در JournalService هست، ولی قید در دیتابیس هم لازم است: مسیرهای
+            // مستقیم (Seed، اصلاح دستی داده، باگ آینده) دفتر کل را با مبلغ منفی یا سطر
+            // «هم بدهکار هم بستانکار» ناراست می‌کنند.
+            e.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_JournalEntryLines_NonNegative", "[DebitAmount] >= 0 AND [CreditAmount] >= 0");
+                t.HasCheckConstraint("CK_JournalEntryLines_OneSide", "NOT ([DebitAmount] > 0 AND [CreditAmount] > 0)");
+            });
             e.HasOne(l => l.Account).WithMany().HasForeignKey(l => l.AccountId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(l => new { l.SubsidiaryType, l.SubsidiaryId }); // برای سرعت گزارش گردش حساب
         });

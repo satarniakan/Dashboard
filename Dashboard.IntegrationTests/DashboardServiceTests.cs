@@ -1,4 +1,5 @@
 using Dashboard.Application.DTOs;
+using Dashboard.Application.Helpers;
 using Dashboard.Application.Services;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Interfaces;
@@ -70,10 +71,16 @@ public class DashboardServiceTests
         // هست. به‌جای مقایسهٔ مطلق، بررسی می‌کنیم که فاکتور پیش‌نویسِ همین تست
         // به جمع اضافه نشده باشد: باید برابر مجموع فقط فاکتورهای تأییدشده باشد.
         var ctx2 = verify.ServiceProvider.GetRequiredService<AppDbContext>();
-        var expectedFromConfirmed = await ctx2.SalesInvoices.AsNoTracking()
-            .Where(i => i.Status == Dashboard.Domain.Enums.SalesInvoiceStatus.Confirmed
-                        && i.InvoiceDate.Date == DateTime.UtcNow.Date)
-            .SumAsync(i => i.TotalAmount);
+        // داشبورد حالا «امروز» را بر مبنای روز تهرانی می‌شمارد؛ انتظار تست هم باید همان
+        // منطق را داشته باشد. ToTehranDate در SQL قابل ترجمه نیست، پس فاکتورها را درون
+        // حافظه فیلتر می‌کنیم (دقیقاً مثل خود داشبورد).
+        var tehranToday = PersianDateHelper.ToTehran(DateTime.UtcNow).Date;
+        var confirmedInvoices = await ctx2.SalesInvoices.AsNoTracking()
+            .Where(i => i.Status == Dashboard.Domain.Enums.SalesInvoiceStatus.Confirmed)
+            .ToListAsync();
+        var expectedFromConfirmed = confirmedInvoices
+            .Where(i => i.InvoiceDate.ToTehranDate() == tehranToday)
+            .Sum(i => i.TotalAmount);
 
         Assert.Equal(expectedFromConfirmed, data.Kpis.TodaySales);
         Assert.DoesNotContain(data.RecentInvoices, i => i.Id == draftId);
@@ -82,10 +89,12 @@ public class DashboardServiceTests
         var draft = await ctx2.SalesInvoices.AsNoTracking().SingleAsync(i => i.Id == draftId);
         if (draft.TotalAmount > 0)
         {
-            var withDraft = await ctx2.SalesInvoices.AsNoTracking()
-                .Where(i => i.Status != Dashboard.Domain.Enums.SalesInvoiceStatus.Canceled
-                            && i.InvoiceDate.Date == DateTime.UtcNow.Date)
-                .SumAsync(i => i.TotalAmount);
+            var activeInvoices = await ctx2.SalesInvoices.AsNoTracking()
+                .Where(i => i.Status != Dashboard.Domain.Enums.SalesInvoiceStatus.Canceled)
+                .ToListAsync();
+            var withDraft = activeInvoices
+                .Where(i => i.InvoiceDate.ToTehranDate() == tehranToday)
+                .Sum(i => i.TotalAmount);
             Assert.NotEqual(withDraft, data.Kpis.TodaySales);
         }
     }

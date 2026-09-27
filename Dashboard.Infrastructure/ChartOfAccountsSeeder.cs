@@ -25,9 +25,15 @@ public static class ChartOfAccountsSeeder
             (SystemAccountCodes.AccountsReceivable, "حساب‌های دریافتنی (مشتریان)", AccountType.Asset),
             (SystemAccountCodes.Inventory, "موجودی کالا", AccountType.Asset),
             (SystemAccountCodes.AccountsPayable, "حساب‌های پرداختنی (تأمین‌کنندگان)", AccountType.Liability),
+            (SystemAccountCodes.NotesReceivable, "اوراق دریافتنی (چک و سفته)", AccountType.Asset),
+            (SystemAccountCodes.NotesPayable, "اوراق پرداختنی (چک و سفته)", AccountType.Liability),
             (SystemAccountCodes.SalesRevenue, "فروش کالا", AccountType.Revenue),
             (SystemAccountCodes.ShippingRevenue, "درآمد حمل‌ونقل", AccountType.Revenue),
             (SystemAccountCodes.CostOfGoodsSold, "بهای تمام‌شده کالای فروش‌رفته", AccountType.Expense),
+            (SystemAccountCodes.InternalIssueExpense, "هزینه مصرف داخلی (حواله)", AccountType.Expense),
+            (SystemAccountCodes.ScrapExpense, "هزینه ضایعات", AccountType.Expense),
+            (SystemAccountCodes.InventoryShortage, "کسری انبار (اختلاف شمارش)", AccountType.Expense),
+            (SystemAccountCodes.InventorySurplus, "اضافات کشف‌شده (اختلاف شمارش)", AccountType.Revenue),
         };
 
         foreach (var (code, name, type) in defaults)

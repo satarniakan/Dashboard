@@ -127,12 +127,14 @@ public class TreasuryService : ITreasuryService
                 if (installmentCustomerId != dto.CustomerId)
                     throw new BusinessRuleException("این قسط به مشتری انتخاب‌شده تعلق ندارد.");
 
-                // پرداخت بیش از مانده قسط مجاز نیست
+                // پرداخت بیش از مانده قسط مجاز نیست. این بررسی اولیه فقط برای پیام دوستانه است؛
+                // ملاک نهایی همان UPDATE شرطیِ اتمیک در TryAddPaymentAsync است (رقابت همزمانی را می‌بندد).
                 var remaining = installment.Amount - installment.PaidAmount;
                 if (dto.Amount > remaining)
                     throw new BusinessRuleException($"مبلغ دریافتی از مانده‌ی قسط بیشتر است (مانده: {remaining:0.##}).");
 
-                installment.PaidAmount += dto.Amount;
+                if (!await _unitOfWork.InstallmentPlans.TryAddPaymentAsync(installment.Id, dto.Amount))
+                    throw new BusinessRuleException("مانده‌ی این قسط همین حالا پر شده است؛ لطفاً مبلغ را دوباره بررسی کنید.");
             }
 
             await _unitOfWork.CompleteAsync(); // اینجا receipt.Id واقعی ساخته می‌شود
@@ -148,11 +150,22 @@ public class TreasuryService : ITreasuryService
                 NotificationType.System, "/accounting/customer-receipts");
 
             // دریافت پول: بدهکار صندوق/بانک، بستانکار حساب‌های دریافتنی (طلب از مشتری کم می‌شود)
+            // ⚠️ چکِ وصول‌نشده پول نیست: تا سررسید به «اوراق دریافتنی» می‌نشیند و موجودی
+            // صندوق/بانک را زیاد نمی‌کند (وگرنه چک ۳۰ روزه همان روز نقدی دیده می‌شود).
+            // نقد شدنش هنگام وصول، سند جدا (انتقال از اوراق به صندوق/بانک) می‌خواهد.
+            var isChequeReceipt = receipt.Method == PaymentMethod.Cheque;
+            var receiptDebitAccount = isChequeReceipt
+                ? SystemAccountCodes.NotesReceivable
+                : financialAccount.Account!.Code;
+            var receiptDebitDescription = isChequeReceipt
+                ? "اوراق دریافتنی (چک وصول‌نشده)"
+                : "افزایش موجودی صندوق/بانک";
+
             await _journalService.PostEntryAsync(
                 description: $"دریافت وجه طبق رسید {receipt.ReceiptNumber}",
                 lines: new List<JournalLineInput>
                 {
-                new(financialAccount.Account!.Code, dto.Amount, 0, "افزایش موجودی صندوق/بانک"),
+                new(receiptDebitAccount, dto.Amount, 0, receiptDebitDescription),
                 new(SystemAccountCodes.AccountsReceivable, 0, dto.Amount, "کاهش طلب از مشتری", "Customer", dto.CustomerId)
                 },
                 referenceType: nameof(CustomerReceipt),
@@ -209,12 +222,22 @@ public class TreasuryService : ITreasuryService
                 NotificationType.System, "/accounting/supplier-payments");
 
             // پرداخت پول: بدهکار حساب‌های پرداختنی (بدهی کم می‌شود)، بستانکار صندوق/بانک
+            // ⚠️ چکِ صادره هنوز از بانک خارج نشده: به «اوراق پرداختنی» بستانکار می‌شود تا
+            // موجودی بانک پیش از وصول کم نشود (قرینهٔ رسید چکی در همین فایل).
+            var isChequePayment = payment.Method == PaymentMethod.Cheque;
+            var paymentCreditAccount = isChequePayment
+                ? SystemAccountCodes.NotesPayable
+                : financialAccount.Account!.Code;
+            var paymentCreditDescription = isChequePayment
+                ? "اوراق پرداختنی (چک وصول‌نشده)"
+                : "کاهش موجودی صندوق/بانک";
+
             await _journalService.PostEntryAsync(
                 description: $"پرداخت وجه طبق سند {payment.PaymentNumber}",
                 lines: new List<JournalLineInput>
                 {
                     new(SystemAccountCodes.AccountsPayable, dto.Amount, 0, "کاهش بدهی به تأمین‌کننده", "Supplier", dto.SupplierId),
-                    new(financialAccount.Account!.Code, 0, dto.Amount, "کاهش موجودی صندوق/بانک")
+                    new(paymentCreditAccount, 0, dto.Amount, paymentCreditDescription)
                 },
                 referenceType: nameof(SupplierPayment),
                 referenceId: payment.Id,

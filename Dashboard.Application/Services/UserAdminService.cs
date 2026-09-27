@@ -8,7 +8,7 @@ public interface IUserAdminService
 {
     Task<IEnumerable<UserListItemDto>> GetAllUsersAsync();
     Task<UserListItemDto?> GetUserAsync(string userId);
-    Task<bool> SetRolesAsync(string userId, List<string> roleNames);
+    Task<IdentityResult> SetRolesAsync(string userId, List<string> roleNames);
 
     Task<IdentityResult> CreateUserAsync(CreateUserDto model);
     Task<List<RoleDto>> GetAllRolesAsync();
@@ -49,23 +49,37 @@ public class UserAdminService : IUserAdminService
         return new UserListItemDto(user.Id, user.PhoneNumber, user.FullName, user.Email, roles.ToList());
     }
 
-    public async Task<bool> SetRolesAsync(string userId, List<string> roleNames)
+    public async Task<IdentityResult> SetRolesAsync(string userId, List<string> roleNames)
     {
         var user = await _userManager.FindByIdAsync(userId);
-        if (user is null) return false;
+        if (user is null)
+            return IdentityResult.Failed(new IdentityError { Description = "کاربر یافت نشد." });
+
+        // اعتبارسنجی وجود نقش‌ها پیش از هر تغییری: در غیر این صورت AddToRolesAsync شکست
+        // می‌خورد ولی قبلاً بی‌صدا نادیده گرفته می‌شد و UI «موفق» نشان می‌داد.
+        var unknown = new List<string>();
+        foreach (var roleName in roleNames)
+        {
+            if (!await _roleManager.RoleExistsAsync(roleName))
+                unknown.Add(roleName);
+        }
+        if (unknown.Any())
+            return IdentityResult.Failed(new IdentityError { Description = $"این نقش‌ها وجود ندارند: {string.Join("، ", unknown)}" });
 
         var currentRoles = await _userManager.GetRolesAsync(user);
         if (currentRoles.Any())
         {
-            await _userManager.RemoveFromRolesAsync(user, currentRoles);
+            var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+            if (!removeResult.Succeeded) return removeResult;
         }
 
         if (roleNames.Any())
         {
-            await _userManager.AddToRolesAsync(user, roleNames);
+            var addResult = await _userManager.AddToRolesAsync(user, roleNames);
+            if (!addResult.Succeeded) return addResult;
         }
 
-        return true;
+        return IdentityResult.Success;
     }
 
     public async Task<IdentityResult> CreateUserAsync(CreateUserDto model)

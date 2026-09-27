@@ -6,7 +6,7 @@ namespace Dashboard.Application.Services;
 public interface IPermissionService
 {
     Task<List<string>> GetPermissionsForRoleAsync(string roleName);
-    Task SetPermissionsForRoleAsync(string roleName, List<string> permissions);
+    Task<IdentityResult> SetPermissionsForRoleAsync(string roleName, List<string> permissions);
 }
 
 public class PermissionService : IPermissionService
@@ -30,20 +30,31 @@ public class PermissionService : IPermissionService
             .ToList();
     }
 
-    public async Task SetPermissionsForRoleAsync(string roleName, List<string> permissions)
+    public async Task<IdentityResult> SetPermissionsForRoleAsync(string roleName, List<string> permissions)
     {
         var role = await _roleManager.FindByNameAsync(roleName);
-        if (role is null) return;
+        if (role is null)
+            return IdentityResult.Failed(new IdentityError { Description = "نقش یافت نشد." });
+
+        // مجوزهای ناشناخته (تایپو یا مقدار ساختگی) عملاً هیچ دسترسی‌ای نمی‌دهند چون authorization
+        // فقط مقادیر شناخته‌شده را می‌پذیرد — ولی بی‌صذا ذخیره می‌شدند و UI «ذخیره شد» نشان می‌داد.
+        var unknown = permissions.Except(Permissions.All).ToList();
+        if (unknown.Any())
+            return IdentityResult.Failed(new IdentityError { Description = $"این مجوزها ناشناخته‌اند: {string.Join("، ", unknown)}" });
 
         var currentClaims = await _roleManager.GetClaimsAsync(role);
         foreach (var claim in currentClaims.Where(c => c.Type == Permissions.ClaimType))
         {
-            await _roleManager.RemoveClaimAsync(role, claim);
+            var removeResult = await _roleManager.RemoveClaimAsync(role, claim);
+            if (!removeResult.Succeeded) return removeResult;
         }
 
         foreach (var permission in permissions)
         {
-            await _roleManager.AddClaimAsync(role, new System.Security.Claims.Claim(Permissions.ClaimType, permission));
+            var addResult = await _roleManager.AddClaimAsync(role, new System.Security.Claims.Claim(Permissions.ClaimType, permission));
+            if (!addResult.Succeeded) return addResult;
         }
+
+        return IdentityResult.Success;
     }
 }
