@@ -199,4 +199,209 @@ public class StorePaymentAccountingTests
             Assert.Equal(before, await context.CustomerReceipts.CountAsync());
         }
     }
+
+    [SkippableFact]
+    public async Task Reservation_BlocksSecondBuyer_AndIsReleasedOnExpiry()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 1);
+        const int warehouse = 1;
+
+        // ۱) اولین خریدار رزرو می‌کند و سفارشش ساخته می‌شود
+        int firstOrderId;
+        using (var scope = _db.CreateScope())
+        {
+            var carts = scope.ServiceProvider.GetRequiredService<ICartService>();
+            await carts.AddToCartAsync("cookie-res-1", product.Id, 1);
+
+            var orders = scope.ServiceProvider.GetRequiredService<IOrderService>();
+            var (order, error) = await orders.PlaceOrderAsync("it-res-user-1", "cookie-res-1", new CheckoutDto
+            {
+                CustomerName = "خریدار اول",
+                CustomerPhone = "09121230001",
+                Province = "تهران",
+                City = "تهران",
+                AddressLine = "آدرس اول",
+                ShippingMethod = ShippingMethod.Post
+            });
+
+            Assert.Null(error);
+            firstOrderId = order.Id;
+        }
+
+        using (var verify = _db.CreateScope())
+        {
+            var context = verify.ServiceProvider.GetRequiredService<AppDbContext>();
+            var level = await context.StockLevels
+                .SingleAsync(s => s.ProductId == product.Id && s.WarehouseId == warehouse);
+
+            // موجودی فیزیکی دست‌نخورده است، ولی رزرو شده
+            Assert.Equal(1m, level.QuantityOnHand);
+            Assert.Equal(1m, level.ReservedQuantity);
+        }
+
+        // ۲) خریدار دوم نباید بتواند همان کالا را بخرد
+        using (var scope = _db.CreateScope())
+        {
+            var carts = scope.ServiceProvider.GetRequiredService<ICartService>();
+            var added = await carts.AddToCartAsync("cookie-res-2", product.Id, 1);
+            Assert.False(added.Success);
+            Assert.Contains("ناموجود", added.Message ?? string.Empty);
+        }
+
+        // ۳) انقضای سفارش اول باید رزرو را آزاد کند
+        using (var scope = _db.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var order = await context.Orders.SingleAsync(o => o.Id == firstOrderId);
+            order.CreatedAt = DateTime.UtcNow.AddDays(-2);
+            await context.SaveChangesAsync();
+        }
+
+        using (var scope = _db.CreateScope())
+        {
+            var orders = scope.ServiceProvider.GetRequiredService<IOrderService>();
+            Assert.True(await orders.ExpireStalePendingOrdersAsync(TimeSpan.FromHours(6)) >= 1);
+        }
+
+        using (var verify = _db.CreateScope())
+        {
+            var context = verify.ServiceProvider.GetRequiredService<AppDbContext>();
+            var level = await context.StockLevels
+                .SingleAsync(s => s.ProductId == product.Id && s.WarehouseId == warehouse);
+            Assert.Equal(0m, level.ReservedQuantity);
+
+            var order = await context.Orders.SingleAsync(o => o.Id == firstOrderId);
+            Assert.Equal(OrderStatus.Canceled, order.Status);
+        }
+
+        // ۴) حالا خریدار دوم می‌تواند بخرد
+        using (var scope = _db.CreateScope())
+        {
+            var carts = scope.ServiceProvider.GetRequiredService<ICartService>();
+            var added = await carts.AddToCartAsync("cookie-res-3", product.Id, 1);
+            Assert.True(added.Success, added.Message);
+        }
+    }
+    [SkippableFact]
+    public async Task Reservation_ReleasedOnSuccessfulPayment_AndStockActuallyDecreases()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 2);
+
+        int orderId;
+        using (var scope = _db.CreateScope())
+        {
+            var carts = scope.ServiceProvider.GetRequiredService<ICartService>();
+            await carts.AddToCartAsync("cookie-res-pay", product.Id, 2);
+
+            var orders = scope.ServiceProvider.GetRequiredService<IOrderService>();
+            var (order, error) = await orders.PlaceOrderAsync("it-res-pay-user", "cookie-res-pay", new CheckoutDto
+            {
+                CustomerName = "خریدار پرداختی",
+                CustomerPhone = "09121230003",
+                Province = "تهران",
+                City = "تهران",
+                AddressLine = "آدرس پرداختی",
+                ShippingMethod = ShippingMethod.Post
+            });
+
+            Assert.Null(error);
+            orderId = order.Id;
+        }
+
+        string authority;
+        using (var scope = _db.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var order = await context.Orders.SingleAsync(o => o.Id == orderId);
+            authority = $"AUTH-{Guid.NewGuid():N}";
+            order.Payments.Add(new Payment
+            {
+                Amount = order.Total,
+                Authority = authority,
+                Status = PaymentStatus.Initiated
+            });
+            await context.SaveChangesAsync();
+        }
+
+        using (var scope = _db.CreateScope())
+        {
+            var orders = scope.ServiceProvider.GetRequiredService<IOrderService>();
+            var (success, payError) = await orders.MarkPaidAsync(orderId, authority, "REF-RES-1");
+            Assert.True(success, payError);
+        }
+
+        using var verify = _db.CreateScope();
+        var vContext = verify.ServiceProvider.GetRequiredService<AppDbContext>();
+        var level = await vContext.StockLevels
+            .SingleAsync(s => s.ProductId == product.Id && s.WarehouseId == 1);
+
+        // موجودی فیزیکی کم شد و رزرو صفر شد
+        Assert.Equal(0m, level.QuantityOnHand);
+        Assert.Equal(0m, level.ReservedQuantity);
+    }
+
+    [SkippableFact]
+    public async Task PaymentJustInitiated_IsNotExpired_EvenIfOrderIsOld()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 1);
+
+        int orderId;
+        using (var scope = _db.CreateScope())
+        {
+            var carts = scope.ServiceProvider.GetRequiredService<ICartService>();
+            await carts.AddToCartAsync("cookie-res-inflight", product.Id, 1);
+
+            var orders = scope.ServiceProvider.GetRequiredService<IOrderService>();
+            var (order, error) = await orders.PlaceOrderAsync("it-res-inflight", "cookie-res-inflight", new CheckoutDto
+            {
+                CustomerName = "کاربر روی درگاه",
+                CustomerPhone = "09121230004",
+                Province = "تهران",
+                City = "تهران",
+                AddressLine = "آدرس درگاه",
+                ShippingMethod = ShippingMethod.Post
+            });
+
+            Assert.Null(error);
+            orderId = order.Id;
+        }
+
+        // کاربر روی درگاه است: پرداخت تازه Initiated شده، ولی خودِ سفارش قدیمی است
+        using (var scope = _db.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var order = await context.Orders.SingleAsync(o => o.Id == orderId);
+            order.CreatedAt = DateTime.UtcNow.AddDays(-2);
+            order.Payments.Add(new Payment
+            {
+                Amount = order.Total,
+                Authority = $"AUTH-{Guid.NewGuid():N}",
+                Status = PaymentStatus.Initiated,
+                CreatedAt = DateTime.UtcNow
+            });
+            await context.SaveChangesAsync();
+        }
+
+        using (var scope = _db.CreateScope())
+        {
+            var orders = scope.ServiceProvider.GetRequiredService<IOrderService>();
+            Assert.Equal(0, await orders.ExpireStalePendingOrdersAsync(TimeSpan.FromHours(6)));
+        }
+
+        using var verify = _db.CreateScope();
+        var vContext = verify.ServiceProvider.GetRequiredService<AppDbContext>();
+        var order2 = await vContext.Orders.SingleAsync(o => o.Id == orderId);
+        Assert.Equal(OrderStatus.PendingPayment, order2.Status);
+
+        // رزرو هم باید باقی مانده باشد تا سفارش زنده بماند
+        var level = await vContext.StockLevels
+            .SingleAsync(s => s.ProductId == product.Id && s.WarehouseId == 1);
+        Assert.Equal(1m, level.ReservedQuantity);
+    }
 }

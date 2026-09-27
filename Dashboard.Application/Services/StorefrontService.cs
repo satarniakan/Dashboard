@@ -41,7 +41,7 @@ public class StorefrontService : IStorefrontService
         if (pageSize < 1) pageSize = 12;
 
         var (items, totalCount) = await _unitOfWork.Products.GetPublishedPagedAsync(page, pageSize, search, categoryId);
-        var stock = await _unitOfWork.StockLevels.GetWarehouseStockAsync(items.Select(p => p.Id).ToList(), _store.WarehouseId);
+        var stock = await _unitOfWork.StockLevels.GetAvailableForSaleAsync(items.Select(p => p.Id).ToList(), _store.WarehouseId);
 
         return (items.Select(p => ToDto(p, stock)).ToList(), totalCount);
     }
@@ -51,7 +51,7 @@ public class StorefrontService : IStorefrontService
         var product = await _unitOfWork.Products.GetPublishedBySlugAsync(slug);
         if (product is null) return null;
 
-        var stock = await _unitOfWork.StockLevels.GetWarehouseStockAsync(new[] { product.Id }, _store.WarehouseId);
+        var stock = await _unitOfWork.StockLevels.GetAvailableForSaleAsync(new[] { product.Id }, _store.WarehouseId);
 
         // گالری: عکس خود کالا + عکس‌های گروه محصول (اگر Variant یک گروه باشد)
         var images = new List<string>();
@@ -66,7 +66,7 @@ public class StorefrontService : IStorefrontService
         // کالاهای مرتبط: همان دسته‌بندی، به‌جز خود کالا
         var (relatedItems, _) = await _unitOfWork.Products.GetPublishedPagedAsync(1, 5, categoryId: product.CategoryId);
         var related = relatedItems.Where(x => x.Id != product.Id).Take(4).ToList();
-        var relatedStock = await _unitOfWork.StockLevels.GetWarehouseStockAsync(related.Select(x => x.Id).ToList(), _store.WarehouseId);
+        var relatedStock = await _unitOfWork.StockLevels.GetAvailableForSaleAsync(related.Select(x => x.Id).ToList(), _store.WarehouseId);
 
         return new StoreProductDetailDto(
             product.Id, product.Name, product.Slug!, product.Price, product.Unit,
@@ -79,7 +79,7 @@ public class StorefrontService : IStorefrontService
     public async Task<IEnumerable<StoreProductDto>> GetLatestAsync(int count)
     {
         var items = (await _unitOfWork.Products.GetLatestPublishedAsync(count)).ToList();
-        var stock = await _unitOfWork.StockLevels.GetWarehouseStockAsync(items.Select(p => p.Id).ToList(), _store.WarehouseId);
+        var stock = await _unitOfWork.StockLevels.GetAvailableForSaleAsync(items.Select(p => p.Id).ToList(), _store.WarehouseId);
         return items.Select(p => ToDto(p, stock));
     }
 }

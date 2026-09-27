@@ -193,10 +193,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<StockLevel>(e =>
         {
             e.Property(s => s.QuantityOnHand).HasColumnType("decimal(18,3)");
+            e.Property(s => s.ReservedQuantity).HasColumnType("decimal(18,3)");
             e.HasIndex(s => new { s.ProductId, s.WarehouseId }).IsUnique();
             e.Property(s => s.RowVersion).IsRowVersion(); // توکن همزمانی خوش‌بینانه برای جلوگیری از race condition در موجودی
             // آخرین لایه‌ی دفاع در برابر موجودی منفی — حتی اگر کد برنامه دچار باگ شود، دیتابیس رد می‌کند
-            e.ToTable(t => t.HasCheckConstraint("CK_StockLevels_NonNegative", "[QuantityOnHand] >= 0"));
+            e.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_StockLevels_NonNegative", "[QuantityOnHand] >= 0");
+                // رزرو هرگز نباید از موجودی فیزیکی بیشتر شود (موجودی قابل فروش منفی یعنی باگ)
+                t.HasCheckConstraint("CK_StockLevels_ReservedValid", "[ReservedQuantity] >= 0 AND [ReservedQuantity] <= [QuantityOnHand]");
+            });
 
             e.HasOne(s => s.Product).WithMany().HasForeignKey(s => s.ProductId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.Warehouse).WithMany().HasForeignKey(s => s.WarehouseId).OnDelete(DeleteBehavior.Restrict);

@@ -28,4 +28,20 @@ public interface IStockLevelRepository
     /// موجودی هر کالا فقط در یک انبار مشخص — سفارش‌های فروشگاه از همین انبار کسر می‌شوند،
     /// پس بررسی کفایت هم باید روی همان انبار باشد (نه جمع همه انبارها)
     Task<Dictionary<int, decimal>> GetWarehouseStockAsync(IReadOnlyCollection<int> productIds, int warehouseId);
+
+    /// <summary>موجودی قابل فروش = موجودی فیزیکی − مقدار رزروشدهٔ سفارش‌های پرداخت‌نشده</summary>
+    Task<Dictionary<int, decimal>> GetAvailableForSaleAsync(IReadOnlyCollection<int> productIds, int warehouseId);
+
+    /// <summary>
+    /// رزرو اتمیک موجودی برای یک سفارش (یک UPDATE شرطی در دیتابیس).
+    /// فقط وقتی موفق است که «موجودی − رزرو» برای این مقدار کافی باشد؛
+    /// false یعنی در همین لحظه کسی زودتر رزرو کرده است (برای پیام خطای کاربر).
+    /// </summary>
+    Task<bool> TryReserveAsync(int productId, int warehouseId, decimal quantity);
+
+    /// <summary>
+    /// آزادکردن رزرو — هرگز موجودی رزرو را منفی نمی‌کند و اگر رزروی نباشد بی‌اثر است
+    /// (پس فراخوانی دوباره هم مشکلی ایجاد نمی‌کند).
+    /// </summary>
+    Task ReleaseReservationAsync(int productId, int warehouseId, decimal quantity);
 }

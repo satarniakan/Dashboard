@@ -15,6 +15,14 @@ public class StockLevel
     public DateTime LastUpdatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
+    /// مقدارِ رزروشده برای سفارش‌های فروشگاه که هنوز پرداخت نشده‌اند.
+    /// «موجودی قابل فروش = QuantityOnHand − ReservedQuantity»، پس کالای رزروشده را
+    /// کاربر/سفارش دیگری نمی‌تواند بخرد و فروش بیش از موجودی رخ نمی‌دهد.
+    /// با پرداخت موفق یا لغو/انقضای سفارش، رزرو آزاد می‌شود.
+    /// </summary>
+    public decimal ReservedQuantity { get; set; }
+
+    /// <summary>
     /// توکن همزمانی خوش‌بینانه (Optimistic Concurrency) — برای جلوگیری از race condition
     /// در کسر/افزایش موجودی هنگام درخواست‌های همزمان
     /// </summary>

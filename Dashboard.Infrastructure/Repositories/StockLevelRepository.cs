@@ -103,4 +103,47 @@ public class StockLevelRepository : IStockLevelRepository
             .Where(sl => sl.WarehouseId == warehouseId && productIds.Contains(sl.ProductId))
             .ToDictionaryAsync(sl => sl.ProductId, sl => sl.QuantityOnHand);
     }
+
+    public async Task<Dictionary<int, decimal>> GetAvailableForSaleAsync(IReadOnlyCollection<int> productIds, int warehouseId)
+    {
+        if (productIds.Count == 0) return new Dictionary<int, decimal>();
+
+        return await _context.StockLevels
+            .Where(sl => sl.WarehouseId == warehouseId && productIds.Contains(sl.ProductId))
+            .ToDictionaryAsync(sl => sl.ProductId, sl => sl.QuantityOnHand - sl.ReservedQuantity);
+    }
+
+    /// <summary>
+    /// رزرو اتمیک: شرط و به‌روزرسانی در یک UPDATE انجام می‌شود، پس دو درخواست همزمان
+    /// نمی‌توانند بیش از موجودیِ آزاد رزرو کنند.
+    /// </summary>
+    public async Task<bool> TryReserveAsync(int productId, int warehouseId, decimal quantity)
+    {
+        if (quantity <= 0) return true;
+
+        var now = DateTime.UtcNow;
+        var rows = await _context.StockLevels
+            .Where(s => s.ProductId == productId
+                     && s.WarehouseId == warehouseId
+                     && s.QuantityOnHand - s.ReservedQuantity >= quantity)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(x => x.ReservedQuantity, x => x.ReservedQuantity + quantity)
+                .SetProperty(x => x.LastUpdatedAt, now));
+
+        return rows > 0;
+    }
+
+    public async Task ReleaseReservationAsync(int productId, int warehouseId, decimal quantity)
+    {
+        if (quantity <= 0) return;
+
+        var now = DateTime.UtcNow;
+        await _context.StockLevels
+            .Where(s => s.ProductId == productId
+                     && s.WarehouseId == warehouseId
+                     && s.ReservedQuantity >= quantity)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(x => x.ReservedQuantity, x => x.ReservedQuantity - quantity)
+                .SetProperty(x => x.LastUpdatedAt, now));
+    }
 }

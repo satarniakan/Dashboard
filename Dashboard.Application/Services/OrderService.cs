@@ -98,8 +98,9 @@ public class OrderService : IOrderService
             return (default!, "کالاهای سبد شما دیگر قابل خرید نیستند.");
 
         // موجودی کافی؟ فقط انبار فروشگاه — کسر واقعی هنگام تأیید پرداخت از همین انبار
-        // با DecreaseWithCheckAsync (اتمیک + RowVersion) انجام می‌شود
-        var stock = await _unitOfWork.StockLevels.GetWarehouseStockAsync(products.Keys.ToList(), _store.WarehouseId);
+        // با DecreaseWithCheckAsync (اتمیک + RowVersion) انجام می‌شود.
+        // «موجودی قابل فروش» یعنی موجودی منهای رزرو سفارش‌های پرداخت‌نشده
+        var stock = await _unitOfWork.StockLevels.GetAvailableForSaleAsync(products.Keys.ToList(), _store.WarehouseId);
         foreach (var item in cart.Items)
         {
             var available = stock.TryGetValue(item.ProductId, out var s) ? s : 0;
@@ -108,6 +109,22 @@ public class OrderService : IOrderService
                 var name = products.GetValueOrDefault(item.ProductId)?.Name ?? "کالا";
                 return (default!, $"موجودی «{name}» کافی نیست (حداکثر {available:0.##} {products.GetValueOrDefault(item.ProductId)?.Unit}). سبد را به‌روز کنید.");
             }
+        }
+
+        // رزرو اتمیک موجودی: تا وقتی پرداخت نشده، این کالا برای همین سفارش نگه داشته می‌شود
+        // تا دو کاربرِ هم‌زمان آخرین موجودی را هر دو نخرند. اگر رزرو یک قلم شکست خورد،
+        // رزروهای قبلی آزاد و خطای قابل‌فهم به کاربر داده می‌شود.
+        var reserved = new List<(int ProductId, decimal Quantity)>();
+        foreach (var item in cart.Items)
+        {
+            if (!await _unitOfWork.StockLevels.TryReserveAsync(item.ProductId, _store.WarehouseId, item.Quantity))
+            {
+                await ReleaseReservationsAsync(reserved);
+                var name = products.GetValueOrDefault(item.ProductId)?.Name ?? "کالا";
+                return (default!, $"موجودی «{name}» همین حالا تمام شد (احتمالاً هم‌زمان خریدار دیگری). لطفاً دوباره تلاش کنید.");
+            }
+
+            reserved.Add((item.ProductId, item.Quantity));
         }
 
         // گرد کردن به ۲ رقم اعشار: مبلغ ارسالی به درگاه و مبلغ زمان verify باید
@@ -171,8 +188,17 @@ public class OrderService : IOrderService
             });
         }
 
-        await _unitOfWork.Orders.AddAsync(order);
-        await _unitOfWork.CompleteAsync();
+        try
+        {
+            await _unitOfWork.Orders.AddAsync(order);
+            await _unitOfWork.CompleteAsync();
+        }
+        catch
+        {
+            // سفارش ثبت نشد ⇒ رزرو نباید در انبار بماند
+            await ReleaseReservationsAsync(reserved);
+            throw;
+        }
 
         return (ToDto(order), null);
     }
@@ -187,6 +213,11 @@ public class OrderService : IOrderService
         // می‌تواند سفارش PendingPayment را به Paid تبدیل کند — جلوی دوبار فروختن را می‌گیرد
         var claimed = order.Status == OrderStatus.PendingPayment
             && await _unitOfWork.Orders.TryClaimForPaymentAsync(orderId);
+
+        // سفارش از حالت «در انتظار پرداخت» خارج شد ⇒ رزرو موجودی آزاد می‌شود
+        // (کسر واقعی بعداً با DecreaseWithCheckAsync انجام می‌شود و فقط موجودی فیزیکی کم می‌شود)
+        if (claimed)
+            await ReleaseOrderReservationAsync(order);
 
         if (!claimed)
         {
@@ -344,6 +375,7 @@ public class OrderService : IOrderService
 
         order.Status = OrderStatus.Canceled;
         order.AdminNote = $"پرداخت ناموفق: {error}";
+        await ReleaseOrderReservationAsync(order);
         await _unitOfWork.CompleteAsync();
         return (true, null);
     }
@@ -393,6 +425,9 @@ public class OrderService : IOrderService
 
         // پرداخت دستی (مثلاً تسویه‌ی حضوری): فاکتور فروش صادر می‌شود تا انبار و حسابداری
         // بدون فاکتور نمانند — در صورت نبود موجودی، خطا و وضعیت عوض نمی‌شود
+        if (order.Status == OrderStatus.PendingPayment && status != OrderStatus.PendingPayment)
+            await ReleaseOrderReservationAsync(order); // رزرو آزاد شد؛ کسر واقعی در فاکتور انجام می‌شود
+
         if (status == OrderStatus.Paid && order.Status != OrderStatus.Paid)
         {
             order.SalesInvoiceId = await CreateConfirmedInvoiceAsync(order, noteSuffix: " — پرداخت دستی توسط ادمین");
@@ -500,6 +535,20 @@ public class OrderService : IOrderService
         }
     }
 
+    /// <summary>آزادکردن رزروهای موجودی یک سفارش (ایمن است اگر قبلاً آزاد شده باشند)</summary>
+    private async Task ReleaseOrderReservationAsync(Order order)
+    {
+        foreach (var item in order.Items)
+            await _unitOfWork.StockLevels.ReleaseReservationAsync(item.ProductId, _store.WarehouseId, item.Quantity);
+    }
+
+    /// <summary>آزادکردن رزروهای جزئی هنگام شکست مسیر ثبت سفارش</summary>
+    private async Task ReleaseReservationsAsync(IEnumerable<(int ProductId, decimal Quantity)> items)
+    {
+        foreach (var (productId, quantity) in items)
+            await _unitOfWork.StockLevels.ReleaseReservationAsync(productId, _store.WarehouseId, quantity);
+    }
+
     public async Task<int> ExpireStalePendingOrdersAsync(TimeSpan maxAge)
     {
         var stale = await _unitOfWork.Orders.GetStalePendingPaymentAsync(maxAge);
@@ -508,6 +557,7 @@ public class OrderService : IOrderService
             order.Status = OrderStatus.Canceled;
             order.AdminNote = "انقضای سفارش پرداخت‌نشده";
             await _unitOfWork.Orders.UpdateAsync(order);
+            await ReleaseOrderReservationAsync(order);
 
             await _notifications.NotifyAsync(order.UserId,
                 $"سفارش {order.OrderNumber} لغو شد",

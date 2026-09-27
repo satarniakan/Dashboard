@@ -93,8 +93,10 @@ public class OrderServiceTests
         _carts.Setup(r => r.GetByCookieIdAsync("cookie-1")).ReturnsAsync(cart);
         _products.Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>()))
             .ReturnsAsync(new List<Product> { product });
-        _stockLevels.Setup(r => r.GetWarehouseStockAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<int>()))
+        _stockLevels.Setup(r => r.GetAvailableForSaleAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<int>()))
             .ReturnsAsync(new Dictionary<int, decimal> { [product.Id] = 10 });
+        _stockLevels.Setup(r => r.TryReserveAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<decimal>()))
+            .ReturnsAsync(true);
         _discountCodes.Setup(r => r.GetByIdAsync(3)).ReturnsAsync(new DiscountCode
         {
             Id = 3,
@@ -126,8 +128,10 @@ public class OrderServiceTests
         _carts.Setup(r => r.GetByCookieIdAsync("cookie-1")).ReturnsAsync(cart);
         _products.Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>()))
             .ReturnsAsync(new List<Product> { product });
-        _stockLevels.Setup(r => r.GetWarehouseStockAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<int>()))
+        _stockLevels.Setup(r => r.GetAvailableForSaleAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<int>()))
             .ReturnsAsync(new Dictionary<int, decimal> { [product.Id] = 10 });
+        _stockLevels.Setup(r => r.TryReserveAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<decimal>()))
+            .ReturnsAsync(true);
         _discountCodes.Setup(r => r.GetByIdAsync(3)).ReturnsAsync(new DiscountCode
         {
             Id = 3,
@@ -155,5 +159,64 @@ public class OrderServiceTests
         // Total = جمع − تخفیف + حمل‌ونقل — همان مبلغی که به درگاه می‌رود
         Assert.Equal(200m - 20m + 80_000m, savedOrder.Total);
         Assert.Equal("SAVE10", savedOrder.DiscountCodeText);
+    }
+
+    // ---------------- رزرو موجودی ----------------
+
+    [Fact]
+    public async Task PlaceOrderAsync_ReservesStock_Atomically()
+    {
+        var product = new Product("SKU-RES", "کالای رزرو", 100m, 50m);
+        product.SetStoreDetails(true, "kala-res", null);
+
+        var cart = new Cart { CookieId = "cookie-res" };
+        cart.Items.Add(new CartItem { ProductId = product.Id, Quantity = 2 });
+
+        _carts.Setup(r => r.GetByCookieIdAsync("cookie-res")).ReturnsAsync(cart);
+        _products.Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>()))
+            .ReturnsAsync(new List<Product> { product });
+        _stockLevels.Setup(r => r.GetAvailableForSaleAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<int>()))
+            .ReturnsAsync(new Dictionary<int, decimal> { [product.Id] = 10 });
+        _stockLevels.Setup(r => r.TryReserveAsync(product.Id, It.IsAny<int>(), 2)).ReturnsAsync(true);
+        _orders.Setup(r => r.AddAsync(It.IsAny<Order>())).Returns(Task.CompletedTask);
+
+        var (_, error) = await _sut.PlaceOrderAsync("user-2", "cookie-res", Checkout());
+
+        Assert.Null(error);
+        // رزرو حتماً باید انجام شود، وگرنه دو خریدار می‌توانند آخرین موجودی را بخرند
+        _stockLevels.Verify(r => r.TryReserveAsync(product.Id, 1, 2), Times.Once);
+    }
+
+    [Fact]
+    public async Task PlaceOrderAsync_WhenReservationFails_ReleasesAlreadyReservedItems()
+    {
+        // یک کالا، دو سطر سبد: هر دو سطر موجودی کافی دارند (10 در برابر 1)
+        // ولی رزروِ سطر اول موفق و رزروِ سطر دوم ناموفق می‌شود (خریدار دیگری زودتر برداشته)
+        var product = new Product("SKU-A", "کالای اول", 100m, 50m);
+        product.SetStoreDetails(true, "kala-a", null);
+
+        var cart = new Cart { CookieId = "cookie-res-2" };
+        cart.Items.Add(new CartItem { Id = 1, ProductId = product.Id, Quantity = 1 });
+        cart.Items.Add(new CartItem { Id = 2, ProductId = product.Id, Quantity = 1 });
+
+        _carts.Setup(r => r.GetByCookieIdAsync("cookie-res-2")).ReturnsAsync(cart);
+        _products.Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>()))
+            .ReturnsAsync(new List<Product> { product });
+        _stockLevels.Setup(r => r.GetAvailableForSaleAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<int>()))
+            .ReturnsAsync(new Dictionary<int, decimal> { [product.Id] = 10 });
+        var reserveCall = 0;
+        _stockLevels.Setup(r => r.TryReserveAsync(product.Id, It.IsAny<int>(), It.IsAny<decimal>()))
+            .ReturnsAsync(() =>
+            {
+                reserveCall++;
+                return reserveCall == 1; // اولین رزرو موفق، دومی ناموفق
+            });
+
+        var (_, error) = await _sut.PlaceOrderAsync("user-3", "cookie-res-2", Checkout());
+
+        Assert.NotNull(error);
+        // رزروِ قلم اول باید فوراً آزاد شود تا موجودی برای دیگران بلااستفاده نماند
+        _stockLevels.Verify(r => r.ReleaseReservationAsync(product.Id, 1, 1), Times.Once);
+        _orders.Verify(r => r.AddAsync(It.IsAny<Order>()), Times.Never);
     }
 }

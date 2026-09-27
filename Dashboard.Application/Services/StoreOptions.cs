@@ -36,4 +36,11 @@ public class StoreOptions
     /// خالی یعنی مثل قبل رسیدها دستی ثبت می‌شوند.
     /// </summary>
     public int? OnlinePaymentFinancialAccountId { get; set; }
+
+    /// <summary>
+    /// مهلت پرداخت سفارش (ساعت) — بعد از این مدت، سفارشِ پرداخت‌نشده خودکار لغو و
+    /// موجودی رزروشدهٔ آن آزاد می‌شود. ۶ ساعت پیش‌فرض است چون بانک/درگاه ممکن است
+    /// کاربر را چند ساعت روی صفحهٔ پرداخت نگه دارد.
+    /// </summary>
+    public int OrderPaymentWindowHours { get; set; } = 6;
 }

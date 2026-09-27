@@ -66,7 +66,7 @@ public class CartService : ICartService
             return new CartOperationResult(false, "این کالا در فروشگاه موجود نیست.");
 
         // موجودی انبار فروشگاه — سفارش‌ها فقط از همین انبار کسر می‌شوند
-        var stock = await _unitOfWork.StockLevels.GetWarehouseStockAsync(new[] { productId }, _store.WarehouseId);
+        var stock = await _unitOfWork.StockLevels.GetAvailableForSaleAsync(new[] { productId }, _store.WarehouseId);
         var available = stock.TryGetValue(productId, out var s) ? s : 0;
         if (available <= 0)
             return new CartOperationResult(false, $"«{product.Name}» فعلاً ناموجود است.");
@@ -113,7 +113,7 @@ public class CartService : ICartService
             return new CartOperationResult(true);
         }
 
-        var stock = await _unitOfWork.StockLevels.GetWarehouseStockAsync(new[] { item.ProductId }, _store.WarehouseId);
+        var stock = await _unitOfWork.StockLevels.GetAvailableForSaleAsync(new[] { item.ProductId }, _store.WarehouseId);
         var available = stock.TryGetValue(item.ProductId, out var s) ? s : 0;
 
         // موجودی تمام شده — قلم به‌جای ماندن با تعداد صفر، از سبد حذف می‌شود
@@ -229,7 +229,7 @@ public class CartService : ICartService
     private async Task<CartDto> BuildCartDtoAsync(Cart cart)
     {
         var productIds = cart.Items.Select(i => i.ProductId).ToList();
-        var stock = await _unitOfWork.StockLevels.GetWarehouseStockAsync(productIds, _store.WarehouseId);
+        var stock = await _unitOfWork.StockLevels.GetAvailableForSaleAsync(productIds, _store.WarehouseId);
         var products = (await _unitOfWork.Products.GetByIdsAsync(productIds))
             .ToDictionary(p => p.Id);
 

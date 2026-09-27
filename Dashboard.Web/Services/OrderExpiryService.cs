@@ -1,5 +1,6 @@
 // Dashboard.Web/Services/OrderExpiryService.cs
 using Dashboard.Application.Services;
+using Microsoft.Extensions.Options;
 
 namespace Dashboard.Web.Services;
 
@@ -11,11 +12,14 @@ public class OrderExpiryService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<OrderExpiryService> _logger;
+    private readonly StoreOptions _store;
 
-    public OrderExpiryService(IServiceScopeFactory scopeFactory, ILogger<OrderExpiryService> logger)
+    public OrderExpiryService(IServiceScopeFactory scopeFactory, ILogger<OrderExpiryService> logger,
+        IOptions<StoreOptions> store)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _store = store.Value;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -26,9 +30,10 @@ public class OrderExpiryService : BackgroundService
             {
                 using var scope = _scopeFactory.CreateScope();
                 var orderService = scope.ServiceProvider.GetRequiredService<IOrderService>();
-                var expired = await orderService.ExpireStalePendingOrdersAsync(TimeSpan.FromHours(1));
+                var window = TimeSpan.FromHours(Math.Clamp(_store.OrderPaymentWindowHours, 1, 72));
+                var expired = await orderService.ExpireStalePendingOrdersAsync(window);
                 if (expired > 0)
-                    _logger.LogInformation("سفارش‌های پرداخت‌نشده‌ی منقضی: {Count}", expired);
+                    _logger.LogInformation("سفارش‌های پرداخت‌نشده‌ی منقضی: {Count} (مهلت: {Hours:F0} ساعت)", expired, window.TotalHours);
             }
             catch (Exception ex)
             {

@@ -86,11 +86,18 @@ public class OrderRepository : IOrderRepository
         // محاسبه‌ی مرز زمانی بیرون از عبارت — EF تفریق TimeSpan با پارامتر را ترجمه نمی‌کند
         var cutoff = DateTime.UtcNow - maxAge;
 
-        // سفارش‌هایی که پرداخت‌شان موفق ثبت شده ولی خطای سیستمی خورده، لغو خودکار نشوند
+        // پرداختِ «تازه‌شروع‌شده» یعنی کاربر همین حالا روی صفحهٔ درگاه است؛ لغو در این حالت
+        // می‌تواند «پرداخت موفق ولی سفارش لغوشده» بسازد، پس با حاشیهٔ اطمینان کنار گذاشته می‌شود.
+        // سفارش‌های رهاشده بعد از این حاشیه مثل قبل منقضی و رزروشان آزاد می‌شود.
+        var inFlightCutoff = DateTime.UtcNow - TimeSpan.FromMinutes(30);
+
+        // اقلام سفارش لازم است تا بتوان موجودیِ رزروشدهٔ آن آزاد شود
         return await _context.Orders
+            .Include(o => o.Items)
             .Where(o => o.Status == OrderStatus.PendingPayment
                      && o.CreatedAt < cutoff
-                     && !o.Payments.Any(pmt => pmt.Status == Domain.Entities.PaymentStatus.Success))
+                     && !o.Payments.Any(pmt => pmt.Status == Domain.Entities.PaymentStatus.Success)
+                     && !o.Payments.Any(pmt => pmt.Status == Domain.Entities.PaymentStatus.Initiated && pmt.CreatedAt > inFlightCutoff))
             .ToListAsync();
     }
 

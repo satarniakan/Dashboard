@@ -1,0 +1,16 @@
+**/bin/
+**/obj/
+**/out/
+**/.vs/
+**/.vscode/
+.git/
+.github/
+docs/
+graphify-out/
+Dashboard.Tests/
+Dashboard.IntegrationTests/
+Dashboard.Web/DataProtection-Keys/
+Dashboard.Web/Logs/
+*.md
+Dockerfile
+.dockerignore

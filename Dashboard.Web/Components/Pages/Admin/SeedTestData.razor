@@ -7,6 +7,7 @@
 @using System.Security.Claims
 @inject ITestDataSeederService Seeder
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IHostEnvironment Env
 @inject ILogger<Dashboard.Web.Components.Pages.Admin.SeedTestData> Logger
 <PageTitle>تولید دیتای تستی</PageTitle>
 
@@ -18,6 +19,15 @@
 </div>
 
 <div class="card-panel" style="max-width: 640px;">
+    @if (!Env.IsDevelopment())
+    {
+        <div class="alert alert-danger mb-0">
+            این ابزار فقط در محیط توسعه در دسترس است — ساخت دیتای تستی روی دیتابیس
+            واقعی خطرناک است.
+        </div>
+    }
+    else
+    {
     <p>
         این ابزار در همه‌ی جدول‌های اصلی برنامه (انبار، فروش، حسابداری) هرکدام حدود
         ۱۰ رکورد نمونه می‌سازد — دقیقاً از همون مسیر واقعی برنامه (رسید خرید، فاکتور فروش،
@@ -54,6 +64,7 @@
             @(isRunning ? "در حال ساخت دیتای تستی... (چند ثانیه طول می‌کشد)" : "تولید دیتای تستی")
         </button>
     }
+    }
 </div>
 
 @code {
@@ -65,12 +76,25 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!Env.IsDevelopment())
+        {
+            isChecking = false;
+            return;
+        }
+
         isEmpty = await Seeder.IsDatabaseEmptyAsync();
         isChecking = false;
     }
 
     private async Task RunSeedAsync()
     {
+        // گارد سمت سرور — حتی اگر دکمه در محیط غیرتوسعه صدا زده شود، اجرا نمی‌شود
+        if (!Env.IsDevelopment())
+        {
+            errorMessage = "این ابزار فقط در محیط توسعه قابل اجرا است.";
+            return;
+        }
+
         isRunning = true;
         errorMessage = null;
         string? userId = null;
