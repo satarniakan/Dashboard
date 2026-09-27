@@ -1,5 +1,6 @@
 using Dashboard.Application.DTOs;
 using Dashboard.Application.Services;
+using Dashboard.Domain.Accounting;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
 using Dashboard.Infrastructure.Data;
@@ -165,17 +166,17 @@ public class StockReferenceIdTests
         Assert.Equal(lines.Sum(l => l.DebitAmount), lines.Sum(l => l.CreditAmount));
 
         var accountIds = await vContext.Accounts
-            .Where(a => a.Code == "4000" || a.Code == "5000" || a.Code == "1300" || a.Code == "1200")
+            .Where(a => a.Code == SystemAccountCodes.SalesRevenue || a.Code == SystemAccountCodes.CostOfGoodsSold || a.Code == SystemAccountCodes.Inventory || a.Code == SystemAccountCodes.AccountsReceivable)
             .ToDictionaryAsync(a => a.Code, a => a.Id);
 
         // برگشت درآمد: بدهکار درآمد فروش ۱۰۰٬۰۰۰
-        Assert.Equal(100_000m, lines.Single(l => l.AccountId == accountIds["4000"]).DebitAmount);
+        Assert.Equal(100_000m, lines.Single(l => l.AccountId == accountIds[SystemAccountCodes.SalesRevenue]).DebitAmount);
         // برگشت موجودی: بدهکار موجودی ۶۰٬۰۰۰
-        Assert.Equal(60_000m, lines.Single(l => l.AccountId == accountIds["1300"]).DebitAmount);
+        Assert.Equal(60_000m, lines.Single(l => l.AccountId == accountIds[SystemAccountCodes.Inventory]).DebitAmount);
         // برگشت COGS: بستانکار ۶۰٬۰۰۰
-        Assert.Equal(60_000m, lines.Single(l => l.AccountId == accountIds["5000"]).CreditAmount);
+        Assert.Equal(60_000m, lines.Single(l => l.AccountId == accountIds[SystemAccountCodes.CostOfGoodsSold]).CreditAmount);
         // طلب مشتری به اندازهٔ مبلغ فروش برگشتی کم می‌شود: بستانکار ۱۰۰٬۰۰۰
-        Assert.Equal(100_000m, lines.Single(l => l.AccountId == accountIds["1200"]).CreditAmount);
+        Assert.Equal(100_000m, lines.Single(l => l.AccountId == accountIds[SystemAccountCodes.AccountsReceivable]).CreditAmount);
     }
 
     [SkippableFact]

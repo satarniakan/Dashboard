@@ -31,24 +31,18 @@ public class TreasuryService : ITreasuryService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IJournalService _journalService;
     private readonly INotificationService _notifications;
-    private readonly ILogger<TreasuryService> _logger;
 
-    public TreasuryService(IUnitOfWork unitOfWork, IJournalService journalService, INotificationService notifications,
-        ILogger<TreasuryService> logger)
+    public TreasuryService(IUnitOfWork unitOfWork, IJournalService journalService, INotificationService notifications)
     {
         _unitOfWork = unitOfWork;
         _journalService = journalService;
         _notifications = notifications;
-        _logger = logger;
     }
 
     /// <summary>
     /// اجرای عملیات چندمرحله‌ای (رسید + قسط + شماره‌گذاری + سند حسابداری) در یک تراکنش —
     /// اگر سند حسابداری شکست بخورد، رسید و تغییر قسط هم commit نمی‌شوند (دفتر کل ناراست نمی‌شود).
     /// </summary>
-    private async Task RunInTransactionAsync(Func<Task> action) =>
-        await _unitOfWork.ExecuteInTransactionAsync(action);
-
     // هر صندوق/بانک جدید، خودش هم یک سرفصل حساب معادل در دفتر کل می‌سازد؛ چون اگر موجودی
     // چند صندوق را زیر یک سرفصل مشترک بگذاریم، تراز آزمایشی دیگر نمی‌تواند موجودی هرکدام
     // را جدا نشان بدهد.
@@ -101,7 +95,7 @@ public class TreasuryService : ITreasuryService
         CommonValidations.ValidateAmountPositive(dto.Amount);
 
         var receiptId = 0;
-        await RunInTransactionAsync(async () =>
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
             var financialAccount = await _unitOfWork.FinancialAccounts.GetByIdAsync(dto.FinancialAccountId)
                 ?? throw new NotFoundException("صندوق/بانک", dto.FinancialAccountId);
@@ -182,7 +176,7 @@ public class TreasuryService : ITreasuryService
         CommonValidations.ValidateAmountPositive(dto.Amount);
 
         var paymentId = 0;
-        await RunInTransactionAsync(async () =>
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
             var financialAccount = await _unitOfWork.FinancialAccounts.GetByIdAsync(dto.FinancialAccountId)
                 ?? throw new NotFoundException("صندوق/بانک", dto.FinancialAccountId);
@@ -262,11 +256,12 @@ public class TreasuryService : ITreasuryService
         if (from.Account is null || to.Account is null)
             throw new BusinessRuleException("سرفصل حساب یکی از صندوق/بانک‌ها پیدا نشد.");
 
-        var description = dto.Notes is { Length: > 0 } note
-            ? $"انتقال بین حساب‌ها: {note}"
-            : "انتقال بین حساب‌ها";
+        var datePart = dto.TransferDate == default ? string.Empty : $" ({dto.TransferDate:yyyy/MM/dd})";
+        var description = (dto.Notes is { Length: > 0 } note
+            ? $"انتقال بین حساب‌ها{datePart}: {note}"
+            : $"انتقال بین حساب‌ها{datePart}");
 
-        await RunInTransactionAsync(async () =>
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
             await _journalService.PostEntryAsync(
                 description: description,
@@ -278,10 +273,10 @@ public class TreasuryService : ITreasuryService
                 referenceType: "AccountTransfer",
                 referenceId: null,
                 userId: userId);
-        });
 
-        _logger.LogInformation(
-            "Account transfer of {Amount} from {From} to {To} by {UserId}",
-            dto.Amount, from.Name, to.Name, userId);
+            await _unitOfWork.AuditLogs.AddAsync(new AuditLog("AccountTransfer", userId,
+                $"انتقال {dto.Amount:0} از «{from.Name}» به «{to.Name}» ثبت شد."));
+            await _unitOfWork.CompleteAsync();
+        });
     }
 }

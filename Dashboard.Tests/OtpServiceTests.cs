@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Dashboard.Application.DTOs;
 using Dashboard.Application.Services;
 using Dashboard.Domain.Entities;
+using Dashboard.Domain.Exceptions;
 using Dashboard.Domain.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -106,16 +107,19 @@ public class OtpServiceTests
     }
 
     [Fact]
-    public async Task GenerateAndSendOtpAsync_AfterFiveWrongCodes_StopsSending()
+    public async Task GenerateAndSendOtpAsync_AfterFiveWrongCodes_ThrowsBusinessRule()
     {
         _otpRepository.Setup(r => r.GetLatestValidAsync(It.IsAny<string>(), It.IsAny<string>()))
             .ReturnsAsync((OtpCode?)null);
         for (var i = 0; i < 5; i++)
             await _sut.VerifyOtpAsync("09121230001", "000000");
 
-        // مهاجم نباید بتواند با درخواست‌های مکرر، کد معتبر کاربر را باطل کند
+        // مهاجم نباید بتواند با درخواست‌های مکرر، کد معتبر کاربر را باطل کند؛
+        // و کاربر هم باید پیام روشن بگیرد (نه بازگشت بی‌صدا)
         _otpRepository.Setup(r => r.AddAsync(It.IsAny<OtpCode>()));
-        await _sut.GenerateAndSendOtpAsync("09121230001");
+
+        await Assert.ThrowsAsync<BusinessRuleException>(
+            () => _sut.GenerateAndSendOtpAsync("09121230001"));
 
         _otpRepository.Verify(r => r.AddAsync(It.IsAny<OtpCode>()), Times.Never);
         _smsSender.Verify(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
@@ -139,5 +143,70 @@ public class OtpServiceTests
             .ReturnsAsync((OtpCode?)null);
         for (var i = 0; i < 5; i++)
             Assert.False(await _sut.VerifyOtpAsync("09121230002", "000000"));
+    }
+
+    /// <summary>ساعت قابل‌کنترل برای تست انقضای پنجرهٔ قفل</summary>
+    private sealed class TestClock : TimeProvider
+    {
+        private DateTimeOffset _now = DateTimeOffset.UnixEpoch;
+        public override DateTimeOffset GetUtcNow() => _now;
+        public void Advance(TimeSpan by) => _now = _now.Add(by);
+    }
+
+    [Fact]
+    public async Task LockedPhone_UnblocksAfterTheWindowExpires()
+    {
+        var clock = new TestClock();
+        var sut = new OtpService(_otpRepository.Object, _smsSender.Object, _unitOfWork.Object,
+            Mock.Of<ILogger<OtpService>>(), new MemoryCache(new MemoryCacheOptions()), clock);
+
+        _otpRepository.Setup(r => r.GetLatestValidAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync((OtpCode?)null);
+        for (var i = 0; i < 5; i++)
+            Assert.False(await sut.VerifyOtpAsync("09121231000", "000000"));
+
+        // داخل پنجره: هنوز قفل است
+        await Assert.ThrowsAsync<BusinessRuleException>(
+            () => sut.GenerateAndSendOtpAsync("09121231000"));
+
+        // با گذشتِ زمانِ پنجره، قفل باز می‌شود (پنجره لغزان نبود ⇒ گذشتِ کم کافی نیست)
+        clock.Advance(TimeSpan.FromMinutes(11));
+
+        _otpRepository.Setup(r => r.AddAsync(It.IsAny<OtpCode>())).Returns(Task.CompletedTask);
+        _smsSender.Setup(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(Task.CompletedTask);
+        await sut.GenerateAndSendOtpAsync("09121231000");
+
+        _otpRepository.Verify(r => r.AddAsync(It.IsAny<OtpCode>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SlidingWindowIsNotExtendedByNewAttempts()
+    {
+        var clock = new TestClock();
+        var sut = new OtpService(_otpRepository.Object, _smsSender.Object, _unitOfWork.Object,
+            Mock.Of<ILogger<OtpService>>(), new MemoryCache(new MemoryCacheOptions()), clock);
+
+        _otpRepository.Setup(r => r.GetLatestValidAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync((OtpCode?)null);
+
+        // ۵ تلاش، هر ۲ دقیقه یکی ⇒ همه در یک پنجرهٔ ۱۰ دقیقه‌ای می‌افتند.
+        // اگر پنجره «لغزان» بود (با هر تلاش تمدید)، هرگز به سقف نمی‌رسیدیم.
+        for (var i = 0; i < 4; i++)
+        {
+            await sut.VerifyOtpAsync("09121232000", "000000");
+            clock.Advance(TimeSpan.FromMinutes(2)); // جمعاً ۸ دقیقه — هنوز داخل پنجره
+        }
+        await sut.VerifyOtpAsync("09121232000", "000000"); // تلاش پنجم در دقیقهٔ ۸
+
+        // چون پنجره ثابت است (با هر تلاش تمدید نمی‌شود)، پنجمین تلاش قفل فعال کرده است
+        await Assert.ThrowsAsync<BusinessRuleException>(
+            () => sut.GenerateAndSendOtpAsync("09121232000"));
+
+        // اما با گذشتِ پنجره باز می‌شود
+        clock.Advance(TimeSpan.FromMinutes(11));
+        _otpRepository.Setup(r => r.AddAsync(It.IsAny<OtpCode>())).Returns(Task.CompletedTask);
+        _smsSender.Setup(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(Task.CompletedTask);
+        await sut.GenerateAndSendOtpAsync("09121232000");
+        _otpRepository.Verify(r => r.AddAsync(It.IsAny<OtpCode>()), Times.Once);
     }
 }

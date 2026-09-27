@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Dashboard.Domain.Entities;
+using Dashboard.Domain.Exceptions;
 using Dashboard.Domain.Interfaces;
 
 namespace Dashboard.Application.Services;
@@ -19,15 +20,18 @@ public class OtpService : IOtpService
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<OtpService> _logger;
     private readonly IMemoryCache _attempts;
+    private readonly TimeProvider _clock;
 
     public OtpService(IOtpRepository otpRepository, ISmsSender smsSender, IUnitOfWork unitOfWork,
-        ILogger<OtpService> logger, IMemoryCache attempts)
+        ILogger<OtpService> logger, IMemoryCache attempts, TimeProvider? clock = null)
     {
         _otpRepository = otpRepository;
         _smsSender = smsSender;
         _unitOfWork = unitOfWork;
         _logger = logger;
         _attempts = attempts;
+        // تزریق‌پذیر تا انقضای پنجرهٔ قفل در تست قابل بررسی باشد
+        _clock = clock ?? TimeProvider.System;
     }
 
     /// <summary>
@@ -39,16 +43,44 @@ public class OtpService : IOtpService
 
     private static readonly TimeSpan AttemptWindow = TimeSpan.FromMinutes(10);
 
+    /// <summary>تعداد تلاش‌ها و زمان شروع پنجره — یک رکورد، تا شمارنده پنجرهٔ لغزان نداشته باشد</summary>
+    private sealed record AttemptState(int Count, DateTimeOffset WindowStart);
+
     private string AttemptKey(string phoneNumber) => $"otp-attempts:{phoneNumber}";
 
-    private bool IsBlocked(string phoneNumber) =>
-        _attempts.TryGetValue(AttemptKey(phoneNumber), out int count) && count >= MaxFailedAttempts;
+    /// <summary>
+    /// آیا شماره قفل است؟ پنجره «لغزان» نبود: با هر تلاش، شروعِ پنجره تمدید نمی‌شود،
+    /// وگرنه یک تلاش هر ۹ دقیقه شماره را برای همیشه قفل می‌کرد.
+    /// </summary>
+    private bool IsBlocked(string phoneNumber)
+    {
+        if (!_attempts.TryGetValue(AttemptKey(phoneNumber), out AttemptState? state) || state is null)
+            return false;
+
+        if (_clock.GetUtcNow() - state.WindowStart >= AttemptWindow)
+        {
+            _attempts.Remove(AttemptKey(phoneNumber)); // پنجره منقضی شده
+            return false;
+        }
+
+        return state.Count >= MaxFailedAttempts;
+    }
 
     private void RegisterFailedAttempt(string phoneNumber)
     {
         var key = AttemptKey(phoneNumber);
-        var count = _attempts.TryGetValue(key, out int current) ? current : 0;
-        _attempts.Set(key, count + 1, AttemptWindow);
+        var now = _clock.GetUtcNow();
+
+        if (_attempts.TryGetValue(key, out AttemptState? existing) && existing is not null
+            && now - existing.WindowStart < AttemptWindow)
+        {
+            // فقط شمارنده بالا می‌رود؛ شروع پنجره ثابت می‌ماند
+            _attempts.Set(key, existing with { Count = existing.Count + 1 }, AttemptWindow);
+        }
+        else
+        {
+            _attempts.Set(key, new AttemptState(1, now), AttemptWindow);
+        }
     }
 
     public async Task GenerateAndSendOtpAsync(string phoneNumber)
@@ -58,7 +90,8 @@ public class OtpService : IOtpService
         if (IsBlocked(phoneNumber))
         {
             _logger.LogWarning("OTP request blocked for {PhoneNumber} after repeated failures", phoneNumber);
-            return;
+            throw new BusinessRuleException(
+                "تلاش‌های ناموفق زیاد بود. لطفاً ۱۰ دقیقه دیگر تلاش کنید.");
         }
 
         var code = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();

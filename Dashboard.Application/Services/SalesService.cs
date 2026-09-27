@@ -106,12 +106,16 @@ public class SalesService : ISalesService
             CommonValidations.ValidateQuantityPositive(item.Quantity);
             CommonValidations.ValidatePriceNonNegative(item.UnitPrice);
 
+            // کالا نباید گم باشد: با CostPrice=null سند فروش، COGS صفر می‌شد و خطایی هم صادر نمی‌شد
+            if (!productCosts.TryGetValue(item.ProductId, out var costPrice))
+                throw new BusinessRuleException($"کالای شماره {item.ProductId} یافت نشد؛ فاکتور ساخته نشد.");
+
             invoice.Items.Add(new SalesInvoiceItem
             {
                 ProductId = item.ProductId,
                 Quantity = item.Quantity,
                 UnitPrice = item.UnitPrice,
-                CostPrice = productCosts.GetValueOrDefault(item.ProductId)
+                CostPrice = costPrice
             });
 
             total += item.Quantity * item.UnitPrice;
@@ -265,22 +269,36 @@ public class SalesService : ISalesService
 
                     var wasConfirmed = invoice.Status == SalesInvoiceStatus.Confirmed;
 
+                    // اگر بخشی از این فاکتور قبلاً برگشته باشد، آن برگشت‌ها هم سندِ خودشان را دارند
+                    // و موجودیشان قبلاً به انبار برگشته؛ پس لغو فقط «باقیمانده» را برمی‌گرداند.
+                    // بدون این کسر، موجودی و درآمد دوبار برگشته می‌شدند (دفتر کل تراز ولی غلط).
+                    var returnedByProduct = wasConfirmed
+                        ? (await _unitOfWork.SalesReturns.GetBySalesInvoiceIdAsync(invoice.Id))
+                            .SelectMany(r => r.Items)
+                            .GroupBy(i => i.ProductId)
+                            .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity))
+                        : new Dictionary<int, decimal>();
+
                     if (wasConfirmed)
                     {
-                        foreach (var item in invoice.Items)
+                        foreach (var group in invoice.Items.GroupBy(i => i.ProductId))
                         {
+                            var sold = group.Sum(x => x.Quantity);
+                            var remaining = sold - returnedByProduct.GetValueOrDefault(group.Key);
+                            if (remaining <= 0) continue; // این قلم کاملاً برگشته شده
+
                             await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
                             {
-                                ProductId = item.ProductId,
+                                ProductId = group.Key,
                                 WarehouseId = invoice.WarehouseId,
                                 Type = StockTransactionType.SaleCancellation,
-                                QuantityChange = item.Quantity,
+                                QuantityChange = remaining,
                                 ReferenceType = nameof(SalesInvoice),
                                 ReferenceId = invoice.Id,
                                 CreatedByUserId = userId
                             });
 
-                            await _unitOfWork.StockLevels.IncreaseOrCreateAsync(item.ProductId, invoice.WarehouseId, item.Quantity);
+                            await _unitOfWork.StockLevels.IncreaseOrCreateAsync(group.Key, invoice.WarehouseId, remaining);
                         }
                     }
 
@@ -292,26 +310,46 @@ public class SalesService : ISalesService
                     await _unitOfWork.CompleteAsync();
                     if (wasConfirmed)
                     {
-                        var totalCost = invoice.Items.Sum(i => i.Quantity * (i.CostPrice ?? i.Product?.CostPrice ?? 0));
-                        var goodsRevenue = invoice.TotalAmount - invoice.ShippingAmount;
+                        var totalCost = 0m;
+                        var goodsRevenue = 0m;
 
-                        var reversalLines = new List<JournalLineInput>
+                        foreach (var group in invoice.Items.GroupBy(i => i.ProductId))
                         {
-                            new(SystemAccountCodes.SalesRevenue, goodsRevenue, 0, "برگشت درآمد فروش"),
-                            new(SystemAccountCodes.AccountsReceivable, 0, invoice.TotalAmount, "بستانکار شدن حساب مشتری", "Customer", invoice.CustomerId),
-                            new(SystemAccountCodes.Inventory, totalCost, 0, "برگشت موجودی کالا"),
-                            new(SystemAccountCodes.CostOfGoodsSold, 0, totalCost, "برگشت بهای تمام‌شده")
-                        };
-                        if (invoice.ShippingAmount > 0)
-                            reversalLines.Add(new JournalLineInput(SystemAccountCodes.ShippingRevenue, invoice.ShippingAmount, 0, "برگشت درآمد حمل‌ونقل"));
+                            var sold = group.Sum(x => x.Quantity);
+                            var returned = returnedByProduct.GetValueOrDefault(group.Key);
+                            var remaining = sold - returned;
+                            if (remaining <= 0) continue; // این قلم کاملاً برگشته شده
 
-                        // سند برگشت، دقیقاً برعکس سند فروش اصلی است تا اثر آن به‌طور کامل خنثی شود
-                        await _journalService.PostEntryAsync(
-                            description: $"برگشت از فروش طبق لغو فاکتور {invoice.InvoiceNumber}",
-                            lines: reversalLines,
-                            referenceType: nameof(SalesInvoice),
-                            referenceId: invoice.Id,
-                            userId: userId);
+                            var unitPrice = group.Average(x => x.UnitPrice);
+                            var unitCost = group.Average(x => x.CostPrice ?? x.Product?.CostPrice ?? 0);
+
+                            goodsRevenue += remaining * unitPrice;
+                            totalCost += remaining * unitCost;
+                        }
+
+                        if (goodsRevenue > 0 || totalCost > 0)
+                        {
+                            // AR فقط به اندازهٔ باقیماندهٔ فاکتور (کالا + حمل) بستانکار می‌شود
+                            var receivableReversal = goodsRevenue + invoice.ShippingAmount;
+
+                            var reversalLines = new List<JournalLineInput>
+                            {
+                                new(SystemAccountCodes.SalesRevenue, goodsRevenue, 0, "برگشت درآمد فروش"),
+                                new(SystemAccountCodes.AccountsReceivable, 0, receivableReversal, "بستانکار شدن حساب مشتری", "Customer", invoice.CustomerId),
+                                new(SystemAccountCodes.Inventory, totalCost, 0, "برگشت موجودی کالا"),
+                                new(SystemAccountCodes.CostOfGoodsSold, 0, totalCost, "برگشت بهای تمام‌شده")
+                            };
+                            if (invoice.ShippingAmount > 0)
+                                reversalLines.Add(new JournalLineInput(SystemAccountCodes.ShippingRevenue, invoice.ShippingAmount, 0, "برگشت درآمد حمل‌ونقل"));
+
+                            // سند برگشت، دقیقاً معکوسِ باقیماندهٔ سند فروش اصلی است
+                            await _journalService.PostEntryAsync(
+                                description: $"برگشت از فروش طبق لغو فاکتور {invoice.InvoiceNumber}",
+                                lines: reversalLines,
+                                referenceType: nameof(SalesInvoice),
+                                referenceId: invoice.Id,
+                                userId: userId);
+                        }
                     }
                 });
                 return;

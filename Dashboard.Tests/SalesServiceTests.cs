@@ -22,6 +22,7 @@ public class SalesServiceTests
     private readonly Mock<IStockTransactionRepository> _stockTransactions = new();
     private readonly Mock<IAuditLogRepository> _auditLogs = new();
     private readonly Mock<IProductRepository> _products = new();
+    private readonly Mock<ISalesReturnRepository> _salesReturns = new();
     private readonly SalesService _sut; // Sut = System Under TestØŒ ÛŒØ¹Ù†ÛŒ Â«Ú†ÛŒØ²ÛŒ Ú©Ù‡ Ø¯Ø§Ø±ÛŒÙ… ØªØ³ØªØ´ Ù…ÛŒâ€ŒÚ©Ù†ÛŒÙ…Â»
 
     public SalesServiceTests()
@@ -32,8 +33,20 @@ public class SalesServiceTests
         _unitOfWork.Setup(u => u.AuditLogs).Returns(_auditLogs.Object);
         // اسنپ‌شات بهای تمام‌شده در زمان صدور فاکتور از روی کالا خوانده می‌شود
         _unitOfWork.Setup(u => u.Products).Returns(_products.Object);
+        _unitOfWork.Setup(u => u.SalesReturns).Returns(_salesReturns.Object);
+        _salesReturns.Setup(r => r.GetBySalesInvoiceIdAsync(It.IsAny<int>())).ReturnsAsync(new List<SalesReturn>());
+        // سرویس حالا کالای ناموجود را خطا می‌دهد (به‌جای ساخت سند با COGS صفر)،
+        // پس mock باید کالاهای درخواستی را برگرداند
         _products.Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyCollection<int>>()))
-            .ReturnsAsync(new List<Product>());
+            .ReturnsAsync((IReadOnlyCollection<int> ids) => ids
+                .Select(id =>
+                {
+                    var product = new Product($"SKU-{id}", $"کالا {id}", 100, 50);
+                    // Id خصوصی است و در محیط تست EF آن را ست نمی‌کند
+                    typeof(Product).GetProperty(nameof(Product.Id))!.SetValue(product, id);
+                    return product;
+                })
+                .ToList());
         _unitOfWork.Setup(u => u.CompleteAsync()).ReturnsAsync(1);
         // تراکنش در تست واقعی نیست؛ فقط عملیات را مستقیم اجرا می‌کند
         _unitOfWork.Setup(u => u.ExecuteInTransactionAsync(It.IsAny<Func<Task>>()))

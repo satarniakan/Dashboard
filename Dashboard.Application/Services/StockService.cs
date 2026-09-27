@@ -390,24 +390,54 @@ public class StockService : IStockService
         {
             // فاکتور مرجع اختیاری است، ولی برای برگشتِ حسابداری لازم است: بدون آن
             // نمی‌دانیم چه مبلغی و با چه بهای تمام‌شده‌ای باید برگردد
-            Dashboard.Domain.Entities.SalesInvoice? sourceInvoice = null;
+            SalesInvoice? sourceInvoice = null;
             if (dto.SalesInvoiceId is int invoiceId)
             {
                 sourceInvoice = await _unitOfWork.SalesInvoices.GetByIdAsync(invoiceId)
-                    ?? throw new Dashboard.Domain.Exceptions.NotFoundException("فاکتور", invoiceId);
+                    ?? throw new NotFoundException("فاکتور", invoiceId);
 
                 if (sourceInvoice.WarehouseId != dto.WarehouseId)
-                    throw new Dashboard.Domain.Exceptions.BusinessRuleException("انبار فاکتور با انبار برگشتی یکسان نیست.");
+                    throw new BusinessRuleException("انبار فاکتور با انبار برگشتی یکسان نیست.");
 
-                var invoiceQuantities = sourceInvoice.Items.ToDictionary(i => i.ProductId, i => i.Quantity);
+                // برگشت روی فاکتور پیش‌نویس یعنی سندِ برگشتِ درآمد بدون سندِ فروش
+                if (sourceInvoice.Status != SalesInvoiceStatus.Confirmed)
+                    throw new BusinessRuleException(
+                        $"برگشت فقط روی فاکتور تأییدشده ممکن است (وضعیت فعلی: {sourceInvoice.Status}).");
+
+                // مقدار برگشتی باید مثبت باشد (وگرنه سندِ جعلی با مبلغ منفی صادر می‌شود)
                 foreach (var item in dto.Items)
                 {
-                    if (!invoiceQuantities.TryGetValue(item.ProductId, out var sold))
-                        throw new Dashboard.Domain.Exceptions.BusinessRuleException(
-                            $"کالای شماره {item.ProductId} در فاکتور مرجع نبوده است.");
-                    if (item.Quantity > sold)
-                        throw new Dashboard.Domain.Exceptions.BusinessRuleException(
-                            $"مقدار برگشتی ({item.Quantity:0.##}) بیشتر از مقدار فروش‌رفته ({sold:0.##}) است.");
+                    if (item.Quantity <= 0)
+                        throw new BusinessRuleException("مقدار برگشتی باید بزرگ‌تر از صفر باشد.");
+                }
+
+                // GroupBy به‌جای ToDictionary: فاکتور ممکن است چند سطر برای یک کالا داشته باشد
+                var soldByProduct = sourceInvoice.Items
+                    .GroupBy(i => i.ProductId)
+                    .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+
+                // مبنای مجاز، «فروش‌رفته منهای برگشت‌های قبلی» است؛ وگرنه یک فاکتور ۱۰تایی را
+                // می‌شد ۱۰ بار، هر بار یک عدد، برگرداند و موجودی/درآمد چندبار کم شود
+                var alreadyReturnedByProduct = (await _unitOfWork.SalesReturns.GetBySalesInvoiceIdAsync(sourceInvoice.Id))
+                    .SelectMany(r => r.Items)
+                    .GroupBy(i => i.ProductId)
+                    .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+
+                foreach (var item in dto.Items.GroupBy(i => i.ProductId))
+                {
+                    var requested = item.Sum(x => x.Quantity);
+
+                    if (!soldByProduct.TryGetValue(item.Key, out var sold))
+                        throw new BusinessRuleException(
+                            $"کالای شماره {item.Key} در فاکتور مرجع نبوده است.");
+
+                    var alreadyReturned = alreadyReturnedByProduct.GetValueOrDefault(item.Key);
+                    var remaining = sold - alreadyReturned;
+
+                    if (requested > remaining)
+                        throw new BusinessRuleException(
+                            $"مقدار برگشتی ({requested:0.##}) بیشتر از مقدار قابل‌برگشت ({remaining:0.##}) است. " +
+                            $"در فاکتور {sold:0.##} فروخته و {alreadyReturned:0.##} قبلاً برگشته شده است.");
                 }
             }
 

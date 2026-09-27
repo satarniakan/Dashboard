@@ -30,8 +30,16 @@ public static class AccountEndpoints
             IAuthService authService,
             [FromForm] string phoneNumber) =>
         {
-            await authService.RequestOtpAsync(phoneNumber);
-            return Results.Redirect($"/verify-otp?phone={Uri.EscapeDataString(phoneNumber)}");
+            try
+            {
+                await authService.RequestOtpAsync(phoneNumber);
+                return Results.Redirect($"/verify-otp?phone={Uri.EscapeDataString(phoneNumber)}");
+            }
+            catch (Dashboard.Domain.Exceptions.BusinessRuleException ex)
+            {
+                // مثلاً شماره به‌خاطر تلاش‌های ناموفقِ زیاد موقتاً قفل شده است
+                return Results.Redirect($"/login?error={Uri.EscapeDataString(ex.Message)}");
+            }
         }).RequireRateLimiting("otp-request");
 
         app.MapPost("/Account/VerifyOtp", async (

@@ -1,5 +1,6 @@
 using Dashboard.Application.DTOs;
 using Dashboard.Application.Services;
+using Dashboard.Domain.Accounting;
 using Dashboard.Domain.Entities;
 using Dashboard.Domain.Enums;
 using Dashboard.Domain.Interfaces;
@@ -121,13 +122,13 @@ public class StorePaymentAccountingTests
         Assert.Equal(saleLines.Sum(l => l.DebitAmount), saleLines.Sum(l => l.CreditAmount));
 
         var accountIds = await vContext.Accounts
-            .Where(a => a.Code == "4100" || a.Code == "1200")
+            .Where(a => a.Code == SystemAccountCodes.ShippingRevenue || a.Code == SystemAccountCodes.AccountsReceivable)
             .ToDictionaryAsync(a => a.Code, a => a.Id);
 
-        var shippingLine = saleLines.Single(l => l.AccountId == accountIds["4100"]);
+        var shippingLine = saleLines.Single(l => l.AccountId == accountIds[SystemAccountCodes.ShippingRevenue]);
         Assert.Equal(paidOrder.ShippingCost, shippingLine.CreditAmount);
 
-        var receivableLine = saleLines.Single(l => l.AccountId == accountIds["1200"]);
+        var receivableLine = saleLines.Single(l => l.AccountId == accountIds[SystemAccountCodes.AccountsReceivable]);
         Assert.Equal(paidOrder.Total, receivableLine.DebitAmount);
 
         // ۴) رسید خودکار: بدهکار صندوق/بانک، بستانکار حساب‌های دریافتنی
@@ -466,7 +467,7 @@ public class StorePaymentAccountingTests
         Assert.Equal(2, entries.Count);
 
         var accountIds = await vContext.Accounts
-            .Where(a => a.Code == "5000" || a.Code == "1300")
+            .Where(a => a.Code == SystemAccountCodes.CostOfGoodsSold || a.Code == SystemAccountCodes.Inventory)
             .ToDictionaryAsync(a => a.Code, a => a.Id);
 
         // سند اول = فروش (اول ساخته شده)، سند دوم = برگشت
@@ -474,14 +475,14 @@ public class StorePaymentAccountingTests
         var sale = ordered[0];
         var reversal = ordered[1];
 
-        var saleCogs = sale.Lines.Single(l => l.AccountId == accountIds["5000"]).DebitAmount;
-        var reversalCogs = reversal.Lines.Single(l => l.AccountId == accountIds["5000"]).CreditAmount;
+        var saleCogs = sale.Lines.Single(l => l.AccountId == accountIds[SystemAccountCodes.CostOfGoodsSold]).DebitAmount;
+        var reversalCogs = reversal.Lines.Single(l => l.AccountId == accountIds[SystemAccountCodes.CostOfGoodsSold]).CreditAmount;
 
         Assert.Equal(120_000m, saleCogs);      // ۲ × ۶۰٬۰۰۰ (بهای لحظهٔ صدور)
         Assert.Equal(saleCogs, reversalCogs);  // برگشت نباید از ۹۰٬۰۰۰ استفاده کند
 
-        var saleInventory = sale.Lines.Single(l => l.AccountId == accountIds["1300"]).CreditAmount;
-        var reversalInventory = reversal.Lines.Single(l => l.AccountId == accountIds["1300"]).DebitAmount;
+        var saleInventory = sale.Lines.Single(l => l.AccountId == accountIds[SystemAccountCodes.Inventory]).CreditAmount;
+        var reversalInventory = reversal.Lines.Single(l => l.AccountId == accountIds[SystemAccountCodes.Inventory]).DebitAmount;
         Assert.Equal(saleInventory, reversalInventory);
     }
 }

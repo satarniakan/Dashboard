@@ -1,0 +1,309 @@
+using Dashboard.Application.DTOs;
+using Dashboard.Application.Services;
+using Dashboard.Domain.Accounting;
+using Dashboard.Domain.Entities;
+using Dashboard.Domain.Exceptions;
+using Dashboard.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+
+namespace Dashboard.IntegrationTests;
+
+/// <summary>
+/// ایمنی مالیِ برگشت از فروش و لغو فاکتور — سناریوهایی که می‌توانند
+/// درآمد/موجودی را چندبار برگردانند و دفتر کل را «تراز ولی غلط» کنند.
+/// </summary>
+[Collection("Database")]
+public class SalesReturnAccountingSafetyTests
+{
+    private readonly TestDatabaseFixture _db;
+    public SalesReturnAccountingSafetyTests(TestDatabaseFixture db) => _db = db;
+
+    /// <summary>
+    /// اثر خالص سند فروش و لغوِ آن روی درآمد: فروش ۴۰۰٬۰۰۰، لغو باید فقط
+    /// باقیمانده (۳ عدد = ۳۰۰٬۰۰۰) را برگرداند ⇒ خالص ۱۰۰٬۰۰۰.
+    /// سندِ خودِ برگشت جداگانه و با مرجع SalesReturn ثبت می‌شود و اینجا نمی‌آید.
+    /// </summary>
+    private static decimal SalesInvoiceRevenueNet(AppDbContext ctx, int invoiceId)
+    {
+        var revenueAccountId = ctx.Accounts.AsNoTracking().Single(a => a.Code == SystemAccountCodes.SalesRevenue).Id;
+        var lines = ctx.JournalEntryLines.AsNoTracking()
+            .Include(l => l.JournalEntry)
+            .Where(l => l.JournalEntry!.ReferenceType == nameof(SalesInvoice)
+                     && l.JournalEntry.ReferenceId == invoiceId
+                     && l.AccountId == revenueAccountId)
+            .ToList();
+        return lines.Sum(l => l.CreditAmount) - lines.Sum(l => l.DebitAmount);
+    }
+
+    /// <summary>
+    /// مجموعِ درآمدی که از این فاکتور کسر شده: سند لغو (مرجع SalesInvoice) + سند برگشت (مرجع SalesReturn).
+    /// باید دقیقاً برابر درآمد فروش اولیه باشد تا نه کمتر (سیستم بیش از فروش برگشته) و نه
+    /// بیشتر (بخشی از فروش در حسابداری باقی مانده) باشد.
+    /// </summary>
+    private static decimal TotalReversedRevenue(AppDbContext ctx, int invoiceId)
+    {
+        var revenueAccountId = ctx.Accounts.AsNoTracking().Single(a => a.Code == SystemAccountCodes.SalesRevenue).Id;
+        var returnIds = ctx.SalesReturns.AsNoTracking().Where(r => r.SalesInvoiceId == invoiceId).Select(r => r.Id).ToList();
+
+        var cancelDebit = ctx.JournalEntryLines.AsNoTracking()
+            .Include(l => l.JournalEntry)
+            .Where(l => l.JournalEntry!.ReferenceType == nameof(SalesInvoice)
+                     && l.JournalEntry.ReferenceId == invoiceId
+                     && l.AccountId == revenueAccountId)
+            .Sum(l => l.DebitAmount);
+
+        var returnsDebit = ctx.JournalEntryLines.AsNoTracking()
+            .Include(l => l.JournalEntry)
+            .Where(l => l.JournalEntry!.ReferenceType == nameof(SalesReturn)
+                     && returnIds.Contains(l.JournalEntry.ReferenceId!.Value)
+                     && l.AccountId == revenueAccountId)
+            .Sum(l => l.DebitAmount);
+
+        return cancelDebit + returnsDebit;
+    }
+
+    /// <summary>مجموع اثر برگشت‌های ثبت‌شده (مرجع SalesReturn) روی درآمد.</summary>
+    private static decimal ReturnsRevenueTotal(AppDbContext ctx, int invoiceId)
+    {
+        var revenueAccountId = ctx.Accounts.AsNoTracking().Single(a => a.Code == SystemAccountCodes.SalesRevenue).Id;
+        var returnIds = ctx.SalesReturns.AsNoTracking().Where(r => r.SalesInvoiceId == invoiceId).Select(r => r.Id).ToList();
+        return ctx.JournalEntryLines.AsNoTracking()
+            .Include(l => l.JournalEntry)
+            .Where(l => l.JournalEntry!.ReferenceType == nameof(SalesReturn)
+                     && returnIds.Contains(l.JournalEntry.ReferenceId!.Value)
+                     && l.AccountId == revenueAccountId)
+            .Sum(l => l.DebitAmount);
+    }
+
+    [SkippableFact]
+    public async Task PartialReturn_ThenCancelInvoice_ReversesOnlyTheRemaining()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 10);
+        int invoiceId, customerId;
+        using (var scope = _db.CreateScope())
+        {
+            var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var customer = new Customer("تست ایمنی", "09121291001", "تهران");
+            ctx.Customers.Add(customer);
+            await ctx.SaveChangesAsync();
+            customerId = customer.Id;
+
+            var sales = scope.ServiceProvider.GetRequiredService<ISalesService>();
+            invoiceId = await sales.CreateDraftInvoiceAsync(new CreateSalesInvoiceDto
+            {
+                CustomerId = customerId, WarehouseId = 1,
+                Items = new List<SalesInvoiceItemInput>
+                { new() { ProductId = product.Id, Quantity = 4, UnitPrice = 100_000 } }
+            }, "u");
+            await sales.ConfirmInvoiceAsync(invoiceId, "u");
+        }
+
+        // برگشت ۱ عدد ⇒ ۱۰۰٬۰۰۰ کاهش درآمد (سند مستقل خودش را دارد)
+        using (var scope = _db.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<IStockService>().RegisterSalesReturnAsync(
+                new CreateSalesReturnDto
+                {
+                    WarehouseId = 1, SalesInvoiceId = invoiceId,
+                    Items = new List<StockItemInput> { new() { ProductId = product.Id, Quantity = 1 } }
+                }, "u");
+        }
+
+        // لغو کل فاکتور ⇒ فقط ۳ عدد باقیمانده (۳۰۰٬۰۰۰) باید برگردد
+        using (var scope = _db.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<ISalesService>().CancelInvoiceAsync(invoiceId, "u");
+        }
+
+        using var verify = _db.CreateScope();
+        var vCtx = verify.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // فروش ۴ عدد = ۴۰۰٬۰۰۰ درآمد
+        //   • ۱ عدد برگشت شد  ⇒ سند مستقل ۱۰۰٬۰۰۰
+        //   • لغو فاکتور      ⇒ فقط ۳ عددِ باقیمانده = ۳۰۰٬۰۰۰ برمی‌گردد
+        // پس خالصِ باقیماندهٔ فاکتور = ۴۰۰ − ۳۰۰ = ۱۰۰ (یعنی فقط همان ۱ عددِ برگشتی باقی مانده)
+        Assert.Equal(100_000m, SalesInvoiceRevenueNet(vCtx, invoiceId));
+        Assert.Equal(100_000m, ReturnsRevenueTotal(vCtx, invoiceId));
+
+        // مجموعِ کلِ درآمدِ فروشِ این فاکتور که از بیرون کسر شده = ۳۰۰ (لغو) + ۱۰۰ (برگشت) = ۴۰۰
+        Assert.Equal(400_000m, TotalReversedRevenue(vCtx, invoiceId));
+
+        // موجودی هم باید دقیقاً به ۱۰ برگردد (نه ۹ یا ۱۱)
+        var level = await vCtx.StockLevels.SingleAsync(s => s.ProductId == product.Id && s.WarehouseId == 1);
+        Assert.Equal(10m, level.QuantityOnHand);
+    }
+
+    [SkippableFact]
+    public async Task PartialReturn_ThenFullCancel_LeavesJournalBalanced()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 5);
+        int invoiceId;
+        using (var scope = _db.CreateScope())
+        {
+            var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var customer = new Customer("تست تراز", "09121291002", "تهران");
+            ctx.Customers.Add(customer);
+            await ctx.SaveChangesAsync();
+
+            var sales = scope.ServiceProvider.GetRequiredService<ISalesService>();
+            invoiceId = await sales.CreateDraftInvoiceAsync(new CreateSalesInvoiceDto
+            {
+                CustomerId = customer.Id, WarehouseId = 1,
+                Items = new List<SalesInvoiceItemInput>
+                { new() { ProductId = product.Id, Quantity = 2, UnitPrice = 100_000 } }
+            }, "u");
+            await sales.ConfirmInvoiceAsync(invoiceId, "u");
+
+            await scope.ServiceProvider.GetRequiredService<IStockService>().RegisterSalesReturnAsync(
+                new CreateSalesReturnDto
+                {
+                    WarehouseId = 1, SalesInvoiceId = invoiceId,
+                    Items = new List<StockItemInput> { new() { ProductId = product.Id, Quantity = 1 } }
+                }, "u");
+        }
+
+        using (var scope = _db.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<ISalesService>().CancelInvoiceAsync(invoiceId, "u");
+        }
+
+        using var v = _db.CreateScope();
+        var vCtx = v.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // هر سندِ مرتبط با این فاکتور باید تراز باشد
+        var entryIds = await vCtx.JournalEntryLines.AsNoTracking()
+            .Include(l => l.JournalEntry)
+            .Where(l => l.JournalEntry!.ReferenceType == nameof(SalesInvoice) && l.JournalEntry.ReferenceId == invoiceId)
+            .Select(l => l.JournalEntryId).Distinct().ToListAsync();
+
+        foreach (var entryId in entryIds)
+        {
+            var lines = await vCtx.JournalEntryLines.AsNoTracking()
+                .Where(l => l.JournalEntryId == entryId).ToListAsync();
+            Assert.Equal(lines.Sum(l => l.DebitAmount), lines.Sum(l => l.CreditAmount));
+        }
+
+        // و موجودی کل روی این فاکتور به حالت اول برگشته باشد
+        var level = await vCtx.StockLevels.SingleAsync(s => s.ProductId == product.Id && s.WarehouseId == 1);
+        Assert.Equal(5m, level.QuantityOnHand);
+    }
+
+    [SkippableFact]
+    public async Task Return_AgainstDraftInvoice_IsRejected()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 5);
+        int invoiceId;
+        using (var scope = _db.CreateScope())
+        {
+            var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var customer = new Customer("تست پیش‌نویس", "09121291003", "تهران");
+            ctx.Customers.Add(customer);
+            await ctx.SaveChangesAsync();
+
+            var sales = scope.ServiceProvider.GetRequiredService<ISalesService>();
+            invoiceId = await sales.CreateDraftInvoiceAsync(new CreateSalesInvoiceDto
+            {
+                CustomerId = customer.Id, WarehouseId = 1,
+                Items = new List<SalesInvoiceItemInput>
+                { new() { ProductId = product.Id, Quantity = 1, UnitPrice = 100_000 } }
+            }, "u"); // تأیید نشده
+        }
+
+        using var scope2 = _db.CreateScope();
+        var stock = scope2.ServiceProvider.GetRequiredService<IStockService>();
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() => stock.RegisterSalesReturnAsync(
+            new CreateSalesReturnDto
+            {
+                WarehouseId = 1, SalesInvoiceId = invoiceId,
+                Items = new List<StockItemInput> { new() { ProductId = product.Id, Quantity = 1 } }
+            }, "u"));
+    }
+
+    [SkippableFact]
+    public async Task Return_ExceedingAlreadyReturned_IsRejected()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 10);
+        int invoiceId;
+        using (var scope = _db.CreateScope())
+        {
+            var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var customer = new Customer("تست تجمعی", "09121291004", "تهران");
+            ctx.Customers.Add(customer);
+            await ctx.SaveChangesAsync();
+
+            var sales = scope.ServiceProvider.GetRequiredService<ISalesService>();
+            invoiceId = await sales.CreateDraftInvoiceAsync(new CreateSalesInvoiceDto
+            {
+                CustomerId = customer.Id, WarehouseId = 1,
+                Items = new List<SalesInvoiceItemInput>
+                { new() { ProductId = product.Id, Quantity = 2, UnitPrice = 100_000 } }
+            }, "u");
+            await sales.ConfirmInvoiceAsync(invoiceId, "u");
+
+            // ۲ عدد فروخته شده، ۱ عدد برگشته ⇒ فقط ۱ عدد قابل برگشت است
+            await scope.ServiceProvider.GetRequiredService<IStockService>().RegisterSalesReturnAsync(
+                new CreateSalesReturnDto
+                {
+                    WarehouseId = 1, SalesInvoiceId = invoiceId,
+                    Items = new List<StockItemInput> { new() { ProductId = product.Id, Quantity = 1 } }
+                }, "u");
+        }
+
+        using var scope2 = _db.CreateScope();
+        var stock = scope2.ServiceProvider.GetRequiredService<IStockService>();
+
+        // برگشت ۲ عدد دیگر ⇒ باید رد شود (چون فقط ۱ عدد باقی مانده)
+        await Assert.ThrowsAsync<BusinessRuleException>(() => stock.RegisterSalesReturnAsync(
+            new CreateSalesReturnDto
+            {
+                WarehouseId = 1, SalesInvoiceId = invoiceId,
+                Items = new List<StockItemInput> { new() { ProductId = product.Id, Quantity = 2 } }
+            }, "u"));
+    }
+
+    [SkippableFact]
+    public async Task Return_WithZeroOrNegativeQuantity_IsRejected()
+    {
+        Skip.IfNot(_db.Available, _db.SkipReason);
+
+        var product = await _db.SeedProductAsync(price: 100_000, costPrice: 60_000, stockQty: 5);
+        int invoiceId;
+        using (var scope = _db.CreateScope())
+        {
+            var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var customer = new Customer("تست صفر", "09121291005", "تهران");
+            ctx.Customers.Add(customer);
+            await ctx.SaveChangesAsync();
+
+            var sales = scope.ServiceProvider.GetRequiredService<ISalesService>();
+            invoiceId = await sales.CreateDraftInvoiceAsync(new CreateSalesInvoiceDto
+            {
+                CustomerId = customer.Id, WarehouseId = 1,
+                Items = new List<SalesInvoiceItemInput>
+                { new() { ProductId = product.Id, Quantity = 2, UnitPrice = 100_000 } }
+            }, "u");
+            await sales.ConfirmInvoiceAsync(invoiceId, "u");
+        }
+
+        using var scope2 = _db.CreateScope();
+        var stock = scope2.ServiceProvider.GetRequiredService<IStockService>();
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() => stock.RegisterSalesReturnAsync(
+            new CreateSalesReturnDto
+            {
+                WarehouseId = 1, SalesInvoiceId = invoiceId,
+                Items = new List<StockItemInput> { new() { ProductId = product.Id, Quantity = 0 } }
+            }, "u"));
+    }
+}
