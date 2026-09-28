@@ -1,0 +1,92 @@
+@page "/reports/vat"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.ReportsFinancialView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Domain.Identity
+@using Dashboard.Domain.Queries
+@using Dashboard.Application.Helpers
+@inject IVatReportQuery VatReport
+
+<PageTitle>اعلامیه ارزش افزوده</PageTitle>
+
+<div class="container-fluid">
+    <div class="mb-3">
+        <h4 class="mb-1">اعلامیه ارزش افزوده</h4>
+        <small class="text-body-secondary">
+            گردش و ماندهٔ حساب‌های مالیات فروش (۲۳۰۰) و اعتبار مالیاتی خرید (۱۳۵۰).
+            «مالیات قابل پرداخت» = مالیاتِ دریافتی از مشتریان منفیِ اعتبار مالیاتیِ خرید؛ عدد منفی یعنی اعتبارِ مانده.
+        </small>
+    </div>
+
+    <ReportTable TItem="object"
+                 Query="(f, o) => VatReport.GetVatLinesAsync(f, o)"
+                 SummaryQuery="async f => (object)await VatReport.GetVatSummaryAsync(f)"
+                 SummaryTemplate="vatSummary"
+                 ExportFileName="vat-declaration" ExportSheetName="اعلامیه ارزش افزوده"
+                 PdfTitle="اعلامیه ارزش افزوده" PdfSubtitle="گردش حساب‌های ۲۳۰۰ و ۱۳۵۰ در بازهٔ انتخابی"
+                 SearchPlaceholder="شرح سند یا شمارهٔ سند…" />
+</div>
+
+@code {
+    private static string Fmt(decimal amount) => CurrencyFormatter.ToToman(amount);
+
+    private RenderFragment<object?> vatSummary => summary => @<text>
+        @{
+            var s = (VatSummaryDto)summary!;
+        }
+        <div class="row g-3 mb-3">
+            @* ===== مالیات فروش (۲۳۰۰) ===== *@
+            <div class="col-md-4">
+                <div class="card-panel h-100">
+                    <div class="text-body-secondary small mb-2">
+                        <i class="bi bi-arrow-up-left me-1"></i>مالیات فروش — کد @s.Payable.AccountCode
+                        (@s.Payable.AccountName)
+                    </div>
+                    <table class="table table-sm mb-0 small">
+                        <tbody>
+                            <tr><td>ماندهٔ ابتدا (بستانکار)</td><td class="text-end">@Fmt(s.Payable.OpeningCredit - s.Payable.OpeningDebit)</td></tr>
+                            <tr><td>گردش دوره (بستانکار)</td><td class="text-end">@Fmt(s.Payable.PeriodCredit)</td></tr>
+                            <tr><td>برگشت/ابطال (بدهکار)</td><td class="text-end">@Fmt(s.Payable.PeriodDebit)</td></tr>
+                            <tr class="fw-bold"><td>ماندهٔ پایان (بستانکار)</td><td class="text-end">@Fmt(s.Payable.ClosingCreditBalance)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            @* ===== اعتبار مالیاتی خرید (۱۳۵۰) ===== *@
+            <div class="col-md-4">
+                <div class="card-panel h-100">
+                    <div class="text-body-secondary small mb-2">
+                        <i class="bi bi-arrow-down-right me-1"></i>اعتبار مالیاتی خرید — کد @s.Receivable.AccountCode
+                        (@s.Receivable.AccountName)
+                    </div>
+                    <table class="table table-sm mb-0 small">
+                        <tbody>
+                            <tr><td>ماندهٔ ابتدا (بدهکار)</td><td class="text-end">@Fmt(s.Receivable.OpeningDebit - s.Receivable.OpeningCredit)</td></tr>
+                            <tr><td>گردش دوره (بدهکار)</td><td class="text-end">@Fmt(s.Receivable.PeriodDebit)</td></tr>
+                            <tr><td>برگشت خرید (بستانکار)</td><td class="text-end">@Fmt(s.Receivable.PeriodCredit)</td></tr>
+                            <tr class="fw-bold"><td>ماندهٔ پایان (بدهکار)</td><td class="text-end">@Fmt(s.Receivable.ClosingDebitBalance)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            @* ===== خالص قابل پرداخت ===== *@
+            <div class="col-md-4">
+                <div class="card-panel h-100 d-flex flex-column justify-content-center @(s.NetVatPayable >= 0 ? "" : "bg-success-subtle")">
+                    <div class="text-body-secondary small mb-2">
+                        <i class="bi bi-receipt me-1"></i>مالیات قابل پرداخت (پس از تهاتر)
+                    </div>
+                    <div class="fs-4 fw-bold @(s.NetVatPayable >= 0 ? "text-danger" : "text-success")">
+                        @Fmt(Math.Abs(s.NetVatPayable))
+                    </div>
+                    <div class="small text-body-secondary">
+                        @(s.NetVatPayable >= 0
+                            ? "بدهکاریم به سازمان امور مالیاتی"
+                            : "اعتبار مالیاتی مانده (بدهکار نیستیم)")
+                    </div>
+                </div>
+            </div>
+        </div>
+    </text>;
+}

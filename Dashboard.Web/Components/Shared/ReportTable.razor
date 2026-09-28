@@ -75,6 +75,11 @@
         <div class="alert alert-danger py-2">@ErrorMessage</div>
     }
 
+    @if (Summary is not null && SummaryTemplate is not null)
+    {
+        @SummaryTemplate(Summary)
+    }
+
     @if (Table is null)
     {
         <LoadingSkeleton />
@@ -144,12 +149,23 @@
     /// <summary>نمایش دکمهٔ خروجی PDF. برای گزارش‌های خیلی پهن می‌توان آن را خاموش کرد.</summary>
     [Parameter] public bool EnablePdf { get; set; } = true;
 
+    /// <summary>
+    /// خلاصهٔ اختیاریِ گزارش (مثل اعلامیه ارزش افزوده) — با همان <see cref="CurrentFilter"/>
+    /// جدول صدا زده می‌شود تا عدد خلاصه همیشه با سطرهای زیرش بخواند. null یعنی گزارش
+    /// خلاصه ندارد و رفتار قبلی حفظ می‌شود.
+    /// </summary>
+    [Parameter] public Func<ReportFilter, Task<object?>>? SummaryQuery { get; set; }
+
+    /// <summary>قالب رندر خلاصه — ورودی‌اش همان خروجی <see cref="SummaryQuery"/> است.</summary>
+    [Parameter] public RenderFragment<object?>? SummaryTemplate { get; set; }
+
     [Inject] private IExcelExporter ExcelExporter { get; set; } = default!;
     [Inject] private IPdfExporter PdfExporter { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
     [Inject] private ILogger<ReportTable<TItem>> Logger { get; set; } = default!;
 
     private ReportTable? Table;
+    private object? Summary;
     private string? ErrorMessage;
     private string? _search;
     private bool _isBusy;
@@ -188,6 +204,7 @@
 
         _isBusy = true;
         ErrorMessage = null;
+        Summary = null;
         StateHasChanged();
 
         try
@@ -195,6 +212,11 @@
             var table = await Query(CurrentFilter, ReportQueryOptions.ForPage(_page, _pageSize));
             if (ct.IsCancellationRequested) return;
             Table = table;
+
+            // خلاصه با همان فیلتری رفرش می‌شود که جدول با آن پر شده تا هرگز جلوی
+            // جدول عددیِ از یک بازهٔ متفاوت نشان داده نشود
+            if (SummaryQuery is not null)
+                Summary = await SummaryQuery(CurrentFilter);
 
             // اگر کاربر روی صفحه‌ای بود که دیگر وجود ندارد (مثلاً فیلتر را عوض کرد)،
             // به آخرین صفحهٔ معتبر برگردانده می‌شویم تا جدول خالی و گیج‌کننده نشود.
