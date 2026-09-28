@@ -1,0 +1,402 @@
+@using Dashboard.Application.Exports
+@using Dashboard.Application.Helpers
+@using Dashboard.Domain.Queries
+@using Microsoft.AspNetCore.Components.Forms
+
+@typeparam TItem
+
+<div class="card-panel">
+    @* ===== نوار فیلتر + دکمهٔ اکسل ===== *@
+    <div class="d-flex flex-wrap gap-2 align-items-end mb-3">
+        @if (ShowDateRange)
+        {
+            <div>
+                <label class="form-label small mb-1">از تاریخ</label>
+                <input type="date" class="form-control form-control-sm" @bind="fromDate" @bind:after="ApplyFilterAsync" />
+            </div>
+            <div>
+                <label class="form-label small mb-1">تا تاریخ</label>
+                <input type="date" class="form-control form-control-sm" @bind="toDate" @bind:after="ApplyFilterAsync" />
+            </div>
+        }
+        @if (ShowSearch)
+        {
+            <div class="flex-grow-1" style="min-width: 220px; max-width: 360px;">
+                <label class="form-label small mb-1">جست‌وجو</label>
+                <input type="search" class="form-control form-control-sm"
+                       placeholder="@SearchPlaceholder"
+                       value="@_search" @oninput="OnSearchInput" />
+            </div>
+        }
+
+        <div class="ms-auto d-flex gap-2">
+            @if (_isBusy)
+            {
+                <span class="text-secondary small align-self-center">
+                    <span class="spinner-border spinner-border-sm me-1"></span>در حال بارگذاری…
+                </span>
+            }
+            else
+            {
+                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ResetFilterAsync">
+                    <i class="bi bi-x-circle me-1"></i>حذف فیلتر
+                </button>
+                <button type="button" class="btn btn-success btn-sm" disabled="@IsExporting" @onclick="ExportExcelAsync">
+                    @if (IsExporting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-file-earmark-excel me-1"></i>
+                    }
+                    خروجی اکسل
+                </button>
+                @if (EnablePdf)
+                {
+                    <button type="button" class="btn btn-danger btn-sm" disabled="@IsExporting" @onclick="ExportPdfAsync">
+                        @if (IsExporting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-file-earmark-pdf me-1"></i>
+                        }
+                        خروجی PDF
+                    </button>
+                }
+            }
+        </div>
+    </div>
+
+    @if (ErrorMessage is not null)
+    {
+        <div class="alert alert-danger py-2">@ErrorMessage</div>
+    }
+
+    @if (Table is null)
+    {
+        <LoadingSkeleton />
+    }
+    else if (Table.Rows.Count == 0)
+    {
+        <div class="text-center text-body-secondary py-5">
+            <i class="bi bi-inbox d-block fs-1 mb-2"></i>
+            داده‌ای با این فیلترها یافت نشد.
+        </div>
+    }
+    else
+    {
+        @if (Table.Truncated)
+        {
+            <div class="alert alert-info py-2 small">
+                <i class="bi bi-info-circle me-1"></i>
+                این گزارش @TotalCount.ToString("N0") ردیف دارد و به‌صورت صفحه‌بندی‌شده نمایش داده می‌شود.
+                برای دیدن <strong>همهٔ ردیف‌ها</strong> روی دکمهٔ «خروجی اکسل» بزنید.
+            </div>
+        }
+
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 1%">#</th>
+                        @foreach (var col in Table.Columns)
+                        {
+                            <th class="@NumericClass(col.Kind)">@col.Title</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ var rowIndex = 0; }
+                    @foreach (var row in Table.Rows)
+                    {
+                        rowIndex++;
+                        <tr>
+                            <td class="text-muted small">@rowIndex</td>
+                            @foreach (var col in Table.Columns)
+                            {
+                                <td class="@NumericClass(col.Kind)">@FormatCell(col, row.GetValueOrDefault(col.Key))</td>
+                            }
+                        </tr>
+
+@code {
+    /// <summary>
+    /// مسیر نمایش: جدول صفحه‌بندی‌شده. این تابع فقط برای رندر صفحه استفاده می‌شود و
+    /// سقف ردیف دارد، پس سبک است.
+    /// </summary>
+    [Parameter, EditorRequired] public Func<ReportFilter, ReportQueryOptions, Task<ReportTable>> Query { get; set; } = default!;
+
+    [Parameter] public string ExportFileName { get; set; } = "report";
+    [Parameter] public string ExportSheetName { get; set; } = "گزارش";
+
+    /// <summary>عنوان چاپی روی PDF (اگر خالی باشد، نام شیت اکسل استفاده می‌شود)</summary>
+    [Parameter] public string PdfTitle { get; set; } = "";
+
+    /// <summary>زیرعنوان PDF — معمولاً توضیح کوتاهی دربارهٔ منبع داده</summary>
+    [Parameter] public string PdfSubtitle { get; set; } = "";
+    [Parameter] public bool ShowDateRange { get; set; } = true;
+    [Parameter] public bool ShowSearch { get; set; } = true;
+    [Parameter] public string SearchPlaceholder { get; set; } = "جست‌وجو…";
+    [Parameter] public bool ShowTotal { get; set; } = true;
+
+    /// <summary>نمایش دکمهٔ خروجی PDF. برای گزارش‌های خیلی پهن می‌توان آن را خاموش کرد.</summary>
+    [Parameter] public bool EnablePdf { get; set; } = true;
+
+    [Inject] private IExcelExporter ExcelExporter { get; set; } = default!;
+    [Inject] private IPdfExporter PdfExporter { get; set; } = default!;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+    [Inject] private ILogger<ReportTable<TItem>> Logger { get; set; } = default!;
+
+    private ReportTable? Table;
+    private string? ErrorMessage;
+    private string? _search;
+    private bool _isBusy;
+    private bool IsExporting;
+    private DateTime? fromDate;
+    private DateTime? toDate;
+    private CancellationTokenSource? _cts;
+
+    /// <summary>شمارهٔ صفحهٔ جاری (از ۱)</summary>
+    private int _page = 1;
+
+    /// <summary>اندازهٔ هر صفحه در نمایش. قابل تنظیم از سوی کاربر.</summary>
+    private int _pageSize = 500;
+
+    /// <summary>تعداد کل ردیف‌ها، پیش از صفحه‌بندی</summary>
+    private int TotalCount => Table?.TotalCount ?? Table?.Rows.Count ?? 0;
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(TotalCount / (double)_pageSize));
+
+    private ReportFilter CurrentFilter => new()
+    {
+        FromDate = fromDate,
+        ToDate = toDate,
+        Search = _search
+    };
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        // لغو درخواست قبلی: اگر کاربر سریع فیلتر عوض کند، پاسخ دیررسِ درخواست
+        // قبلی نباید جای نتیجهٔ جدید بنشیند.
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        var ct = _cts.Token;
+
+        _isBusy = true;
+        ErrorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var table = await Query(CurrentFilter, ReportQueryOptions.ForPage(_page, _pageSize));
+            if (ct.IsCancellationRequested) return;
+            Table = table;
+
+            // اگر کاربر روی صفحه‌ای بود که دیگر وجود ندارد (مثلاً فیلتر را عوض کرد)،
+            // به آخرین صفحهٔ معتبر برگردانده می‌شویم تا جدول خالی و گیج‌کننده نشود.
+            if (_page > 1 && _page > TotalPages) { _page = TotalPages; }
+        }
+        catch (OperationCanceledException)
+        {
+            // درخواست عمداً لغو شد — بی‌صدا
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "خطا در اجرای گزارش {Name}", ExportFileName);
+            ErrorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+        }
+        finally
+        {
+            _isBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApplyFilterAsync()
+    {
+        // با عوض شدن فیلتر، نتیجه عوض می‌شود؛ برگشت به صفحهٔ اول منطقی است
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task ResetFilterAsync()
+    {
+        fromDate = null;
+        toDate = null;
+        _search = null;
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString();
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private Task GoToPageAsync(int page)
+    {
+        if (page < 1 || page > TotalPages || page == _page) return Task.CompletedTask;
+        _page = page;
+        return LoadAsync();
+    }
+
+    private Task FirstPageAsync() => GoToPageAsync(1);
+    private Task PrevPageAsync() => GoToPageAsync(_page - 1);
+    private Task NextPageAsync() => GoToPageAsync(_page + 1);
+    private Task LastPageAsync() => GoToPageAsync(TotalPages);
+
+    private async Task OnPageSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var size) && size > 0)
+        {
+            _pageSize = Math.Clamp(size, 50, 2000);
+            _page = 1;
+            await LoadAsync();
+        }
+    }
+
+    /// <summary>
+    /// خروجی اکسل از مسیر جداگانه گرفته می‌شود: <c>ForExport()</c> یعنی بدون سقف
+    /// ردیف، پس فایل همیشه «همهٔ» رکوردهای فیلترشده را دارد — نه فقط صفحه‌ای که
+    /// کاربر روی آن نگاه می‌کند. فیلتر یکسان است، پس عدد اکسل با جدول یکی می‌ماند.
+    /// از مسیر رسمی DotNetStreamReference دانلود می‌شود تا فایل حجیم داخل
+    /// interop (که base64 می‌شود) بارگذاری نشود.
+    /// </summary>
+    private async Task ExportExcelAsync()
+    {
+        if (IsExporting) return;
+        IsExporting = true;
+        ErrorMessage = null;
+        try
+        {
+            var table = await Query(CurrentFilter, ReportQueryOptions.ForExport());
+            var bytes = ExcelExporter.Export(table, ExportSheetName);
+            var fileName = $"{ExportFileName}-{DateTime.Now:yyyyMMdd-HHmm}.xlsx";
+
+            using var stream = new MemoryStream(bytes);
+            using var reference = new DotNetStreamReference(stream);
+            await JS.InvokeVoidAsync("downloadExcelFile", fileName, reference);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "خطا در خروجی اکسل گزارش {Name}", ExportFileName);
+            ErrorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+        }
+        finally
+        {
+            IsExporting = false;
+        }
+    }
+
+    /// <summary>
+    /// خروجی PDF از همان مسیر بدون‌سقفِ اکسل می‌آید (ForExport)، پس فایل شامل
+    /// «همهٔ» رکوردهای فیلترشده است — نه فقط صفحهٔ نمایش‌داده‌شده.
+    /// </summary>
+    private async Task ExportPdfAsync()
+    {
+        if (IsExporting) return;
+        IsExporting = true;
+        ErrorMessage = null;
+        try
+        {
+            var table = await Query(CurrentFilter, ReportQueryOptions.ForExport());
+            // اگر عنوان جداگانه داده نشده باشد، همان نام شیت اکسل استفاده می‌شود
+            var title = string.IsNullOrWhiteSpace(PdfTitle) ? ExportSheetName : PdfTitle;
+            var bytes = PdfExporter.Export(table, title, PdfSubtitle);
+            var fileName = $"{ExportFileName}-{DateTime.Now:yyyyMMdd-HHmm}.pdf";
+
+            using var stream = new MemoryStream(bytes);
+            using var reference = new DotNetStreamReference(stream);
+            await JS.InvokeVoidAsync("downloadPdfFile", fileName, reference);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "خطا در خروجی PDF گزارش {Name}", ExportFileName);
+            ErrorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+        }
+        finally
+        {
+            IsExporting = false;
+        }
+    }
+
+    private static string NumericClass(ReportColumnKind kind)
+        => kind is ReportColumnKind.Money or ReportColumnKind.Number or ReportColumnKind.Integer
+            ? "text-end" : "";
+
+    private static string FormatCell(ReportColumn col, object? value) => col.Kind switch
+    {
+        ReportColumnKind.Money => value is decimal or int or long
+            ? Convert.ToDecimal(value).ToString("N0")
+            : value?.ToString() ?? string.Empty,
+        ReportColumnKind.Number => value is decimal or int or long or double
+            ? Convert.ToDecimal(value).ToString("N2")
+            : value?.ToString() ?? string.Empty,
+        ReportColumnKind.Integer => value is int or long
+            ? Convert.ToInt64(value).ToString("N0")
+            : value?.ToString() ?? string.Empty,
+        ReportColumnKind.Date => value is DateTime dt ? dt.ToPersianDate() : value?.ToString() ?? string.Empty,
+        _ => value?.ToString() ?? string.Empty
+    };
+}
+
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (ShowTotal)
+        {
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 text-body-secondary small mt-2">
+                <span>
+                    مجموع @TotalCount.ToString("N0") ردیف
+                    @if (TotalPages > 1)
+                    {
+                        <span> — صفحهٔ @_page از @TotalPages</span>
+                    }
+                    @if (IsExporting)
+                    {
+                        <span class="text-info">
+                            <i class="bi bi-info-circle me-1"></i>فایل اکسل شامل <strong>همهٔ @TotalCount.ToString("N0")</strong> ردیف فیلترشده است، نه فقط این صفحه.
+                        </span>
+                    }
+                </span>
+
+                @if (TotalPages > 1)
+                {
+                    <div class="d-flex align-items-center gap-1">
+                        <select class="form-select form-select-sm" style="width: auto"
+                                value="@_pageSize" @onchange="OnPageSizeChanged" title="ردیف در هر صفحه">
+                            @foreach (var size in new[] { 50, 100, 500, 1000 })
+                            {
+                                <option value="@size">@size در صفحه</option>
+                            }
+                        </select>
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                disabled="@(_page <= 1)" @onclick="FirstPageAsync" title="صفحهٔ اول">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                disabled="@(_page <= 1)" @onclick="PrevPageAsync" title="صفحهٔ قبل">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                disabled="@(_page >= TotalPages)" @onclick="NextPageAsync" title="صفحهٔ بعد">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                disabled="@(_page >= TotalPages)" @onclick="LastPageAsync" title="صفحهٔ آخر">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>

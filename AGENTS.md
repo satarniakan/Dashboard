@@ -3,7 +3,7 @@
 این فایل برای دستیارهای AI (Cline / Claude / Copilot) نوشته شده تا پیش از خواندن کل
 سورس، نقشه‌ی پروژه و مرزهایش را بدانند. **اول این فایل را بخوان، بعد تصمیم بگیر چه چیزی را باز کنی.**
 
-> آخرین به‌روزرسانی: 2026-09-27 — اگر ساختار پروژه عوض شد، این فایل را هم به‌روز کن.
+> آخرین به‌روزرسانی: 2026-09-28 — اگر ساختار پروژه عوض شد، این فایل را هم به‌روز کن.
 
 ---
 
@@ -167,6 +167,10 @@ PaymentGateway__Provider=Fake dotnet run --project Dashboard.Web
 | **ایندکس graphify نداریم** | پوشهٔ `graphify-out/` در ۲۰۲۶-۰۹-۲۷ **حذف شد**. دلیل: روی ویندوزِ شخص دیگر (`C:\Users\niakan-s\...`) ساخته شده بود، نام پوشه را با غلط `Dashboard.Apllication` ذخیره کرده بود و ۱۲۹ فایل سورس را ندیده بود. اگر دوباره ساختیش، **روی همین مک و از صفر** اجرا کن و قبل از استفاده تاریخش را چک کن. |
 | **رازها** | مقدار حساس نباید در `appsettings*.json` بنشیند. الگو: `Dashboard.Web/appsettings.json.example` |
 | **DbContext به‌ازای هر Circuit (دِفتِ شناخته‌شده)** | `AddDbContext` اسکوپ است و در Blazor Server («InteractiveServer»، `Program.cs:40-41`) اسکوپ = سیرکیت؛ پس همه‌ی کامپوننت‌های یک صفحه یک `AppDbContext` و یک `UnitOfWork` مشترک دارند → دو خطر: خطای «second operation started on this context» و اینکه `CompleteAsync` یک فرم، تغییرات track‌شده‌ی فرم دیگر را هم commit می‌کند. **رفع اصلی (ریفکتور جدا، هنوز انجام نشده):** `AddDbContextFactory` و context کوتاه‌عمر به‌ازای هر عملیات، یا `OwningComponentBase` برای صفحات چندفرمی. تا آن زمان، صفحات جدیدِ InteractiveServer را تک‌فرم نگه دارید و در سرویس، چند `CompleteAsync` متوالی را داخل `ExecuteInTransactionAsync` ببرید. **گزارشش به‌عنوان باگ جدید تکراری است.** |
+| **گزارش‌ها: نمایش ≠ خروجی** | هر متد گزارش دو پارامتر دارد: `filter` (مشترک) و `options`. مسیر **نمایش** = `ReportQueryOptions.ForPage(page, size)` (برش + `TotalCount` درست)، مسیر **خروجی اکسل** = `ReportQueryOptions.ForExport()` (**بدون سقف**). هرگز این دو را یکی نکن و هرگز خروجی را از جدولِ نمایش‌داده‌شده نساز — الزام کاربر «همهٔ رکوردهای فیلترشده» است. فیلترِ ویژهٔ گزارش (مثل «فقط سود منفی») باید **قبل از** `BuildPaged` اعمال شود، وگرنه ردیف‌ها به اکسل نشت می‌کنند. نگهبان‌ها: `ReportTableBuilderTests` و `ProfitReportTests.ExportPath_…` و `LossMaking_ExportsOnlyLossRows_…`. |
+| **EF + `GroupBy` روی کوئری join‌شده** | در EF Core 10 ترجمه نمی‌شود (`could not be translated`) و نتیجهٔ عملی‌اش گاهی فقط `SELECT 1` است. راه‌حلِ پذیرفته‌شده در `ProfitReportQuery`: فیلتر و join در SQL، **تجمیع در حافظه** روی رکورد تخت (`ProfitLine`). **عمداً هیچ سقف/`Take`‌ای روی سطرهای خوانده‌شده نیست** (کاربر خواسته خروجی همهٔ رکوردهای فیلترشده باشد)؛ برش فقط در `BuildPaged` و آن هم برای مسیر نمایش. |
+| **نام property ≠ کلید ستون = سلولِ خالی** | `ReportTableBuilder.Build` نگاشت را با reflection روی **نام property** انجام می‌دهد و اگر پیدا نکند بی‌سروصدا `null` می‌گذارد (بدون خطا). پس نام propertyهای anonymous باید **دقیقاً** با `ReportColumn.Key` یکی باشد. نگهبان: `SalesOperationsReportTests.EveryColumn_MustHaveAValue_InEveryReport`. |
+| **`BuildPaged` و ورودیِ دیکشنری** | `BuildPaged<T>` با reflection روی *property*ها کار می‌کند؛ اگر ردیف‌ها `Dictionary` باشند همهٔ سلول‌ها `null` می‌شوند. برای گزارش‌های مشتق‌شده (کالاهای زیان‌ده) از overload دیکشنری استفاده کن و **نوع را صریح cast کن** وگرنه C# نسخهٔ عمومی را انتخاب می‌کند. |
 
 ---
 

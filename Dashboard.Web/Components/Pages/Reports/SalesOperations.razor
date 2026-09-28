@@ -1,0 +1,71 @@
+@page "/reports/sales-operations"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.ReportsFinancialView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Domain.Identity
+@using Dashboard.Domain.Queries
+@inject ISalesOperationsReportQuery Operations
+
+<PageTitle>گزارش‌های فروش و انبار</PageTitle>
+
+<div class="container-fluid">
+    <div class="mb-3">
+        <h4 class="mb-1">گزارش‌های فروش و انبار</h4>
+        <small class="text-body-secondary">
+            برگشت از فروش، وضعیت اقساط و گردش موجودی — مکملِ گزارش سود و زیان.
+            مبلغ برگشتی از <strong>قیمت فاکتورِ ارجاع</strong> خوانده می‌شود، نه قیمت روز کالا.
+        </small>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        @foreach (var t in Tabs)
+        {
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link @(CurrentTab == t.Key ? "active" : "")"
+                        @onclick="() => CurrentTab = t.Key">
+                    @t.Title
+                </button>
+            </li>
+        }
+    </ul>
+
+    @switch (CurrentTab)
+    {
+        case OpsTab.Returns:
+            <ReportTable TItem="object"
+                         Query="(f, o) => Operations.GetSalesReturnsAsync(f, o)"
+                         ExportFileName="sales-returns" ExportSheetName="برگشت از فروش"
+                         PdfTitle="برگشت از فروش" PdfSubtitle="به تفکیک کالا · اثر خالص بر سود"
+                         SearchPlaceholder="نام یا کد کالا…" />
+            break;
+
+        case OpsTab.Installments:
+            <ReportTable TItem="object"
+                         Query="(f, o) => Operations.GetInstallmentsDueAsync(f, o)"
+                         ExportFileName="installments-due" ExportSheetName="اقساط پرداخت‌نشده"
+                         PdfTitle="اقساط پرداخت‌نشده" PdfSubtitle="مانده بدهی و روزهای تأخیر"
+                         SearchPlaceholder="نام مشتری یا شمارهٔ فاکتور…" />
+            break;
+
+        case OpsTab.Stock:
+            <ReportTable TItem="object"
+                         Query="(f, o) => Operations.GetStockMovementAsync(f, o)"
+                         ExportFileName="stock-movement" ExportSheetName="گردش موجودی"
+                         PdfTitle="گردش موجودی" PdfSubtitle="ورودی، خروجی و تغییر خالص هر کالا"
+                         SearchPlaceholder="نام یا کد کالا…" />
+            break;
+    }
+</div>
+
+@code {
+    private enum OpsTab { Returns, Installments, Stock }
+
+    private static readonly (OpsTab Key, string Title)[] Tabs =
+    {
+        (OpsTab.Returns, "برگشت از فروش"),
+        (OpsTab.Installments, "اقساط پرداخت‌نشده"),
+        (OpsTab.Stock, "گردش موجودی")
+    };
+
+    private OpsTab CurrentTab { get; set; } = OpsTab.Returns;
+}

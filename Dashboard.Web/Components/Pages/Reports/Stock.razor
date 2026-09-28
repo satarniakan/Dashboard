@@ -1,0 +1,62 @@
+@page "/reports/stock"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.StockView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Domain.Identity
+@using Dashboard.Domain.Queries
+@inject IStockReportQuery StockReport
+
+<PageTitle>گزارش موجودی</PageTitle>
+
+<div class="container-fluid">
+    <div class="mb-3">
+        <h4 class="mb-1">گزارش موجودی</h4>
+        <small class="text-body-secondary">
+            وضعیت <strong>لحظهٔ فعلی</strong> موجودی — این گزارش تاریخچه نیست، پس فیلتر بازهٔ تاریخ ندارد.
+            «قابل‌فروش» یعنی موجودی منهای مقدارِ رزرو‌شده برای سفارش‌های در جریان.
+        </small>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        @foreach (var t in Tabs)
+        {
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link @(CurrentTab == t.Key ? "active" : "")"
+                        @onclick="() => CurrentTab = t.Key">
+                    @t.Title
+                </button>
+            </li>
+        }
+    </ul>
+
+    @switch (CurrentTab)
+    {
+        case StockTab.OnHand:
+            <ReportTable TItem="object"
+                         Query="(f, o) => StockReport.GetStockOnHandAsync(f, o)"
+                         ExportFileName="stock-on-hand" ExportSheetName="موجودی فعلی"
+                         PdfTitle="موجودی فعلی انبار" PdfSubtitle="موجودی، رزرو و ارزش به تفکیک کالا و انبار"
+                         SearchPlaceholder="نام یا کد کالا…" ShowDateRange="false" />
+            break;
+
+        case StockTab.Reorder:
+            <ReportTable TItem="object"
+                         Query="(f, o) => StockReport.GetBelowReorderPointAsync(f, o)"
+                         ExportFileName="below-reorder-point" ExportSheetName="زیر نقطهٔ سفارش"
+                         PdfTitle="کالاهای زیر نقطهٔ سفارش" PdfSubtitle="کمبود و سفارش پیشنهادی برای خرید"
+                         SearchPlaceholder="نام یا کد کالا…" ShowDateRange="false" />
+            break;
+    }
+</div>
+
+@code {
+    private enum StockTab { OnHand, Reorder }
+
+    private static readonly (StockTab Key, string Title)[] Tabs =
+    {
+        (StockTab.OnHand, "موجودی فعلی"),
+        (StockTab.Reorder, "زیر نقطهٔ سفارش")
+    };
+
+    private StockTab CurrentTab { get; set; } = StockTab.OnHand;
+}

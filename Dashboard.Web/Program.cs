@@ -114,6 +114,16 @@ builder.Services.AddAuthorizationBuilder()
     policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.CatalogManage))
     .AddPolicy(Dashboard.Domain.Identity.Permissions.StoreManage, policy =>
     policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.StoreManage))
+    // --- مرکز گزارش‌ها ---
+    // دیدن هر گزارشی: یا مجوز عمومی گزارش، یا مجوز گزارش‌های مالی
+    // (چون گزارش‌های مالی گران‌ترند و معمولاً به حسابدار داده می‌شوند)
+    .AddPolicy(Dashboard.Domain.Identity.Permissions.ReportsView, policy =>
+    policy.RequireAssertion(ctx =>
+        ctx.User.HasClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.ReportsView) ||
+        ctx.User.HasClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.ReportsFinancialView)))
+    // گزارش سود/بهای تمام‌شده فقط با مجوز مالی
+    .AddPolicy(Dashboard.Domain.Identity.Permissions.ReportsFinancialView, policy =>
+    policy.RequireClaim(Dashboard.Domain.Identity.Permissions.ClaimType, Dashboard.Domain.Identity.Permissions.ReportsFinancialView))
     ;
 
 // Persist Data Protection keys so cookies/antiforgery tokens survive app restarts

@@ -154,6 +154,52 @@
                     </Authorized>
                 </AuthorizeView>
 
+                <!-- ===================== مرکز گزارش‌ها (فازبندی‌شده) ===================== -->
+                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.ReportsView" Context="reportsSectionCtx">
+                    <Authorized>
+                        <div class="nav-section">
+                            <div class="nav-section-header" @onclick="() => Toggle(nameof(reportsOpen))">
+                                <span class="nav-section-title"><i class="bi bi-graph-up"></i>گزارشات</span>
+                                <span class="nav-caret" style="transform: rotate(@(reportsOpen ? "90deg" : "0deg"));">›</span>
+                            </div>
+                            <div class="nav-section-body @(reportsOpen ? "" : "d-none")">
+
+                                <!-- فاز ۱ — سود و زیان (دادهٔ مالی حساس ⇒ مجوز جدا) -->
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.ReportsFinancialView" Context="repPhase1Ctx">
+                                    <Authorized>
+                                        <div class="nav-section">
+                                            <div class="nav-section-header" @onclick="() => Toggle(nameof(reportPhase1Open))">
+                                                <span class="nav-section-title" style="font-size:.9em;"><i class="bi bi-calculator"></i>فاز ۱ — سود و زیان</span>
+                                                <span class="nav-caret" style="transform: rotate(@(reportPhase1Open ? "90deg" : "0deg"));">›</span>
+                                            </div>
+                                            <div class="nav-section-body @(reportPhase1Open ? "" : "d-none")">
+                                                <div class="nav-item px-3"><NavLink class="nav-link" href="reports/profit"><i class="bi bi-cash-coin"></i>گزارش سود و زیان</NavLink></div>
+                                                <div class="nav-item px-3"><NavLink class="nav-link" href="reports/sales-operations"><i class="bi bi-arrow-left-right"></i>فروش و انبار</NavLink></div>
+                                            </div>
+                                        </div>
+                                    </Authorized>
+                                </AuthorizeView>
+
+                                <!-- فاز ۲ — انبار و موجودی (مجوز انبارداری، نه مالی) -->
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.StockView" Context="repPhase2Ctx">
+                                    <Authorized>
+                                        <div class="nav-section">
+                                            <div class="nav-section-header" @onclick="() => Toggle(nameof(reportPhase2Open))">
+                                                <span class="nav-section-title" style="font-size:.9em;"><i class="bi bi-box-seam"></i>فاز ۲ — انبار</span>
+                                                <span class="nav-caret" style="transform: rotate(@(reportPhase2Open ? "90deg" : "0deg"));">›</span>
+                                            </div>
+                                            <div class="nav-section-body @(reportPhase2Open ? "" : "d-none")">
+                                                <div class="nav-item px-3"><NavLink class="nav-link" href="reports/stock"><i class="bi bi-boxes"></i>موجودی و نقطهٔ سفارش</NavLink></div>
+                                            </div>
+                                        </div>
+                                    </Authorized>
+                                </AuthorizeView>
+
+                            </div>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+
                 <!-- ===================== بخش مدیریت (فقط ادمین) ===================== -->
                 <AuthorizeView Roles="@Dashboard.Domain.Identity.Roles.Admin" Context="adminSectionCtx">
                     <Authorized>
@@ -207,6 +253,12 @@
     private bool adminOpen;
     private bool catalogOpen;
     private bool storeOpen;
+    // مرکز گزارش‌ها — هر فاز یک زیرساخت جدا.
+    // برای فاز بعدی یک bool جدید همراه با: بخش AuthorizeView در markup،
+    // یک case در Toggle، و مسیریابی خودکار در UpdateOpenSections.
+    private bool reportsOpen;
+    private bool reportPhase1Open;
+    private bool reportPhase2Open;
 
     // هر بار که این کامپوننت از نو ساخته می‌شود (مثلاً بعد از ریلود کامل صفحه‌ای مثل
     // پروفایل)، به‌جای بازشدن یک بخش ثابت، فقط بخشی که به صفحه‌ی فعلی مربوط است باز می‌شود.
@@ -229,6 +281,12 @@
         adminOpen = path.StartsWith("admin/", StringComparison.OrdinalIgnoreCase) && !path.StartsWith("admin/orders", StringComparison.OrdinalIgnoreCase) && !path.StartsWith("admin/discounts", StringComparison.OrdinalIgnoreCase);
         storeOpen = path.StartsWith("admin/orders", StringComparison.OrdinalIgnoreCase)
                  || path.StartsWith("admin/discounts", StringComparison.OrdinalIgnoreCase);
+        // بخش گزارش‌ها و فاز ۱ هم باید هنگام ورود مستقیم باز باشند، وگرنه کاربر
+        // روی /reports/… می‌آید و منو بسته است و فکر می‌کند صفحه خالی است
+        reportsOpen = path.StartsWith("reports/", StringComparison.OrdinalIgnoreCase);
+        // گزارش‌های مالی در فاز ۱ و گزارش‌های انبار در فاز ۲ هستند
+        reportPhase1Open = reportsOpen && !path.StartsWith("reports/stock", StringComparison.OrdinalIgnoreCase);
+        reportPhase2Open = path.StartsWith("reports/stock", StringComparison.OrdinalIgnoreCase);
     }
 
     private void Toggle(string sectionName)
@@ -241,6 +299,9 @@
             case nameof(adminOpen): adminOpen = !adminOpen; break;
             case nameof(catalogOpen): catalogOpen = !catalogOpen; break;
             case nameof(storeOpen): storeOpen = !storeOpen; break;
+            case nameof(reportsOpen): reportsOpen = !reportsOpen; break;
+            case nameof(reportPhase1Open): reportPhase1Open = !reportPhase1Open; break;
+            case nameof(reportPhase2Open): reportPhase2Open = !reportPhase2Open; break;
         }
     }
 }

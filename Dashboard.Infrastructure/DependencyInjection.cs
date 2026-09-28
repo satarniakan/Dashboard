@@ -8,6 +8,8 @@ using Dashboard.Domain.Interfaces;
 using Dashboard.Infrastructure.Data;
 using Dashboard.Infrastructure.Repositories;
 using Dashboard.Infrastructure.Services;
+using Dashboard.Infrastructure.Services.Reports;
+using Dashboard.Domain.Queries;
 
 namespace Dashboard.Infrastructure;
 
@@ -56,6 +58,9 @@ public static class DependencyInjection
 
         // --- عمومی / احراز هویت ---
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IProfitReportQuery, ProfitReportQuery>();
+        services.AddScoped<ISalesOperationsReportQuery, SalesOperationsReportQuery>();
+        services.AddScoped<IStockReportQuery, StockReportQuery>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IOtpRepository, OtpCodeRepository>();
         services.AddScoped<ISmsSender>(sp =>
