@@ -212,10 +212,28 @@ public class TestDatabaseFixture : IAsyncLifetime
         script.AppendLine("SET @sql = N'';");
 
         // خالی‌کردن جدول‌ها به‌جز مرجع
+        //
+        // ⚠️ ترتیب TRUNCATE حیاتی است: باید FIRST روی جدولِ «پدر» بیاید نه
+        // «فرزند». مثلاً CartItems فرزندِ Carts است؛ اگر Carts زودتر خالی شود،
+        // FK_CartItems_Carts_CartId می‌شکند و کل پاک‌سازی با خطا متوقف می‌شود.
+        // این خطا flaky بود: STRING_AGG بدون ORDER BY ترتیبِ تصادفی می‌داد،
+        // پس گاهی می‌شد و گاهی نه — یعنی تست‌های ما ناپایدار بودند.
+        //
+        // راه‌حل قطعی: اول بچه‌ها را خالی کن (جدولی که دیگری به آن ارجاع
+        // می‌دهد)، بعد پدرها را. این کار به ترتیبِ رشته‌ای نیاز ندارد.
         script.AppendLine("SELECT @sql = (");
         script.AppendLine("    SELECT STRING_AGG(CAST('TRUNCATE TABLE ' + QUOTENAME(t.name) + ';' AS NVARCHAR(MAX)), '')");
         script.AppendLine("    FROM sys.tables t");
         script.AppendLine($"    WHERE t.is_ms_shipped = 0 AND t.name NOT IN ({keepInClause})");
+        script.AppendLine("      AND EXISTS (SELECT 1 FROM sys.foreign_keys fk WHERE fk.referenced_object_id = t.object_id)");
+        script.AppendLine(");");
+        script.AppendLine("EXEC sp_executesql @sql;");
+        script.AppendLine("SET @sql = N'';");
+        script.AppendLine("SELECT @sql = (");
+        script.AppendLine("    SELECT STRING_AGG(CAST('TRUNCATE TABLE ' + QUOTENAME(t.name) + ';' AS NVARCHAR(MAX)), '')");
+        script.AppendLine("    FROM sys.tables t");
+        script.AppendLine($"    WHERE t.is_ms_shipped = 0 AND t.name NOT IN ({keepInClause})");
+        script.AppendLine("      AND NOT EXISTS (SELECT 1 FROM sys.foreign_keys fk WHERE fk.referenced_object_id = t.object_id)");
         script.AppendLine(");");
         script.AppendLine("EXEC sp_executesql @sql;");
         script.AppendLine("SET @sql = N'';");

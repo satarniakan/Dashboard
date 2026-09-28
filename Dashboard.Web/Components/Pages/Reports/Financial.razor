@@ -1,0 +1,116 @@
+@page "/reports/financial"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.ReportsFinancialView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Domain.Identity
+@using Dashboard.Domain.Queries
+@inject IFinancialReportQuery FinancialReport
+
+<PageTitle>گزارش‌های مالی</PageTitle>
+
+<div class="container-fluid">
+    <div class="mb-3">
+        <h4 class="mb-1">گزارش‌های مالی</h4>
+        <small class="text-body-secondary">
+            دفتر کل، گردش حساب‌ها، دریافت و پرداخت، و عملکرد فروشگاه اینترنتی.
+            در دفتر کل، جمع بدهکار باید برابر جمع بستانکار باشد — اگر نبود جایی سند نامتوازن ثبت شده.
+        </small>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        @foreach (var t in Tabs)
+        {
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link @(CurrentTab == t.Key ? "active" : "")"
+                        @onclick="() => CurrentTab = t.Key">
+                    @t.Title
+                </button>
+            </li>
+        }
+    </ul>
+
+    @switch (CurrentTab)
+    {
+        case FinTab.TrialBalance:
+            <ReportTable TItem="object"
+                         Query="(f, o) => FinancialReport.GetTrialBalanceAsync(f, o)"
+                         ExportFileName="trial-balance" ExportSheetName="دفتر کل"
+                         PdfTitle="دفتر کل" PdfSubtitle="ماندهٔ بدهکار و بستانکار هر حساب"
+                         SearchPlaceholder="کد حساب، نام حساب یا شمارهٔ سند…" />
+            break;
+
+        case FinTab.AccountTx:
+            <ReportTable TItem="object"
+                         Query="(f, o) => FinancialReport.GetAccountTransactionsAsync(f, o)"
+                         ExportFileName="account-transactions" ExportSheetName="گردش حساب"
+                         PdfTitle="گردش حساب‌های نقدی" PdfSubtitle="صندوق و بانک برای تطبیق با گردش واقعی"
+                         SearchPlaceholder="شمارهٔ سند یا شرح…" />
+            break;
+
+        case FinTab.CustomerReceipts:
+            <ReportTable TItem="object"
+                         Query="(f, o) => FinancialReport.GetCustomerReceiptsAsync(f, o)"
+                         ExportFileName="customer-receipts" ExportSheetName="دریافت از مشتری"
+                         PdfTitle="دریافت‌ها از مشتریان" PdfSubtitle="وصولی‌ها به تفکیک روش پرداخت"
+                         SearchPlaceholder="نام مشتری یا شمارهٔ دریافت…" />
+            break;
+
+        case FinTab.SupplierPayments:
+            <ReportTable TItem="object"
+                         Query="(f, o) => FinancialReport.GetSupplierPaymentsAsync(f, o)"
+                         ExportFileName="supplier-payments" ExportSheetName="پرداخت به تأمین‌کننده"
+                         PdfTitle="پرداخت‌ها به تأمین‌کنندگان" PdfSubtitle="پرداختی‌ها به تفکیک روش پرداخت"
+                         SearchPlaceholder="نام تأمین‌کننده یا شمارهٔ پرداخت…" />
+            break;
+
+        case FinTab.StoreRevenue:
+            <ReportTable TItem="object"
+                         Query="(f, o) => FinancialReport.GetStoreRevenueAsync(f, o)"
+                         ExportFileName="store-revenue" ExportSheetName="درآمد فروشگاه"
+                         PdfTitle="درآمد فروشگاه اینترنتی" PdfSubtitle="فقط سفارش‌های پرداخت‌شده"
+                         SearchPlaceholder="شمارهٔ سفارش، مشتری یا شهر…" />
+            break;
+
+        case FinTab.Conversion:
+            <ReportTable TItem="object"
+                         Query="(f, o) => FinancialReport.GetOrderConversionAsync(f, o)"
+                         ExportFileName="order-conversion" ExportSheetName="نرخ تبدیل سفارش"
+                         PdfTitle="عملکرد و نرخ تبدیل سفارش‌ها" PdfSubtitle="سهم هر وضعیت از کل سفارش‌ها"
+                         ShowSearch="false" />
+            break;
+
+        case FinTab.Discount:
+            <ReportTable TItem="object"
+                         Query="(f, o) => FinancialReport.GetDiscountPerformanceAsync(f, o)"
+                         ExportFileName="discount-performance" ExportSheetName="اثربخشی تخفیف"
+                         PdfTitle="اثربخشی کدهای تخفیف" PdfSubtitle="تخفیف داده‌شده در برابر فروش ایجادشده"
+                         SearchPlaceholder="کد تخفیف…" />
+            break;
+
+        case FinTab.Audit:
+            <ReportTable TItem="object"
+                         Query="(f, o) => FinancialReport.GetAuditLogAsync(f, o)"
+                         ExportFileName="audit-log" ExportSheetName="گزارش ممیزی"
+                         PdfTitle="گزارش ممیزی" PdfSubtitle="چه کسی چه چیزی را چه زمانی تغییر داد"
+                         SearchPlaceholder="نوع رویداد، کاربر یا جزئیات…" />
+            break;
+    }
+</div>
+
+@code {
+    private enum FinTab { TrialBalance, AccountTx, CustomerReceipts, SupplierPayments, StoreRevenue, Conversion, Discount, Audit }
+
+    private static readonly (FinTab Key, string Title)[] Tabs =
+    {
+        (FinTab.TrialBalance, "دفتر کل"),
+        (FinTab.AccountTx, "گردش حساب"),
+        (FinTab.CustomerReceipts, "دریافت از مشتری"),
+        (FinTab.SupplierPayments, "پرداخت به تأمین‌کننده"),
+        (FinTab.StoreRevenue, "درآمد فروشگاه"),
+        (FinTab.Conversion, "نرخ تبدیل سفارش"),
+        (FinTab.Discount, "اثربخشی تخفیف"),
+        (FinTab.Audit, "گزارش ممیزی")
+    };
+
+    private FinTab CurrentTab { get; set; } = FinTab.TrialBalance;
+}

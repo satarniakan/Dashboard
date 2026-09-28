@@ -62,8 +62,15 @@ jobs:
           echo "::error::SQL Server بالا نیامد؛ تست‌های یکپارچگی اجرا نمی‌شوند."
           exit 1
 
+      # ⚠️ این مرحله تست‌ها را یک‌بار اجرا می‌کند و خروجی را در فایل ذخیره می‌کند.
+      # نگهبانِ پایینی همان فایل را می‌خواند — پس تست‌ها دو بار اجرا نمی‌شوند.
+      # قبلاً این کار دو بار انجام می‌شد که با ~۱۵۵ تستِ یکپارچگی، زمان CI را
+      # تقریباً دو برابر می‌کرد.
       - name: اجرای تست‌ها
-        run: dotnet test Dashboard.slnx --no-build --configuration Release --verbosity normal
+        run: |
+          set -o pipefail
+          dotnet test Dashboard.slnx --no-build --configuration Release --verbosity normal \
+            2>&1 | tee test-output.txt
 
       # تضمین نهایی: اگر تستی Skipped شده باشد، عمداً خطا می‌دهیم تا «تست سبزِ
       # توهمی» پایان نوشته به CI گزارش نشود. برای اجازه‌دادن به Skip،
@@ -71,9 +78,7 @@ jobs:
       - name: اطمینان از اجرا شدن تست‌ها (نه Skip)
         if: env.ALLOW_SKIPPED_TESTS != 'true'
         run: |
-          OUTPUT=$(dotnet test Dashboard.slnx --no-build --configuration Release --verbosity normal 2>&1)
-          echo "$OUTPUT"
-          if echo "$OUTPUT" | grep -qE 'Skipped:\s+[1-9][0-9]*'; then
+          if grep -qE 'Skipped:\s+[1-9][0-9]*' test-output.txt; then
             echo "::error::تعدادی تست Skip شده است — یعنی بخشی از تست‌ها اجرا نشده‌اند."
             exit 1
           fi

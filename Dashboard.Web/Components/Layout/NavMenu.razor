@@ -198,6 +198,32 @@
                                     </Authorized>
                                 </AuthorizeView>
 
+                                <!-- فاز ۳ — مالی و فروشگاه (مجوز مالی) -->
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.ReportsFinancialView" Context="repPhase3Ctx">
+                                    <Authorized>
+                                        <div class="nav-section">
+                                            <div class="nav-section-header" @onclick="() => Toggle(nameof(reportPhase3Open))">
+                                                <span class="nav-section-title" style="font-size:.9em;"><i class="bi bi-bank"></i>فاز ۳ — مالی</span>
+                                                <span class="nav-caret" style="transform: rotate(@(reportPhase3Open ? "90deg" : "0deg"));">›</span>
+                                            </div>
+                                            <div class="nav-section-body @(reportPhase3Open ? "" : "d-none")">
+                                                <div class="nav-item px-3"><NavLink class="nav-link" href="reports/financial"><i class="bi bi-journal-text"></i>دفتر کل و حساب‌ها</NavLink></div>
+                                            </div>
+                                        </div>
+                                    </Authorized>
+                                </AuthorizeView>
+
+                                <!-- فاز ۴ — تحلیلی (مجوز عمومی گزارش) -->
+                                <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.ReportsView" Context="repPhase4Ctx">
+                                    <Authorized>
+                                        <div class="nav-item px-3">
+                                            <NavLink class="nav-link" href="reports/analytics">
+                                                <i class="bi bi-graph-up-arrow"></i>تحلیلی و تفصیلی
+                                            </NavLink>
+                                        </div>
+                                    </Authorized>
+                                </AuthorizeView>
+
                             </div>
                         </div>
                     </Authorized>
@@ -262,6 +288,7 @@
     private bool reportsOpen;
     private bool reportPhase1Open;
     private bool reportPhase2Open;
+    private bool reportPhase3Open;
 
     // هر بار که این کامپوننت از نو ساخته می‌شود (مثلاً بعد از ریلود کامل صفحه‌ای مثل
     // پروفایل)، به‌جای بازشدن یک بخش ثابت، فقط بخشی که به صفحه‌ی فعلی مربوط است باز می‌شود.
@@ -290,6 +317,8 @@
         // گزارش‌های مالی در فاز ۱ و گزارش‌های انبار در فاز ۲ هستند
         reportPhase1Open = reportsOpen && !path.StartsWith("reports/stock", StringComparison.OrdinalIgnoreCase);
         reportPhase2Open = path.StartsWith("reports/stock", StringComparison.OrdinalIgnoreCase);
+        reportPhase3Open = path.StartsWith("reports/financial", StringComparison.OrdinalIgnoreCase)
+                       || path.StartsWith("reports/analytics", StringComparison.OrdinalIgnoreCase);
     }
 
     private void Toggle(string sectionName)
@@ -305,6 +334,7 @@
             case nameof(reportsOpen): reportsOpen = !reportsOpen; break;
             case nameof(reportPhase1Open): reportPhase1Open = !reportPhase1Open; break;
             case nameof(reportPhase2Open): reportPhase2Open = !reportPhase2Open; break;
+            case nameof(reportPhase3Open): reportPhase3Open = !reportPhase3Open; break;
         }
     }
 }

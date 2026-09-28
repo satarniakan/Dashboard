@@ -62,6 +62,9 @@ public static class DependencyInjection
         services.AddScoped<ISalesOperationsReportQuery, SalesOperationsReportQuery>();
         services.AddScoped<IStockReportQuery, StockReportQuery>();
         services.AddScoped<IVatReportQuery, VatReportQuery>();
+        services.AddScoped<IPurchaseReportQuery, PurchaseReportQuery>();
+        services.AddScoped<IFinancialReportQuery, FinancialReportQuery>();
+        services.AddScoped<IAnalyticsReportQuery, AnalyticsReportQuery>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IOtpRepository, OtpCodeRepository>();
         services.AddScoped<ISmsSender>(sp =>

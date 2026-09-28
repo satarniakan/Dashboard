@@ -5,14 +5,15 @@
 @using Dashboard.Domain.Identity
 @using Dashboard.Domain.Queries
 @inject IStockReportQuery StockReport
+@inject IPurchaseReportQuery PurchaseReport
 
-<PageTitle>گزارش موجودی</PageTitle>
+<PageTitle>گزارش انبار</PageTitle>
 
 <div class="container-fluid">
     <div class="mb-3">
-        <h4 class="mb-1">گزارش موجودی</h4>
+        <h4 class="mb-1">گزارش انبار</h4>
         <small class="text-body-secondary">
-            وضعیت <strong>لحظهٔ فعلی</strong> موجودی — این گزارش تاریخچه نیست، پس فیلتر بازهٔ تاریخ ندارد.
+            موجودی لحظه‌ای، خرید، ضایعات و مغایرت انبارگردانی.
             «قابل‌فروش» یعنی موجودی منهای مقدارِ رزرو‌شده برای سفارش‌های در جریان.
         </small>
     </div>
@@ -46,16 +47,61 @@
                          PdfTitle="کالاهای زیر نقطهٔ سفارش" PdfSubtitle="کمبود و سفارش پیشنهادی برای خرید"
                          SearchPlaceholder="نام یا کد کالا…" ShowDateRange="false" />
             break;
+
+        case StockTab.Purchase:
+            <ReportTable TItem="object"
+                         Query="(f, o) => PurchaseReport.GetPurchaseBySupplierAsync(f, o)"
+                         ExportFileName="purchase-by-supplier" ExportSheetName="خرید از تأمین‌کننده"
+                         PdfTitle="خرید از تأمین‌کنندگان" PdfSubtitle="حجم خرید و میانگین بهای وزنی"
+                         SearchPlaceholder="نام تأمین‌کننده یا کالا…" />
+            break;
+
+        case StockTab.ActualCost:
+            <ReportTable TItem="object"
+                         Query="(f, o) => PurchaseReport.GetActualCostByProductAsync(f, o)"
+                         ExportFileName="actual-cost" ExportSheetName="راستی‌آزمایی بهای"
+                         PdfTitle="راستی‌آزمایی بهای تمام‌شده" PdfSubtitle="مقایسهٔ میانگین موزون خرید با بهای فعلی کالا"
+                         SearchPlaceholder="نام یا کد کالا…" />
+            break;
+
+        case StockTab.Loss:
+            <ReportTable TItem="object"
+                         Query="(f, o) => PurchaseReport.GetStockLossAsync(f, o)"
+                         ExportFileName="stock-loss" ExportSheetName="ضایعات و مصرف داخلی"
+                         PdfTitle="ضایعات و مصرف داخلی" PdfSubtitle="ارزش کالای خارج‌شده بدون فروش"
+                         SearchPlaceholder="نام یا کد کالا…" />
+            break;
+
+        case StockTab.Transfer:
+            <ReportTable TItem="object"
+                         Query="(f, o) => PurchaseReport.GetWarehouseTransfersAsync(f, o)"
+                         ExportFileName="warehouse-transfers" ExportSheetName="انتقال بین انبارها"
+                         PdfTitle="انتقال بین انبارها" PdfSubtitle="کالا از کدام انبار به کدام انبار رفت"
+                         SearchPlaceholder="نام یا کد کالا…" />
+            break;
+
+        case StockTab.Variance:
+            <ReportTable TItem="object"
+                         Query="(f, o) => PurchaseReport.GetStockCountVarianceAsync(f, o)"
+                         ExportFileName="stock-count-variance" ExportSheetName="مغایرت انبارگردانی"
+                         PdfTitle="مغایرت انبارگردانی" PdfSubtitle="فقط شمارش‌های بسته‌شده و موارد دارای اختلاف"
+                         SearchPlaceholder="شمارهٔ انبارگردانی یا کالا…" />
+            break;
     }
 </div>
 
 @code {
-    private enum StockTab { OnHand, Reorder }
+    private enum StockTab { OnHand, Reorder, Purchase, ActualCost, Loss, Transfer, Variance }
 
     private static readonly (StockTab Key, string Title)[] Tabs =
     {
         (StockTab.OnHand, "موجودی فعلی"),
-        (StockTab.Reorder, "زیر نقطهٔ سفارش")
+        (StockTab.Reorder, "زیر نقطهٔ سفارش"),
+        (StockTab.Purchase, "خرید از تأمین‌کننده"),
+        (StockTab.ActualCost, "راستی‌آزمایی بهای"),
+        (StockTab.Loss, "ضایعات و مصرف داخلی"),
+        (StockTab.Transfer, "انتقال بین انبارها"),
+        (StockTab.Variance, "مغایرت انبارگردانی")
     };
 
     private StockTab CurrentTab { get; set; } = StockTab.OnHand;

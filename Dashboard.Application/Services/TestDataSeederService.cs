@@ -28,6 +28,7 @@ public class TestDataSeederService : ITestDataSeederService
     private readonly ISalesService _salesService;
     private readonly ITreasuryService _treasuryService;
     private readonly IInstallmentService _installmentService;
+    private readonly ICartService _cartService;
     private readonly ILogger<TestDataSeederService> _logger;
 
     public TestDataSeederService(
@@ -36,6 +37,7 @@ public class TestDataSeederService : ITestDataSeederService
         ISalesService salesService,
         ITreasuryService treasuryService,
         IInstallmentService installmentService,
+        ICartService cartService,
         ILogger<TestDataSeederService> logger)
     {
         _unitOfWork = unitOfWork;
@@ -43,6 +45,7 @@ public class TestDataSeederService : ITestDataSeederService
         _salesService = salesService;
         _treasuryService = treasuryService;
         _installmentService = installmentService;
+        _cartService = cartService;
         _logger = logger;
     }
 
@@ -75,9 +78,25 @@ public class TestDataSeederService : ITestDataSeederService
         string[] warehouseNames = { "انبار مرکزی", "انبار تهران", "انبار مشهد", "انبار اصفهان", "انبار شیراز",
             "انبار تبریز", "انبار اهواز", "انبار کرج", "انبار قم", "انبار یزد" };
 
+        // نامِ انبار یکتا است (قیدِ IX_Warehouses_Name). اگر انباری از قبل باشد
+        // دوباره ساخته نمی‌شود تا seed روی دیتابیسی که کاملاً خالی نیست هم
+        // اجرا شود — مثلاً دیتابیس تست که انبار مرجعش دست‌نخورده می‌ماند.
+        // اگر این شرط نبود، کل seed با خطای «duplicate key» متوقف می‌شد و
+        // هیچ‌کدام از داده‌های بعدی هم ساخته نمی‌شدند.
+        var existingWarehouses = await _unitOfWork.Warehouses.GetAllAsync();
+
         var warehouses = new List<WarehouseDto>();
-        for (var i = 0; i < 10; i++)
+        for (var i = 0; i < warehouseNames.Length; i++)
         {
+            var existing = existingWarehouses.FirstOrDefault(w => w.Name == warehouseNames[i]);
+            if (existing is not null)
+            {
+                // انبار موجود: همان استفاده می‌شود، دوباره ساخته نمی‌شود
+                warehouses.Add(new WarehouseDto(
+                    existing.Id, existing.Name, existing.Code, existing.Address, existing.IsActive));
+                continue;
+            }
+
             var w = await _stockService.CreateWarehouseAsync(new CreateWarehouseDto
             {
                 Name = warehouseNames[i],
@@ -120,11 +139,33 @@ public class TestDataSeederService : ITestDataSeederService
             customers.Add(c);
         }
 
-        // ---------- ۴. کالاها ----------
+        // ---------- ۴. دسته‌های کالا ----------
+        // دسته‌ها قبل از کالاها ساخته می‌شوند تا هر کالا مستقیم به یک دسته
+        // وصل شود. بدون این‌ها، گزارش «فروش بر اساس دستهٔ کالا» همه‌چیز را
+        // در ردیفِ «بدون دسته‌بندی» می‌ریخت و برای کاربر بی‌معنا بود.
+        string[] categoryNames = { "لپ‌تاپ و کامپیوتر", "موبایل و تبلت", "لوازم جانبی" };
+        var categories = new List<Category>();
+        foreach (var name in categoryNames)
+        {
+            var category = new Category
+            {
+                Name = name,
+                // اسلاگ باید یکتا باشد؛ از نامِ نرمال‌شده ساخته می‌شود
+                Slug = name.Replace(" ", "-").Replace("‌", "")
+            };
+            await _unitOfWork.Catalog.AddCategoryAsync(category);
+            categories.Add(category);
+        }
+        await _unitOfWork.CompleteAsync();
+
+        // ---------- ۵. کالاها ----------
         // این‌ها مستقیم از روی Entity ساخته می‌شوند (نه از طریق IProductService)
-        // چون سازنده‌ی کامل Product امکان تعیین Sku/بهای تمام‌شده/نقطه سفارش را یک‌جا می‌دهد.
+        // چون سازندهٔ کامل Product امکان تعیین Sku/بهای تمام‌شده/نقطه سفارش را یک‌جا می‌دهد.
         string[] productNames = { "لپ‌تاپ", "موبایل", "هدفون", "کیبورد", "ماوس",
             "مانیتور", "پاوربانک", "اسپیکر", "تبلت", "ساعت هوشمند" };
+
+        // هر کالا به یک دسته نگاشت می‌شود: ۳ لپ‌تاپ/کامپیوتر، ۳ موبایل، ۴ جانبی
+        int[] categoryIndex = { 0, 1, 2, 2, 2, 0, 2, 2, 1, 1 };
 
         var products = new List<Product>();
         for (var i = 0; i < 10; i++)
@@ -139,13 +180,17 @@ public class TestDataSeederService : ITestDataSeederService
                 unit: "عدد",
                 barcode: $"869000000{i:0000}",
                 reorderPoint: 20);
+
+            // CategoryId setter خصوصی است، پس از راه متدِ خودِ مدل ست می‌شود
+            product.SetCategory(categories[categoryIndex[i]].Id);
+
             await _unitOfWork.Products.AddAsync(product);
             products.Add(product);
         }
         // این Save لازم است تا Id واقعی کالاها ساخته شود؛ چون در ادامه برای ثبت رسید خرید به آن Id نیاز داریم
         await _unitOfWork.CompleteAsync();
 
-        // ---------- ۵. رسیدهای خرید ----------
+        // ---------- ۶. رسیدهای خرید ----------
         // رسید اول: همه‌ی ۱۰ کالا را با موجودی زیاد (۱۰۰۰ عدد) وارد انبار مرکزی می‌کند
         // تا بقیه‌ی عملیات‌ها (فروش، حواله مصرف، ضایعات، انتقال) همیشه موجودی کافی داشته باشند.
         var mainReceiptItems = products.Select(p => new PurchaseReceiptItemInput
@@ -183,7 +228,7 @@ public class TestDataSeederService : ITestDataSeederService
             }, userId);
         }
 
-        // ---------- ۶. حواله‌های مصرف داخلی ----------
+        // ---------- ۷. حواله‌های مصرف داخلی ----------
         for (var i = 0; i < 10; i++)
         {
             var product = products[i % 10];
@@ -196,7 +241,7 @@ public class TestDataSeederService : ITestDataSeederService
             }, userId);
         }
 
-        // ---------- ۷. ضایعات ----------
+        // ---------- ۸. ضایعات ----------
         for (var i = 0; i < 10; i++)
         {
             var product = products[(i + 3) % 10];
@@ -209,7 +254,7 @@ public class TestDataSeederService : ITestDataSeederService
             }, userId);
         }
 
-        // ---------- ۸. برگشت از فروش ----------
+        // ---------- ۹. برگشت از فروش ----------
         for (var i = 0; i < 10; i++)
         {
             var product = products[(i + 5) % 10];
@@ -222,7 +267,7 @@ public class TestDataSeederService : ITestDataSeederService
             }, userId);
         }
 
-        // ---------- ۹. انتقال بین انبار ----------
+        // ---------- ۱۰. انتقال بین انبار ----------
         for (var i = 1; i < 10; i++)
         {
             var product = products[0];
@@ -243,7 +288,7 @@ public class TestDataSeederService : ITestDataSeederService
             Items = new List<StockItemInput> { new() { ProductId = products[1].Id, Quantity = 5 } }
         }, userId);
 
-        // ---------- ۱۰. انبارگردانی (یکی برای هر انبار) ----------
+        // ---------- ۱۱. انبارگردانی (یکی برای هر انبار) ----------
         for (var i = 0; i < 10; i++)
         {
             var stockCount = await _stockService.OpenStockCountAsync(warehouses[i].Id, userId);
@@ -260,7 +305,7 @@ public class TestDataSeederService : ITestDataSeederService
             await _stockService.CloseStockCountAsync(stockCount.Id, counted, userId);
         }
 
-        // ---------- ۱۱. فاکتورهای فروش ----------
+        // ---------- ۱۲. فاکتورهای فروش ----------
         var invoiceIds = new List<int>();
         var invoiceTotals = new List<decimal>(); // مبلغ واقعی هر فاکتور رو نگه می‌داریم، برای اقساط لازمش داریم
         for (var i = 0; i < 10; i++)
@@ -315,7 +360,7 @@ public class TestDataSeederService : ITestDataSeederService
             await _unitOfWork.CompleteAsync();
         }
 
-        // ---------- ۱۲. صندوق/بانک ----------
+        // ---------- ۱۳. صندوق/بانک ----------
         var financialAccountNames = new (string Name, string Type, string? BankName)[]
         {
             ("صندوق نقدی مرکزی", "Cash", null),
@@ -344,7 +389,7 @@ public class TestDataSeederService : ITestDataSeederService
             financialAccountIds.Add(id);
         }
 
-        // ---------- ۱۳. دریافت از مشتری ----------
+        // ---------- ۱۴. دریافت از مشتری ----------
         for (var i = 0; i < 10; i++)
         {
             var method = i == 3 || i == 7 ? "Cheque" : (i % 2 == 0 ? "Cash" : "BankTransfer");
@@ -361,7 +406,7 @@ public class TestDataSeederService : ITestDataSeederService
             }, userId);
         }
 
-        // ---------- ۱۴. پرداخت به تأمین‌کننده ----------
+        // ---------- ۱۵. پرداخت به تأمین‌کننده ----------
         for (var i = 0; i < 10; i++)
         {
             var method = i == 2 ? "Cheque" : (i % 2 == 0 ? "BankTransfer" : "Cash");
@@ -377,5 +422,54 @@ public class TestDataSeederService : ITestDataSeederService
                 Notes = "پرداخت نمونه"
             }, userId);
         }
+
+        // ---------- ۱۶. سبدهای رهاشده ----------
+        // چند سبدِ منقضی‌شده ساخته می‌شود تا گزارش «سبدهای رهاشده» در نصبِ تازه
+        // هم داده داشته باشد. سبد از راه CartService ساخته می‌شود (نه insert مستقیم)
+        // تا قاعده‌های سبد رعایت شوند.
+        //
+        // CartService دو شرط دارد که باید برقرار باشند وگرنه بی‌صدا رد می‌شود
+        // (نتیجه Failure برمی‌گرداند ولی exception نمی‌دهد):
+        //   ۱) کالا باید در فروشگاه منتشر شده باشد (IsPublished)
+        //   ۲) موجودیِ قابل‌فروش در «انبار فروشگاه» باید بیشتر از صفر باشد
+        // پس کالاها منتشر می‌شوند و برای اطمینان، موجودیِ انبار فروشگاه هم
+        // بالا می‌رود. بدون این‌ها این بخش بی‌اثر می‌ماند.
+        var storeWarehouse = warehouses[0];
+        foreach (var product in products)
+        {
+            product.SetStoreDetails(true, $"seed-slug-{product.Sku}", null);
+            product.SetCategory(product.CategoryId!.Value);
+        }
+        await _unitOfWork.CompleteAsync();
+
+        // موجودی انبار فروشگاه برای همهٔ کالاها بالا می‌رود تا سبدها قابل‌ساخت باشند.
+        // از IncreaseOrCreateAsync استفاده می‌شود (همان مسیر رسید خرید) تا
+        // سند گردش موجودی هم معتبر ثبت شود و عدد موجودی و تاریخچه با هم بخوانند.
+        foreach (var product in products)
+        {
+            await _unitOfWork.StockLevels.IncreaseOrCreateAsync(
+                product.Id, storeWarehouse.Id, 1_000m);
+        }
+        await _unitOfWork.CompleteAsync();
+
+        for (var i = 0; i < 5; i++)
+        {
+            var cookieId = $"seed-abandoned-{i:00}";
+
+            // دو کالا در هر سبد تا تنوع در «بالاترین ارزش سبد» باشد
+            await _cartService.AddToCartAsync(cookieId, products[i % 10].Id, 1 + i);
+            await _cartService.AddToCartAsync(cookieId, products[(i + 4) % 10].Id, 1);
+
+            // انقضا در گذشته ⇒ گزارش آن را «رهاشده» می‌بیند
+            var cart = await _unitOfWork.Carts.GetByCookieIdAsync(cookieId);
+            if (cart is not null)
+            {
+                cart.ExpiresAt = DateTime.UtcNow.AddDays(-1 - i);
+                await _unitOfWork.Carts.UpdateAsync(cart);
+            }
+        }
+
+        await _unitOfWork.CompleteAsync();
     }
 }
+

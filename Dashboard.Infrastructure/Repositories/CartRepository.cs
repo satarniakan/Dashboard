@@ -26,8 +26,28 @@ public class CartRepository : ICartRepository
 
     public async Task<Cart> GetOrCreateAsync(string cookieId)
     {
-        // پاک‌سازی فرصت‌طلبانه‌ی سبدهای منقضی — مستقیم در دیتابیس، بدون بارگذاری در حافظه
-        await _context.Carts.Where(c => c.ExpiresAt < DateTime.UtcNow).ExecuteDeleteAsync();
+        // پاک‌سازی فرصت‌طلبانه‌ی سبدهای منقضی.
+        //
+        // ⚠️ ترتیب حیاتی است: اول سطرهای CartItems حذف می‌شوند و بعد خودِ Cart.
+        // اگر مستقیم روی Carts حذف شود، قیدِ FK_CartItems_Carts_CartId می‌شکند
+        // و کل درخواست با خطای دیتابیس می‌افتد — یعنی یک سبدِ منقضیِ جامانده
+        // می‌توانست کل صفحهٔ فروشگاه را از کار بیندازد. (این باگ در تستِ
+        // دادهٔ نمونه لو رفت چون seed سبدِ منقضی می‌سازد.)
+        var expiredCartIds = await _context.Carts
+            .Where(c => c.ExpiresAt < DateTime.UtcNow)
+            .Select(c => c.Id)
+            .ToListAsync();
+
+        if (expiredCartIds.Count > 0)
+        {
+            await _context.CartItems
+                .Where(i => expiredCartIds.Contains(i.CartId))
+                .ExecuteDeleteAsync();
+
+            await _context.Carts
+                .Where(c => expiredCartIds.Contains(c.Id))
+                .ExecuteDeleteAsync();
+        }
 
         var cart = await _context.Carts.Include(c => c.Items).FirstOrDefaultAsync(c => c.CookieId == cookieId);
         if (cart is null)

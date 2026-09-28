@@ -366,3 +366,6 @@ FodyWeavers.xsd
 graphify-out/
 .DS_Store
 /Dashboard.Web/appsettings.json
+
+# خروجی تست که در CI ذخیره می‌شود (نگهبانِ Skip آن را می‌خواند)
+test-output.txt

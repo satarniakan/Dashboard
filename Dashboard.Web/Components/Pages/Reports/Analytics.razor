@@ -1,0 +1,80 @@
+@page "/reports/analytics"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.ReportsView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Domain.Identity
+@using Dashboard.Domain.Queries
+@inject IAnalyticsReportQuery AnalyticsReport
+
+<PageTitle>گزارش‌های تحلیلی</PageTitle>
+
+<div class="container-fluid">
+    <div class="mb-3">
+        <h4 class="mb-1">گزارش‌های تحلیلی</h4>
+        <small class="text-body-secondary">
+            سبدهای رهاشده، دستهٔ کالا، جغرافیای فروش و حساب تفصیلی طرف حساب.
+            ارزش سبد رهاشده از <strong>قیمت فعلی</strong> کالا محاسبه می‌شود، چون سبد خرید قیمت را ذخیره نمی‌کند.
+        </small>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        @foreach (var t in Tabs)
+        {
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link @(CurrentTab == t.Key ? "active" : "")"
+                        @onclick="() => CurrentTab = t.Key">
+                    @t.Title
+                </button>
+            </li>
+        }
+    </ul>
+
+    @switch (CurrentTab)
+    {
+        case AnalyticsTab.AbandonedCarts:
+            <ReportTable TItem="object"
+                         Query="(f, o) => AnalyticsReport.GetAbandonedCartsAsync(f, o)"
+                         ExportFileName="abandoned-carts" ExportSheetName="سبدهای رهاشده"
+                         PdfTitle="سبدهای رهاشده" PdfSubtitle="درآمد از‌دست‌رفته — فقط سبدهای منقضی‌شده"
+                         SearchPlaceholder="بدون جست‌وجو — فیلتر تاریخ کافی است" ShowSearch="false" />
+            break;
+
+        case AnalyticsTab.Category:
+            <ReportTable TItem="object"
+                         Query="(f, o) => AnalyticsReport.GetSalesByCategoryAsync(f, o)"
+                         ExportFileName="sales-by-category" ExportSheetName="فروش بر اساس دسته"
+                         PdfTitle="فروش به تفکیک دستهٔ کالا" PdfSubtitle="سهم هر دسته از فروش کل"
+                         SearchPlaceholder="نام یا کد کالا…" />
+            break;
+
+        case AnalyticsTab.Region:
+            <ReportTable TItem="object"
+                         Query="(f, o) => AnalyticsReport.GetSalesByRegionAsync(f, o)"
+                         ExportFileName="sales-by-region" ExportSheetName="فروش جغرافیایی"
+                         PdfTitle="فروش به تفکیف استان و شهر" PdfSubtitle="برای برنامه‌ریزی ارسال و بازاریابی"
+                         SearchPlaceholder="نام استان یا شهر…" />
+            break;
+
+        case AnalyticsTab.Subsidiary:
+            <ReportTable TItem="object"
+                         Query="(f, o) => AnalyticsReport.GetSubsidiaryLedgerAsync(f, o)"
+                         ExportFileName="subsidiary-ledger" ExportSheetName="حساب تفصیلی"
+                         PdfTitle="حساب تفصیلی طرف حساب" PdfSubtitle="بدهکاری و بستانکاری مشتریان و تأمین‌کنندگان"
+                         SearchPlaceholder="نوع یا نام طرف حساب…" />
+            break;
+    }
+</div>
+
+@code {
+    private enum AnalyticsTab { AbandonedCarts, Category, Region, Subsidiary }
+
+    private static readonly (AnalyticsTab Key, string Title)[] Tabs =
+    {
+        (AnalyticsTab.AbandonedCarts, "سبدهای رهاشده"),
+        (AnalyticsTab.Category, "فروش بر اساس دسته"),
+        (AnalyticsTab.Region, "جغرافیای فروش"),
+        (AnalyticsTab.Subsidiary, "حساب تفصیلی")
+    };
+
+    private AnalyticsTab CurrentTab { get; set; } = AnalyticsTab.AbandonedCarts;
+}
