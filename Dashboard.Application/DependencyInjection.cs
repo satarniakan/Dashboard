@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Dashboard.Application.Services;
+using Dashboard.Application.Exports;
 
 namespace Dashboard.Application;
 
@@ -39,6 +40,11 @@ public static class DependencyInjection
         services.AddScoped<IOutboxService, OutboxService>();
         services.AddScoped<IDiscountCodeService, DiscountCodeService>();
         services.AddScoped<IDashboardService, DashboardService>();
+
+        // --- ماژول گزارشات: فیلتر مشترک + خروجی اکسل ---
+        // IExcelExporter و IPdfExporter ساده و بدون وابستگی دیتابیس هستند ⇒ Singleton امن است
+        services.AddSingleton<IExcelExporter, ExcelExporter>();
+        services.AddSingleton<IPdfExporter, PdfExporter>();
 
         // --- ابزار توسعه: تولید دیتای تستی برای دیتابیس خالی ---
         services.AddScoped<ITestDataSeederService, TestDataSeederService>();

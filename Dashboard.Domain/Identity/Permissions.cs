@@ -34,6 +34,12 @@ public static class Permissions
     // --- فروشگاه اینترنتی ---
     public const string StoreManage = "store.manage";
 
+    // --- مرکز گزارش‌ها ---
+    // گزارش سود/زیان و گزارش‌های مالی، سود و بهای تمام‌شده را برای هر کسی که
+    // فقط «حسابداری را می‌بیند» افشا می‌کنند. پس مجوز جدا دارند.
+    public const string ReportsView = "reports.view";
+    public const string ReportsFinancialView = "reports.financial.view";
+
     // نکته: AccountingView و TreasuryManage قبلاً بعد از این آرایه تعریف شده بودند،
     // پس داخلش نبودند. نتیجه: نه در صفحه‌ی «مدیریت مجوزها» دیده می‌شدند، نه حتی
     // به نقش Admin به‌صورت خودکار داده می‌شدند (چون RoleSeeder فقط همین آرایه را می‌خواند).
@@ -45,7 +51,8 @@ public static class Permissions
         ScrapRecordsManage, StockTransfersManage, StockCountsManage,
         CustomersManage, SalesCreate, SalesConfirm, SalesCancel, SalesView,
         AccountingView, TreasuryManage, CatalogManage,
-        StoreManage
+        StoreManage,
+        ReportsView, ReportsFinancialView
     };
 
     public static string ToPersian(string permission) => permission switch
@@ -71,6 +78,8 @@ public static class Permissions
         TreasuryManage => "مدیریت صندوق و بانک",
         CatalogManage => "مدیریت کاتالوگ فروشگاه",
         StoreManage => "مدیریت فروشگاه اینترنتی",
+        ReportsView => "مشاهده گزارش‌ها",
+        ReportsFinancialView => "مشاهده گزارش‌های مالی (سود، بهای تمام‌شده)",
         _ => permission
     };
 }

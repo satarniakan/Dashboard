@@ -1,0 +1,93 @@
+@page "/reports/profit"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.ReportsFinancialView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Domain.Identity
+@using Dashboard.Domain.Queries
+@inject IProfitReportQuery ProfitReport
+
+<PageTitle>گزارش سود و زیان</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h4 class="mb-1">گزارش سود و زیان</h4>
+            <small class="text-body-secondary">
+                فقط فاکتورهای <strong>تأییدشده</strong> محاسبه می‌شوند؛ پیش‌نویس‌ها و فاکتورهای لغوشده نمی‌آیند.
+                بهای تمام‌شده از مقدار <strong>اسنپ‌شدهٔ زمان صدور فاکتور</strong> خوانده می‌شود، پس تغییر بعدی قیمت کالا روی این گزارش اثر ندارد.
+            </small>
+        </div>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        @foreach (var t in Tabs)
+        {
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link @(CurrentTab == t.Key ? "active" : "")"
+                        @onclick="() => CurrentTab = t.Key">
+                    @t.Title
+                </button>
+            </li>
+        }
+    </ul>
+
+    @switch (CurrentTab)
+    {
+        case ProfitTab.Product:
+            <ReportTable TItem="object"
+                         Query="(f, o) => ProfitReport.GetProfitByProductAsync(f, o)"
+                         ExportFileName="profit-by-product"
+                         PdfTitle="سود بر اساس کالا" PdfSubtitle="فقط فاکتورهای تأییدشده · بهای تمام‌شده از اسنپ‌شات زمان صدور" ExportSheetName="سود بر اساس کالا"
+                         SearchPlaceholder="نام یا کد کالا…" />
+            break;
+
+        case ProfitTab.LossMaking:
+            <ReportTable TItem="object"
+                         Query="(f, o) => ProfitReport.GetLossMakingProductsAsync(f, o)"
+                         ExportFileName="loss-making-products"
+                         PdfTitle="کالاهای زیان‌ده" PdfSubtitle="فقط کالاهایی که سود ناخالص منفی دارند" ExportSheetName="کالاهای زیان‌ده"
+                         SearchPlaceholder="نام یا کد کالا…" />
+            break;
+
+        case ProfitTab.Warehouse:
+            <ReportTable TItem="object"
+                         Query="(f, o) => ProfitReport.GetProfitByWarehouseAsync(f, o)"
+                         ExportFileName="profit-by-warehouse"
+                         PdfTitle="سود بر اساس انبار" PdfSubtitle="به تفکیک انبار فروش" ExportSheetName="سود بر اساس انبار"
+                         SearchPlaceholder="نام انبار…" />
+            break;
+
+        case ProfitTab.Customer:
+            <ReportTable TItem="object"
+                         Query="(f, o) => ProfitReport.GetProfitByCustomerAsync(f, o)"
+                         ExportFileName="profit-by-customer"
+                         PdfTitle="سود بر اساس مشتری" PdfSubtitle="به تفکیک مشتری" ExportSheetName="سود بر اساس مشتری"
+                         SearchPlaceholder="نام یا تلفن مشتری…" />
+            break;
+
+        case ProfitTab.Month:
+
+@code {
+    private enum ProfitTab { Product, LossMaking, Warehouse, Customer, Month }
+
+    private static readonly (ProfitTab Key, string Title)[] Tabs =
+    {
+        (ProfitTab.Product,    "سود بر اساس کالا"),
+        (ProfitTab.LossMaking, "کالاهای زیان‌ده"),
+        (ProfitTab.Warehouse,  "سود بر اساس انبار"),
+        (ProfitTab.Customer,   "سود بر اساس مشتری"),
+        (ProfitTab.Month,      "سود ماهانه")
+    };
+
+    private ProfitTab CurrentTab { get; set; } = ProfitTab.Product;
+
+}
+
+            <ReportTable TItem="object"
+                         Query="(f, o) => ProfitReport.GetProfitByMonthAsync(f, o)"
+                         ExportFileName="profit-by-month"
+                         PdfTitle="سود ماهانه" PdfSubtitle="سود ناخالص به تفکیک ماه" ExportSheetName="سود ماهانه"
+                         SearchPlaceholder="شماره فاکتور یا نام مشتری…" />
+            break;
+    }
+</div>
