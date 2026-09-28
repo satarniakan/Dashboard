@@ -202,7 +202,17 @@
             if (selectedInvoice is null)
             {
                 ToastService.ShowError(
-                    "فاکتور تأیید شده‌ای با این شماره پیدا نشد.");
+                    "فاکتوری با این شماره پیدا نشد.");
+                return;
+            }
+
+            // ثبتِ برگشت بعداً در StockService رد می‌شود، اما این‌جا زود و با دلیل
+            // درست می‌گوییم (وگرنه فاکتور ملغی «پیدا نشد» به‌نظر می‌رسید).
+            if (selectedInvoice.Status != nameof(Dashboard.Domain.Enums.SalesInvoiceStatus.Confirmed))
+            {
+                ToastService.ShowError(
+                    $"این فاکتور «{selectedInvoice.Status}» است؛ برگشت فقط روی فاکتور تأییدشده مجاز است.");
+                selectedInvoice = null;
                 return;
             }
 

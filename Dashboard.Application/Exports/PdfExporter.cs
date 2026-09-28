@@ -122,7 +122,8 @@ public class PdfExporter : IPdfExporter
         if (table.Truncated)
             text += "  |  توجه: نمایش صفحه‌بندی شده، ولی این فایل شامل همهٔ رکوردهای فیلترشده است.";
 
-        text += $"  |  تاریخ تهیه: {DateTime.Now.ToPersianDate()}";
+        // Kind=Local در ToPersianDate اختلاف +۳:۳۰ را رد می‌کند؛ سرورِ UTC تاریخ را یک روز عقب می‌برد
+        text += $"  |  تاریخ تهیه: {DateTime.UtcNow.ToPersianDate()}";
         return text;
     }
 

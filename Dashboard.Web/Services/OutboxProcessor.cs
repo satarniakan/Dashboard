@@ -20,6 +20,13 @@ public class OutboxProcessor : BackgroundService
     private readonly int _maxAttempts;
     private readonly int _batchSize;
 
+    /// <summary>
+    /// عمر مجاز یک پیام در وضعیت Processing. بیشتر از این، «یتیم» فرض می‌شود (کرش پروسه)
+    /// و به صف برمی‌گردد. باید از بلندترین ارسال ممکن (timeout سرویس پیامک/ایمیل) بزرگ‌تر باشد،
+    /// وگرنه در استقرار چندنمونه‌ای پیامِ در-حال‌ارسالِ instance دیگر پس از مهلت دوباره ارسال می‌شود.
+    /// </summary>
+    private static readonly TimeSpan SendLease = TimeSpan.FromMinutes(10);
+
     public OutboxProcessor(IServiceScopeFactory scopeFactory, ILogger<OutboxProcessor> logger, IConfiguration configuration)
     {
         _scopeFactory = scopeFactory;
@@ -39,18 +46,21 @@ public class OutboxProcessor : BackgroundService
                 var smsSender = scope.ServiceProvider.GetRequiredService<ISmsSender>();
                 var emailSender = scope.ServiceProvider.GetRequiredService<IEmailSender>();
 
-                // رکورد Processingِ مانده از دور یا پروسهٔ قبل یعنی کرش وسط ارسال —
-                // باید پیش از خواندن صف و وقتی ارسال جاری‌ای نداریم به Pending برگردد.
-                var reclaimed = await outboxRepo.ReclaimAbandonedAsync();
+                // فقط رکوردهایی که از مهلتِ ارسال هم گذشته‌اند یتیم‌اند؛ رکورد Processingِ تازه
+                // یعنی instance دیگری همین حالا آن را می‌فرستد و دست‌زدن به آن = ارسال تکراری
+                var reclaimed = await outboxRepo.ReclaimAbandonedAsync(SendLease);
                 if (reclaimed > 0)
-                    _logger.LogWarning("{Count} پیام مانده در Processing به صف برگشت (ارسال تکراری ممکن است)", reclaimed);
+                    _logger.LogWarning("{Count} پیام مانده در Processing به صف برگشت", reclaimed);
 
                 foreach (OutboxChannel channel in new[] { OutboxChannel.Sms, OutboxChannel.Email })
                 {
                     var pending = await outboxRepo.GetPendingAsync(channel, _maxAttempts, _batchSize);
                     foreach (var message in pending)
                     {
-                        if (!await outboxRepo.TryClaimForSendingAsync(message.Id, _maxAttempts))
+                        // یک زمان واحد برای claim و نتیجه: «شروع قفل» و «پایان ارسال»
+                        var claimedAt = DateTime.UtcNow;
+
+                        if (!await outboxRepo.TryClaimForSendingAsync(message.Id, _maxAttempts, claimedAt))
                             continue; // دور/instance دیگری زودتر آن را برداشته
 
                         var attempts = message.Attempts + 1;

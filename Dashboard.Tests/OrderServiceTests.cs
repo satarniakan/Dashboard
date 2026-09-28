@@ -265,4 +265,139 @@ public class OrderServiceTests
         _stockLevels.Verify(r => r.ReleaseReservationAsync(product.Id, 1, 2), Times.Once);
         _orders.Verify(r => r.AddAsync(It.IsAny<Order>()), Times.Never);
     }
+
+    // ---------------- بازگرداندن رزرو وقتی فاکتور صادر نمی‌شود ----------------
+
+    private readonly Mock<ICustomerRepository> _customers = new();
+
+    /// <summary>
+    /// سفارش پرداخت‌نشده با یک قلم (کالای ۳، تعداد ۵). رزرو در همان PlaceOrder گرفته می‌شود؛
+    /// در مسیر تسویه، رزرو «پیش» از فاکتور آزاد می‌شود (قید CK_StockLevels_ReservedValid
+    /// در دیتابیس اجازهٔ ترتیب دیگر را نمی‌دهد) — پس اگر فاکتور بسته نشود باید برگردد.
+    /// </summary>
+    private Order PendingOrder()
+    {
+        var order = new Order
+        {
+            Id = 9,
+            Status = OrderStatus.PendingPayment,
+            OrderNumber = "1404-0001",
+            CustomerName = "خریدار تست",
+            CustomerPhone = "09121239002"
+        };
+        order.Items.Add(new OrderItem { ProductId = 3, Quantity = 5, UnitPrice = 100m, ProductName = "کالای تست" });
+
+        _orders.Setup(r => r.GetByIdWithDetailsAsync(9)).ReturnsAsync(order);
+        _unitOfWork.Setup(u => u.Customers).Returns(_customers.Object);
+        _customers.Setup(r => r.GetByPhoneAsync(It.IsAny<string>())).ReturnsAsync((Customer?)null);
+        _sales.Setup(s => s.CreateCustomerAsync(It.IsAny<CreateCustomerDto>()))
+            .ReturnsAsync(new CustomerDto(11, "خریدار تست", "09121239002", null));
+        _sales.Setup(s => s.CreateDraftInvoiceAsync(It.IsAny<CreateSalesInvoiceDto>(), "store")).ReturnsAsync(77);
+        _sales.Setup(s => s.ConfirmInvoiceAsync(77, "store")).Returns(Task.CompletedTask);
+        _sales.Setup(s => s.CancelInvoiceAsync(77, "store")).Returns(Task.CompletedTask);
+
+        return order;
+    }
+
+    [Fact]
+    public async Task UpdateStatusAsync_WhenInvoiceConfirmFails_RestoresReservation_AndKeepsOrderPending()
+    {
+        var order = PendingOrder();
+        _sales.Setup(s => s.ConfirmInvoiceAsync(77, "store"))
+            .ThrowsAsync(new Dashboard.Domain.Exceptions.BusinessRuleException("موجودی کافی نیست."));
+        _stockLevels.Setup(r => r.TryReserveAsync(3, 1, 5m)).ReturnsAsync(true);
+
+        await Assert.ThrowsAsync<Dashboard.Domain.Exceptions.BusinessRuleException>(
+            () => _sut.UpdateStatusAsync(9, OrderStatus.Paid, null, "تسویه حضوری"));
+
+        _stockLevels.Verify(r => r.TryReserveAsync(3, 1, 5m), Times.Once);
+        Assert.Equal(OrderStatus.PendingPayment, order.Status);
+        Assert.Null(order.SalesInvoiceId);
+    }
+
+    [Fact]
+    public async Task UpdateStatusAsync_WhenInvoiceFails_AndStockIsGone_NotifiesAdmin()
+    {
+        var order = PendingOrder();
+        var notifications = new Mock<INotificationService>();
+        _sales.Setup(s => s.ConfirmInvoiceAsync(77, "store"))
+            .ThrowsAsync(new Dashboard.Domain.Exceptions.BusinessRuleException("موجودی کافی نیست."));
+        _stockLevels.Setup(r => r.TryReserveAsync(3, 1, 5m)).ReturnsAsync(false);
+
+        // OrderService با Mock.Of<INotificationService> ساخته شده؛ برای بررسی اعلان،
+        // یک SUT با نوتیفیکیشن mock می‌سازیم
+        var sut = new OrderService(_unitOfWork.Object, _sales.Object, Mock.Of<IOutboxService>(),
+            notifications.Object, Options.Create(new StoreOptions()), Mock.Of<ITreasuryService>(),
+            Mock.Of<ILogger<OrderService>>());
+
+        await Assert.ThrowsAsync<Dashboard.Domain.Exceptions.BusinessRuleException>(
+            () => sut.UpdateStatusAsync(9, OrderStatus.Paid, null, "تسویه حضوری"));
+
+        notifications.Verify(n => n.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.Admin,
+            It.Is<string>(s => s.Contains("1404-0001")), It.IsAny<string>(),
+            It.IsAny<NotificationType>(), It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateStatusAsync_WhenInvoiceSucceeds_DoesNotReReserve()
+    {
+        PendingOrder();
+        _stockLevels.Setup(r => r.TryReserveAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<decimal>()))
+            .ReturnsAsync(true);
+
+        await _sut.UpdateStatusAsync(9, OrderStatus.Paid, null, "تسویه حضوری");
+
+        // فاکتور بسته شد ⇒ رزرو باید آزاد بماند (کسر واقعی در تأیید فاکتور انجام شده)
+        _stockLevels.Verify(r => r.TryReserveAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<decimal>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task MarkPaidAsync_WhenInvoiceHitsTechnicalError_RestoresReservation()
+    {
+        var order = PendingOrder();
+        _orders.Setup(r => r.TryClaimForPaymentAsync(9)).ReturnsAsync(true);
+        _sales.Setup(s => s.ConfirmInvoiceAsync(77, "store"))
+            .ThrowsAsync(new Dashboard.Domain.Exceptions.DataIntegrityException("شماره تکراری"));
+        _stockLevels.Setup(r => r.TryReserveAsync(3, 1, 5m)).ReturnsAsync(true);
+
+        var (success, error) = await _sut.MarkPaidAsync(9, "auth-1", "ref-1");
+
+        Assert.False(success);
+        Assert.NotNull(error);
+        // سفارش Paid و بی‌فاکتور می‌ماند (صف پشتیبانی) ⇒ موجودی هم باید برایش قفل شود
+        _stockLevels.Verify(r => r.TryReserveAsync(3, 1, 5m), Times.Once);
+        Assert.Equal(OrderStatus.Paid, order.Status);
+    }
+
+    [Fact]
+    public async Task MarkPaidAsync_WhenSystemErrorInInvoice_RestoresReservation()
+    {
+        var order = PendingOrder();
+        _orders.Setup(r => r.TryClaimForPaymentAsync(9)).ReturnsAsync(true);
+        _sales.Setup(s => s.ConfirmInvoiceAsync(77, "store"))
+            .ThrowsAsync(new InvalidOperationException("temp glitch"));
+        _stockLevels.Setup(r => r.TryReserveAsync(3, 1, 5m)).ReturnsAsync(true);
+
+        var (success, _) = await _sut.MarkPaidAsync(9, "auth-1", "ref-1");
+
+        Assert.False(success);
+        _stockLevels.Verify(r => r.TryReserveAsync(3, 1, 5m), Times.Once);
+    }
+
+    [Fact]
+    public async Task MarkPaidAsync_WhenStockRanOut_CancelsOrder_AndLeavesReservationReleased()
+    {
+        PendingOrder();
+        _orders.Setup(r => r.TryClaimForPaymentAsync(9)).ReturnsAsync(true);
+        _sales.Setup(s => s.ConfirmInvoiceAsync(77, "store"))
+            .ThrowsAsync(new Dashboard.Domain.Exceptions.BusinessRuleException("موجودی کافی نیست."));
+        _stockLevels.Setup(r => r.TryReserveAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<decimal>()))
+            .ReturnsAsync(true);
+
+        var (success, _) = await _sut.MarkPaidAsync(9, "auth-1", "ref-1");
+
+        Assert.False(success);
+        // سفارش لغو شده ⇒ رزرو باید آزاد بماند تا کالا دوباره فروش برود
+        _stockLevels.Verify(r => r.TryReserveAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<decimal>()), Times.Never);
+    }
 }

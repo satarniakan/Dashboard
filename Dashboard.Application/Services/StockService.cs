@@ -1108,10 +1108,28 @@ public class StockService : IStockService
             if (stockCount.Status == StockCountStatus.Closed)
                 throw new BusinessRuleException("این انبارگردانی قبلاً بسته شده است.");
 
+            // ⚠️ مبنای اختلاف، «موجودیِ همین لحظه» است نه اسنپ‌شاتِ لحظهٔ باز کردن.
+            //
+            // بین باز کردن و بستن شمارش، موجودی عوض می‌شود (رسید خرید، انتقال، فروش،
+            // ضایعات). اگر مبنا اسنپ‌شات بماند، آن حرکت‌ها بی‌صدا خنثی می‌شوند:
+            // مثلاً ۱۰۰ موجودی، ۴۰ انتقال بیرون، شمارشگر ۱۰۰ می‌شمارد ⇒ اختلاف صفر
+            // ⇒ سیستم ۱۰۰ می‌ماند ولی واقعی ۶۰ است (۴۰ عدد گم‌شده). یا برعکس، کالای
+            // تازه‌رسیده باعث می‌شد سیستم موجودی را از واقعی بیشتر کند.
+            //
+            // AsNoTracking لازم است: نسخهٔ track‌شده (که از قبل در همین scope در حافظه
+            // است) مقدارِ کهنه را برمی‌گرداند و اصلاح روی عددِ غلط اعمال می‌شد.
+            // همهٔ اقلام با یک کوئری خوانده می‌شوند (نه N+1).
+            var currentStock = await _unitOfWork.StockLevels
+                .GetWarehouseOnHandAsync(stockCount.WarehouseId);
+
             foreach (var item in stockCount.Items)
             {
                 if (countedQuantities.TryGetValue(item.ProductId, out var counted))
                     item.CountedQuantity = counted;
+
+                // اسنپ‌شات به‌روز می‌شود تا Discrepancy و همچنین نمایش/گزارشِ همین سند
+                // (که همین مقدار را می‌خوانند) با واقعیتِ لحظهٔ بستن بخوانند.
+                item.SystemQuantity = currentStock.GetValueOrDefault(item.ProductId);
 
                 var discrepancy = item.Discrepancy;
                 if (discrepancy == 0) continue;

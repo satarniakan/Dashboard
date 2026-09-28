@@ -12,7 +12,8 @@
             }
         </div>
         <div class="small text-body-secondary text-end">
-            <div>تاریخ چاپ: @DateTime.Now.ToPersianDate()</div>
+ @* ToPersianDate روی Kind=Local اختلاف +۳:۳۰ را اعمال نمی‌کند؛ در سرورِ UTC تاریخ چاپ یک روز عقب می‌افتد *@
+            <div>تاریخ چاپ: @DateTime.UtcNow.ToPersianDate()</div>
         </div>
     </div>
 </div>

@@ -15,9 +15,10 @@ public interface IOutboxRepository
 
     /// <summary>
     /// claim اتمیک یک پیام: فقط اگر هنوز Pending است و به سقف تلاش نرسیده، آن را
-    /// Processing و Attempts+1 می‌کند. false یعنی پردازشگر/instance دیگری زودتر آن را برداشته.
+    /// Processing و Attempts+1 می‌کند و <paramref name="now"/> را به‌عنوان «شروع قفل» ثبت می‌کند.
+    /// false یعنی پردازشگر/instance دیگری زودتر آن را برداشته.
     /// </summary>
-    Task<bool> TryClaimForSendingAsync(int messageId, int maxAttempts);
+    Task<bool> TryClaimForSendingAsync(int messageId, int maxAttempts, DateTime now);
 
     /// <summary>
     /// نتیجهٔ ارسال را فقط روی رکوردی که هنوز Processing است می‌نویسد:
@@ -26,8 +27,10 @@ public interface IOutboxRepository
     Task FinishSendingAsync(int messageId, bool success, int attempts, int maxAttempts, string? error, DateTime now);
 
     /// <summary>
-    /// رکوردهای مانده در Processing (کرش پروسه وسط ارسال) را به Pending برمی‌گرداند.
-    /// فقط در ابتدای دور پردازش صدا زده می‌شود، وقتی هیچ ارسالِ جاری‌ای در همین instance نیست.
+    /// رکوردهایی که «خیلی» بیشتر از <paramref name="lease"/> در Processing مانده‌اند را به Pending
+    /// برمی‌گرداند (کرش پروسه وسط ارسال). آستانهٔ زمانی شرط لازم است: در استقرار چندنمونه‌ای،
+    /// رکورد Processingِ تازه یعنی «instance دیگری همین حالا در حال ارسال است» و بازپس‌گیریِ
+    /// بی‌آستانه باعث ارسال دوبارهٔ همان پیامک/ایمیل می‌شود.
     /// </summary>
-    Task<int> ReclaimAbandonedAsync();
+    Task<int> ReclaimAbandonedAsync(TimeSpan lease);
 }

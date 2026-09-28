@@ -67,6 +67,22 @@ public class UserAdminService : IUserAdminService
             return IdentityResult.Failed(new IdentityError { Description = $"این نقش‌ها وجود ندارند: {string.Join("، ", unknown)}" });
 
         var currentRoles = await _userManager.GetRolesAsync(user);
+
+        // گارد «آخرین ادمین»: صفحات ادمین با [Authorize(Roles=Admin)] محافظت می‌شوند، پس اگر
+        // نقش Admin از تنها ادمین باقی‌مانده برداشته شود هیچ‌کس نمی‌تواند وارد شود و
+        // این قفل از داخل خود سیستم باز نمی‌شود (نیاز به مداخلهٔ دستی در دیتابیس).
+        var demotesFromAdmin = currentRoles.Contains(Roles.Admin) && !roleNames.Contains(Roles.Admin);
+        if (demotesFromAdmin)
+        {
+            var otherAdmins = (await _userManager.GetUsersInRoleAsync(Roles.Admin))
+                .Count(u => u.Id != userId);
+            if (otherAdmins == 0)
+                return IdentityResult.Failed(new IdentityError
+                {
+                    Description = "نمی‌توان نقش ادمین را از تنها ادمین سیستم حذف کرد؛ ابتدا یک ادمین دیگر اضافه کنید."
+                });
+        }
+
         if (currentRoles.Any())
         {
             var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);

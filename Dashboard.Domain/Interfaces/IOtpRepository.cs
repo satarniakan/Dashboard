@@ -12,6 +12,10 @@ public interface IOtpRepository
     /// دو درخواست موازی با یک کد هر دو موفق نمی‌شوند</summary>
     Task<bool> TryMarkAsUsedAsync(int id);
 
-    /// <summary>باطل‌کردن کدهای معتبر قبلی همان شماره — فقط آخرین کد ارسال‌شده معتبر بماند</summary>
-    Task InvalidatePreviousAsync(string phoneNumber);
+    /// <summary>باطل‌کردن کدهای معتبرِ دیگرِ همان شماره به‌جز کدِ keepId — فقط آخرین
+    /// کد ارسال‌شده معتبر بماند. پس از ارسال موفق پیامک صدا زده می‌شود.</summary>
+    Task InvalidateOthersAsync(string phoneNumber, int keepId);
+
+    /// <summary>حذف رکوردهایی که تا cutoff منقضی شده‌اند. بازگشت: تعداد حذف‌شده.</summary>
+    Task<int> DeleteExpiredAsync(DateTime cutoffUtc);
 }

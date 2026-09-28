@@ -59,6 +59,12 @@ public class SalesInvoiceRepository : ISalesInvoiceRepository
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// جست‌وجوی «شماره فاکتور» — بی‌قیدِ وضعیت. فیلتر Confirmed اینجا گمراه‌کننده بود:
+    /// فاکتور ملغی/پیش‌نویس «وجود ندارد» گزارش می‌شد در حالی که وجود دارد.
+    /// ممنوعیت برگشت روی فاکتور تأییدنشده در مسیر نوشتن بررسی می‌شود
+    /// (StockService.CreateSalesReturnAsync) که محل درستِ قاعدهٔ کسب‌وکار است.
+    /// </summary>
     public async Task<SalesInvoice?> GetByInvoiceNumberAsync(string invoiceNumber)
     {
         return await _context.SalesInvoices
@@ -66,8 +72,6 @@ public class SalesInvoiceRepository : ISalesInvoiceRepository
             .Include(x => x.Warehouse)
             .Include(x => x.Items)
                 .ThenInclude(x => x.Product)
-            .FirstOrDefaultAsync(x =>
-                x.InvoiceNumber == invoiceNumber &&
-                x.Status == SalesInvoiceStatus.Confirmed);
+            .FirstOrDefaultAsync(x => x.InvoiceNumber == invoiceNumber);
     }
 }

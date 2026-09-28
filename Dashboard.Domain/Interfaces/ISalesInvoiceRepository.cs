@@ -12,5 +12,7 @@ public interface ISalesInvoiceRepository
 
     Task AddAsync(SalesInvoice invoice);
     Task UpdateAsync(SalesInvoice invoice);
+    // جست‌وجوی خالص: هر وضعیتی (پیش‌نویس/ملغی هم) برمی‌گردد تا پیام «پیدا نشد» دروغ نباشد؛
+    // مجازبودنِ عملیات روی وضعیت، قاعدهٔ کسب‌وکار است و در سرویسِ نوشتن بررسی می‌شود.
     Task<SalesInvoice?> GetByInvoiceNumberAsync(string invoiceNumber);
 }

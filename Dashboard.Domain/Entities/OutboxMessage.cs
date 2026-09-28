@@ -31,4 +31,11 @@ public class OutboxMessage
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? SentAt { get; set; }
+
+    /// <summary>
+    /// لحظهٔ claim (ورود به Processing). ستونِ جدا است چون «چه کسی این پیام را در دست دارد»
+    /// در دیتابیس ثبت نمی‌شود: بدون این زمان، بازپس‌گیری رکوردهای Processing نمی‌تواند
+    /// «کرش واقعی» را از «ارسال جاریِ یک instance دیگر» تشخیص دهد و پیام دوباره ارسال می‌شد.
+    /// </summary>
+    public DateTime? ProcessingStartedAt { get; set; }
 }

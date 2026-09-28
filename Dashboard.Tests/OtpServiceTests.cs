@@ -145,6 +145,68 @@ public class OtpServiceTests
             Assert.False(await _sut.VerifyOtpAsync("09121230002", "000000"));
     }
 
+    [Fact]
+    public async Task GenerateAndSendOtpAsync_FourthRequestForSameNumber_IsRejected()
+    {
+        _otpRepository.Setup(r => r.AddAsync(It.IsAny<OtpCode>())).Returns(Task.CompletedTask);
+        _smsSender.Setup(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(Task.CompletedTask);
+
+        // سقف IP-محور با چرخش IP دور زده می‌شود، پس خود سرویس هم باید به‌ازای هر شماره سقف داشته باشد
+        for (var i = 0; i < 3; i++)
+            await _sut.GenerateAndSendOtpAsync("09121233000");
+
+        await Assert.ThrowsAsync<BusinessRuleException>(
+            () => _sut.GenerateAndSendOtpAsync("09121233000"));
+
+        _smsSender.Verify(s => s.SendAsync("09121233000", It.IsAny<string>()), Times.Exactly(3));
+        _otpRepository.Verify(r => r.AddAsync(It.IsAny<OtpCode>()), Times.Exactly(3));
+    }
+
+    [Fact]
+    public async Task GenerateAndSendOtpAsync_DifferentNumbers_HaveSeparateLimits()
+    {
+        _otpRepository.Setup(r => r.AddAsync(It.IsAny<OtpCode>())).Returns(Task.CompletedTask);
+        _smsSender.Setup(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(Task.CompletedTask);
+
+        for (var i = 0; i < 3; i++)
+            await _sut.GenerateAndSendOtpAsync("09121233001");
+
+        // سقف باید «به‌ازای هر شماره» باشد، نه سراسری؛ وگرنه یک مهاجم ورود همه را می‌بندد
+        await _sut.GenerateAndSendOtpAsync("09121233002");
+        _smsSender.Verify(s => s.SendAsync("09121233002", It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GenerateAndSendOtpAsync_WhenSmsFails_PreviousCodesStayValid()
+    {
+        _otpRepository.Setup(r => r.AddAsync(It.IsAny<OtpCode>())).Returns(Task.CompletedTask);
+        _smsSender.Setup(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ThrowsAsync(new InvalidOperationException("sms gateway down"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _sut.GenerateAndSendOtpAsync("09121233003"));
+
+        // ابطال کدهای قبلی فقط پس از ارسال موفق: با شکست ارسال، کاربر باید هنوز با
+        // کد قبلی بتواند وارد شود
+        _otpRepository.Verify(r => r.InvalidateOthersAsync(It.IsAny<string>(), It.IsAny<int>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GenerateAndSendOtpAsync_AfterSuccessfulSend_InvalidatesOthersButNotTheNewCode()
+    {
+        OtpCode? stored = null;
+        _otpRepository.Setup(r => r.AddAsync(It.IsAny<OtpCode>()))
+            .Callback<OtpCode>(otp => stored = otp)
+            .Returns(Task.CompletedTask);
+        _smsSender.Setup(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>())).Returns(Task.CompletedTask);
+
+        await _sut.GenerateAndSendOtpAsync("09121233004");
+
+        Assert.NotNull(stored);
+        // کدِ تازه‌ساخته‌شده باید از ابطال مستثنا باشد، وگرنه هیچ کدی معتبر نمی‌ماند
+        _otpRepository.Verify(r => r.InvalidateOthersAsync("09121233004", stored!.Id), Times.Once);
+    }
+
     /// <summary>ساعت قابل‌کنترل برای تست انقضای پنجرهٔ قفل</summary>
     private sealed class TestClock : TimeProvider
     {

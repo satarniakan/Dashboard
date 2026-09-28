@@ -5,6 +5,21 @@ namespace Dashboard.Domain.Interfaces;
 public interface IStockLevelRepository
 {
     Task<StockLevel?> GetAsync(int productId, int warehouseId);
+
+    /// <summary>
+    /// خواندن «مستقیم از دیتابیس» بدون شرکت در change tracker.
+    ///
+    /// چرا لازم است: <see cref="GetAsync"/> اگر قبلاً در همین scope بارگذاری شده باشد،
+    /// نسخهٔ کهنهٔ موجودی را از حافظه برمی‌گرداند، نه مقدار واقعیِ دیتابیس. در سناریوی
+    /// انبارگردانی (باز کردن شمارش ← تغییر موجودی ← بستن) این باعث می‌شد مبنای اختلاف
+    /// و خودِ اصلاح روی عدد کهنه حساب شود و موجودی به‌جای اصلاح، بیشتر شود.
+    /// برای محاسبات تصمیم‌ساز (نه ویرایش) از این متد استفاده کن.
+    /// </summary>
+    Task<decimal?> GetOnHandQuantityAsync(int productId, int warehouseId);
+
+    /// همهٔ موجودی‌های یک انبار، مستقیم از دیتابیس — برای مبنای اختلاف انبارگردانی
+    /// که همهٔ اقلام آن باید با هم و در یک سطر داده خوانده شوند (نه N+1).
+    Task<Dictionary<int, decimal>> GetWarehouseOnHandAsync(int warehouseId);
     Task<IEnumerable<StockLevel>> GetByWarehouseAsync(int warehouseId);
     Task<IEnumerable<StockLevel>> GetByProductAsync(int productId);
     Task<IEnumerable<StockLevel>> GetAllAsync();

@@ -265,6 +265,8 @@ public class OrderService : IOrderService
 
         // سفارش از حالت «در انتظار پرداخت» خارج شد ⇒ رزرو موجودی آزاد می‌شود
         // (کسر واقعی بعداً با DecreaseWithCheckAsync انجام می‌شود و فقط موجودی فیزیکی کم می‌شود)
+        // ⚠️ این آزادسازی «قبل» از فاکتور اجباری است: قید CK_StockLevels_ReservedValid
+        // (ReservedQuantity <= QuantityOnHand) نگه‌داشتن رزرو را با کسر هم‌زمان موجودی غیرممکن می‌کند.
         if (claimed)
             await ReleaseOrderReservationAsync(order);
 
@@ -386,6 +388,10 @@ public class OrderService : IOrderService
             await _unitOfWork.Orders.UpdateAsync(order);
             await _unitOfWork.CompleteAsync();
 
+            // سفارش Paid و بی‌فاکتور ماند ⇒ رزروِ آزادشده در ابتدای این متد باید برگردد،
+            // وگرنه تلاش مجددِ ادمین با موجودیِ رفته روبه‌رو می‌شود
+            await RestoreOrderReservationAsync(order);
+
             await _notifications.NotifyRoleAsync(Roles.Admin, $"خطای فنی در ثبت سفارش پرداخت‌شده {order.OrderNumber}",
                 $"پرداخت دریافت شد اما ثبت نهایی با خطای دیتابیس مواجه شد (نه مشکل موجودی). نیازمند بررسی فنی. جزئیات: {ex.Message}",
                 NotificationType.Order, $"/admin/orders/{order.Id}");
@@ -400,6 +406,10 @@ public class OrderService : IOrderService
             // ممکن است tracker در مسیر تأیید فاکتور پاک شده باشد — دوباره متصل می‌شود تا یادداشت ذخیره شود
             await _unitOfWork.Orders.UpdateAsync(order);
             await _unitOfWork.CompleteAsync();
+
+            // مثل مسیر خطای دیتابیس: سفارش Paid و بی‌فاکتور است ⇒ رزرو بازمی‌گردد
+            await RestoreOrderReservationAsync(order);
+
             return (false, $"پرداخت انجام شد اما صدور فاکتور با خطا مواجه شد؛ سفارش برای بررسی ادمین علامت خورد.");
         }
     }
@@ -499,12 +509,23 @@ public class OrderService : IOrderService
 
         // پرداخت دستی (مثلاً تسویه‌ی حضوری): فاکتور فروش صادر می‌شود تا انبار و حسابداری
         // بدون فاکتور نمانند — در صورت نبود موجودی، خطا و وضعیت عوض نمی‌شود
+        // (آزادسازی رزرو پیش از فاکتور به‌خاطر قید CK_StockLevels_ReservedValid اجباری است)
         if (order.Status == OrderStatus.PendingPayment && status != OrderStatus.PendingPayment)
             await ReleaseOrderReservationAsync(order); // رزرو آزاد شد؛ کسر واقعی در فاکتور انجام می‌شود
 
         if (status == OrderStatus.Paid && order.Status != OrderStatus.Paid)
         {
-            order.SalesInvoiceId = await CreateConfirmedInvoiceAsync(order, noteSuffix: " — پرداخت دستی توسط ادمین");
+            try
+            {
+                order.SalesInvoiceId = await CreateConfirmedInvoiceAsync(order, noteSuffix: " — پرداخت دستی توسط ادمین");
+            }
+            catch
+            {
+                // رزرو در بالا آزاد شد و سفارش هم PendingPayment می‌ماند (وضعیت ذخیره نشده) ⇒
+                // بدون بازگردانی، موجودیِ این سفارش برای همیشه می‌رود
+                await RestoreOrderReservationAsync(order);
+                throw;
+            }
         }
 
         // لغو سفارشِ دارای فاکتور تأییدشده: برگشت موجودی و سند معکوس حسابداری
@@ -623,6 +644,34 @@ public class OrderService : IOrderService
     {
         foreach (var (productId, quantity) in items)
             await _unitOfWork.StockLevels.ReleaseReservationAsync(productId, _store.WarehouseId, quantity);
+    }
+
+    /// <summary>
+    /// بازگرداندن رزرو پس از شکست صدور فاکتور. رزرو «قبل» از فاکتور آزاد می‌شود (قید
+    /// CK_StockLevels_ReservedValid اجازهٔ ترتیب دیگر را نمی‌دهد)، پس اگر فاکتور بسته نشود
+    /// و سفارش زنده بماند، موجودی هم باید برگردد — وگرنه تطبیق‌گر آن را هرگز اضافه نمی‌کند
+    /// (فقط رزرو اضافه را کم می‌کند). TryReserveAsync اتمیک است: اگر در این فاصله موجودی
+    /// واقعاً رفته باشد، چیزی برگردانده نمی‌شود و ادمین مطلع می‌شود.
+    /// </summary>
+    private async Task RestoreOrderReservationAsync(Order order)
+    {
+        var lost = new List<string>();
+        foreach (var item in order.Items)
+        {
+            if (!await _unitOfWork.StockLevels.TryReserveAsync(item.ProductId, _store.WarehouseId, item.Quantity))
+                lost.Add(item.ProductName);
+        }
+
+        if (lost.Any())
+        {
+            _logger.LogWarning("Reservation could not be restored for order {OrderNumber}: {Products}",
+                order.OrderNumber, string.Join("، ", lost));
+            await _notifications.NotifyRoleAsync(Roles.Admin,
+                $"رزرو سفارش {order.OrderNumber} برگشتخورد",
+                $"فاکتور صادر نشد و موجودی «{string.Join("، ", lost)}» هم دیگر قابل رزرو نیست؛ " +
+                "این سفارش باید دستی بررسی شود.",
+                NotificationType.Order, $"/admin/orders/{order.Id}");
+        }
     }
 
     public async Task<int> ExpireStalePendingOrdersAsync(TimeSpan maxAge)

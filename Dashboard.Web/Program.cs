@@ -236,6 +236,7 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddScoped<Dashboard.Web.Services.ToastService>();
 builder.Services.AddHostedService<Dashboard.Web.Services.OrderExpiryService>();
 builder.Services.AddHostedService<Dashboard.Web.Services.OutboxProcessor>();
+builder.Services.AddHostedService<Dashboard.Web.Services.OtpCleanupService>();
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>();

@@ -46,10 +46,15 @@ public class OtpCodeRepository : IOtpRepository
         return rows > 0;
     }
 
-    public async Task InvalidatePreviousAsync(string phoneNumber)
+    public async Task InvalidateOthersAsync(string phoneNumber, int keepId)
     {
         await _context.OtpCodes
-            .Where(o => o.PhoneNumber == phoneNumber && !o.IsUsed && o.ExpiresAt > DateTime.UtcNow)
+            .Where(o => o.PhoneNumber == phoneNumber && o.Id != keepId && !o.IsUsed && o.ExpiresAt > DateTime.UtcNow)
             .ExecuteUpdateAsync(s => s.SetProperty(o => o.IsUsed, true));
     }
+
+    public async Task<int> DeleteExpiredAsync(DateTime cutoffUtc)
+        => await _context.OtpCodes
+            .Where(o => o.ExpiresAt < cutoffUtc)
+            .ExecuteDeleteAsync();
 }

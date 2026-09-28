@@ -15,6 +15,21 @@ public class StockLevelRepository : IStockLevelRepository
             .Include(s => s.Product)
             .FirstOrDefaultAsync(s => s.ProductId == productId && s.WarehouseId == warehouseId);
 
+    // AsNoTracking لازم است تا EF نسخهٔ کهنهٔ موجودی را از change tracker برنگرداند
+    // و مبنای محاسبات تصمیم‌ساز همیشه مقدارِ واقعیِ دیتابیس باشد.
+    public async Task<decimal?> GetOnHandQuantityAsync(int productId, int warehouseId) =>
+        await _context.StockLevels
+            .AsNoTracking()
+            .Where(s => s.ProductId == productId && s.WarehouseId == warehouseId)
+            .Select(s => (decimal?)s.QuantityOnHand)
+            .FirstOrDefaultAsync();
+
+    public async Task<Dictionary<int, decimal>> GetWarehouseOnHandAsync(int warehouseId) =>
+        await _context.StockLevels
+            .AsNoTracking()
+            .Where(s => s.WarehouseId == warehouseId)
+            .ToDictionaryAsync(s => s.ProductId, s => s.QuantityOnHand);
+
     public async Task<IEnumerable<StockLevel>> GetByWarehouseAsync(int warehouseId) =>
         await _context.StockLevels
             .Include(s => s.Product)
