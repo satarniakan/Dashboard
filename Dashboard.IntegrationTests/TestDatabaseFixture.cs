@@ -7,6 +7,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Dashboard.IntegrationTests;
 
@@ -54,6 +55,9 @@ public class TestDatabaseFixture : IAsyncLifetime
 
             var services = new ServiceCollection();
             services.AddLogging();
+            // دیتابیسِ تست دقیقاً همان «محیط توسعه» است: اسکرچ و بی‌خطر. TestDataSeederService
+            // روی IHostEnvironment گارد دارد، پس بدون این رجیستری اصلاً ساخته نمی‌شود.
+            services.AddSingleton<IHostEnvironment>(new TestEnvironment());
             services.AddInfrastructure(config);
             services.AddApplication();
             services.Configure<StoreOptions>(config.GetSection(StoreOptions.SectionName));
@@ -292,4 +296,15 @@ public class TestDatabaseFixture : IAsyncLifetime
 [CollectionDefinition("Database")]
 public class DatabaseCollection : ICollectionFixture<TestDatabaseFixture>
 {
+}
+
+/// <summary>محیطِ Developmentِ صوری — دیتابیس تست اسکرچ است و سیدِ دیتای نمایشی مجاز.</summary>
+file sealed class TestEnvironment : IHostEnvironment
+{
+    public string EnvironmentName { get; set; } = Environments.Development;
+    public string ApplicationName { get; set; } = "Dashboard.IntegrationTests";
+    public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+    public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } =
+        new Microsoft.Extensions.FileProviders.NullFileProvider();
+    public Guid InstanceId { get; } = Guid.NewGuid();
 }

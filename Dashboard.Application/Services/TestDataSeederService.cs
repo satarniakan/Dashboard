@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
 using Dashboard.Domain.Entities;
+using Dashboard.Domain.Exceptions;
 using Dashboard.Domain.Interfaces;
 using Dashboard.Application.DTOs;
 
@@ -8,7 +10,7 @@ namespace Dashboard.Application.Services;
 public interface ITestDataSeederService
 {
     /// <summary>
-    /// آیا دیتابیس همین الان خالیه؟ (یعنی هنوز هیچ کالایی ثبت نشده)
+    /// آیا دیتابیس همین الان خالیه؟ (هیچ کالا یا مشتری‌ای ثبت نشده)
     /// از این برای نشون‌دادن/قایم‌کردن دکمه‌ی «تولید دیتای تستی» توی صفحه استفاده می‌کنیم.
     /// </summary>
     Task<bool> IsDatabaseEmptyAsync();
@@ -17,6 +19,7 @@ public interface ITestDataSeederService
     /// در تمام جدول‌های اصلی، ۱۰ رکورد نمونه می‌سازد — از طریق همون سرویس‌های واقعی برنامه
     /// (نه insert مستقیم به دیتابیس)، تا موجودی انبار و سند‌های حسابداری هم درست و هماهنگ بمانند.
     /// اگر دیتابیس از قبل خالی نباشد، برای جلوگیری از دوباره‌کاری/دیتای تکراری، کاری نمی‌کند.
+    /// فقط در Development؛ خارج از آن BusinessRuleException می‌دهد.
     /// </summary>
     Task SeedAsync(string? userId);
 }
@@ -29,6 +32,7 @@ public class TestDataSeederService : ITestDataSeederService
     private readonly ITreasuryService _treasuryService;
     private readonly IInstallmentService _installmentService;
     private readonly ICartService _cartService;
+    private readonly IHostEnvironment _env;
     private readonly ILogger<TestDataSeederService> _logger;
 
     public TestDataSeederService(
@@ -38,6 +42,7 @@ public class TestDataSeederService : ITestDataSeederService
         ITreasuryService treasuryService,
         IInstallmentService installmentService,
         ICartService cartService,
+        IHostEnvironment env,
         ILogger<TestDataSeederService> logger)
     {
         _unitOfWork = unitOfWork;
@@ -46,20 +51,29 @@ public class TestDataSeederService : ITestDataSeederService
         _treasuryService = treasuryService;
         _installmentService = installmentService;
         _cartService = cartService;
+        _env = env;
         _logger = logger;
     }
 
+    // «خالی» یعنی هیچ رکورد کسب‌وکاری ثبت نشده. فقط Products کافی نبود: دیتابیس واقعیِ
+    // نیمه‌پر می‌تواند صفر کالا ولی مشتری/سند داشته باشد و آنگاه سید، ده رکورد نمایشی
+    // کنار دادهٔ واقعی می‌نشاند. انبار و حساب‌ها عمداً چک نمی‌شوند — دادهٔ مرجعِ خودکارند.
     public async Task<bool> IsDatabaseEmptyAsync()
     {
-        var products = await _unitOfWork.Products.GetAllAsync();
-        return !products.Any();
+        if ((await _unitOfWork.Products.GetAllAsync()).Any()) return false;
+        return !(await _unitOfWork.Customers.GetAllAsync()).Any();
     }
 
     public async Task SeedAsync(string? userId)
     {
+        // نگهبانِ سرویس، نه فقط صفحه: هر DI-consumer یا endpoint تازه نباید بتواند
+        // دیتای نمایشی روی دیتابیسِ production بریزد.
+        if (!_env.IsDevelopment())
+            throw new BusinessRuleException("تولید دیتای تستی فقط در محیط Development مجاز است.");
+
         if (!await IsDatabaseEmptyAsync())
         {
-            _logger.LogWarning("Seed skipped: database already has products.");
+            _logger.LogWarning("Seed skipped: database already has data.");
             return;
         }
 

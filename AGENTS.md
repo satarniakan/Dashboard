@@ -29,11 +29,11 @@ Blazor (.NET 10) + SQL Server + EF Core، معماری Clean.
 
 ## ۲. ⚠️ این‌ها را باز نکن (مهم‌ترین بخش این فایل)
 
-### ۲-۱. `Dashboard.Infrastructure/Migrations/` — ۷۲٬۲۵۷ خط (۴۴٪ کل ریپو)
+### ۲-۱. `Dashboard.Infrastructure/Migrations/` — ۸۶٬۸۱۳ خط (۴۴٪ کل ریپو)
 
 **هیچ‌کدام از این‌ها را برای review کد باز نکن:**
 
-- `*.Designer.cs` — ۶۶٬۳۸۰ خط، **۱۰۰٪ تولیدشده و تکراری**. هر کدام snapshot مدل EF هستند.
+- `*.Designer.cs` — ۸۰٬۵۰۷ خط، **۱۰۰٪ تولیدشده و تکراری**. هر کدام snapshot مدل EF هستند.
 - `AppDbContextModelSnapshot.cs` — تولیدشده.
 
 **چرا:** این‌ها کد شما نیستند. خواندنشان فقط توکن و زمان هدر می‌دهد و نتیجه‌ای ندارد.
@@ -46,7 +46,7 @@ Blazor (.NET 10) + SQL Server + EF Core، معماری Clean.
 > تنها استثنا: اگر **هیچ** دیتابیسی در production نساخته‌اید، می‌توان کل پوشه را پاک و
 > یک `InitialCreate` ساخت. قبل از این کار حتماً بپرس.
 
-### ۲-۲. `Dashboard.Web/wwwroot/` — ۶۲٬۰۰۰ خط
+### ۲-۲. `Dashboard.Web/wwwroot/` — ۶۳٬۷۰۰ خط
 
 - `wwwroot/lib/**` — کتابخانه‌ی vendored (Bootstrap و…). **باز نکن.** به‌روزرسانی‌اش با ابزار خودش است، نه با دست.
 - `wwwroot/Logs/` — لاگ زنده؛ در `.gitignore` است، پس در ریپو نیست.
@@ -57,20 +57,20 @@ Blazor (.NET 10) + SQL Server + EF Core، معماری Clean.
 
 ## ۳. نقشه‌ی «کد واقعی» — اینجاست که کار واقعی است
 
-**۱۵٬۵۲۲ خط.** برای review کامل فقط این مسیرها را بخوان:
+**۲۱٬۵۲۸ خط.** برای review کامل فقط این مسیرها را بخوان:
 
 | مسیر | خطوط | اولویت بررسی |
 |---|---:|---|
-| `Dashboard.Application/Services/` | ۴٬۷۵۰ | 🔴 **بالاترین** — بیشترین باگ منطقی اینجاست |
-| `Dashboard.Infrastructure/Data/` | ۴۸۱ | 🔴 DbContext و پیکربندی EF |
-| `Dashboard.Web/Program.cs` | ۳۴۶ | 🔴 DI و استارتاپ |
-| `Dashboard.Web/Components/Pages/` | ۱۰٬۰۰۰+ | 🟠 UI و منطق صفحه |
-| `Dashboard.Infrastructure/Repositories/` | ۱٬۵۶۰ | 🟠 کوئری و N+1 |
-| `Dashboard.Application/DTOs/` | ۹۹۶ | 🟡 اعتبارسنجی |
-| `Dashboard.Domain/Entities/` | ۱٬۱۱۸ | 🟡 مدل داده |
+| `Dashboard.Application/Services/` | ۵٬۷۹۸ | 🔴 **بالاترین** — بیشترین باگ منطقی اینجاست |
+| `Dashboard.Infrastructure/Data/` | ۵۳۲ | 🔴 DbContext و پیکربندی EF |
+| `Dashboard.Web/Program.cs` | ۳۷۲ | 🔴 DI و استارتاپ |
+| `Dashboard.Web/Components/Pages/` | ۱۰٬۷۲۱ | 🟠 UI و منطق صفحه |
+| `Dashboard.Infrastructure/Repositories/` | ۱٬۸۳۴ | 🟠 کوئری و N+1 |
+| `Dashboard.Application/DTOs/` | ۱٬۰۷۱ | 🟡 اعتبارسنجی |
+| `Dashboard.Domain/Entities/` | ۱٬۲۰۰ | 🟡 مدل داده |
 
 بزرگ‌ترین فایل‌ها (نقاط تمرکز review):
-`StockService.cs` ۸۷۲ · `OrderService.cs` ۶۱۰ · `AppDbContext.cs` ۴۸۱ · `SalesService.cs` ۴۶۱
+`StockService.cs` ۱٬۲۴۴ · `OrderService.cs` ۷۶۷ · `AppDbContext.cs` ۵۰۶ · `SalesService.cs` ۵۰۲
 
 ---
 
@@ -232,6 +232,16 @@ PaymentGateway__Provider=Fake dotnet run --project Dashboard.Web
 `Carts` پاک می‌شوند. حذفِ مستقیم روی `Carts` باعث خطای FK و از کار افتادنِ
 صفحهٔ فروشگاه می‌شد. نگهبان:
 `TestDataSeederTests.AddingToCart_CleansUpExpiredCarts_WithoutForeignKeyError`.
+
+**`IHostEnvironment` در فیکسچر تست:** `TestDatabaseFixture` یک `ServiceCollection` دستی
+می‌سازد (نه `WebApplication`)، پس `IHostEnvironment` خودش رجیستر نیست. `TestDataSeederService`
+روی آن گارد دارد؛ اگر این رجیستری (`TestEnvironment`) حذف شود، هر چهار تست سید با
+«Unable to resolve service» می‌شکنند. دیتابیسِ تست همان محیط Development حساب می‌شود.
+
+**سید دیتای نمایشی (`TestDataSeederService`):** گارد محیطی **در خودِ سرویس** است
+(خارج از Development `BusinessRuleException`)، نه فقط در `SeedTestData.razor`؛ و
+«خالی‌بودن» با Products **و** Customers سنجیده می‌شود. انبار/حساب‌ها چک نمی‌شوند چون
+دادهٔ مرجعِ خودکارند (و در فیکسچر هم دست‌نخورده می‌مانند). نگهبان: `TestDataSeederGuardTests`.
 
 **مبنای اختلاف انبارگردانی (`CloseStockCountAsync`):** مبنا «موجودیِ لحظهٔ بستن» است،
 نه اسنپ‌شاتِ لحظهٔ باز کردن. بین باز و بستن شمارش ممکن است کالا جابه‌جا شود (انتقال،
