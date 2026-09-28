@@ -33,7 +33,14 @@ public class Order
     public decimal Subtotal { get; set; }
     public decimal DiscountAmount { get; set; }
     public string? DiscountCodeText { get; set; }
-    public decimal Total => Subtotal - DiscountAmount + ShippingCost;
+
+    /// <summary>مالیات بر ارزش افزوده — با نرخ Store:VatRate هنگام ثبت سفارش عکس‌برداری می‌شود؛ صفر یعنی بدون مالیات</summary>
+    public decimal TaxAmount { get; set; }
+
+    /// <summary>نرخ مالیاتیِ لحظهٔ ثبت سفارش — در فاکتورِ همین سفارش استفاده می‌شود تا تغییر نرخ بعدی، مبلغ پرداختی را نشکند</summary>
+    public decimal TaxPercent { get; set; }
+
+    public decimal Total => Subtotal - DiscountAmount + ShippingCost + TaxAmount;
 
     public OrderStatus Status { get; set; } = OrderStatus.PendingPayment;
 

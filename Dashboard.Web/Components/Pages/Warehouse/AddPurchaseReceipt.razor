@@ -63,6 +63,11 @@
                 <label class="form-label">تاریخ رسید</label>
                 <PersianDateTimePicker TValue="DateTime" @bind-Value="model.ReceiptDate" ShowTime="true" />
             </div>
+            <div class="col-md-6 mb-3">
+                <AppPriceField TValue="decimal" @bind-Value="model.TaxAmount" Label="مالیات بر ارزش افزودهٔ خرید (تومان)"
+                               WrapperClass="" ShowWords="true"
+                               Hint="اعتبار مالیاتی می‌شود؛ بهای سطرها را خالص وارد کنید" />
+            </div>
         </div>
 
         <AppTextArea @bind-Value="model.Notes" Label="توضیحات (اختیاری)" Rows="3"

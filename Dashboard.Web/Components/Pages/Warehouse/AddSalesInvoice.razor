@@ -60,6 +60,11 @@
                 <AppPriceField TValue="decimal" @bind-Value="model.DiscountAmount" Label="تخفیف (تومان)"
                                WrapperClass="" ShowWords="true" Hint="مبلغ تخفیف کلی روی فاکتور" />
             </div>
+            <div class="col-md-4">
+                <AppPriceField TValue="decimal" @bind-Value="model.TaxPercent" Label="مالیات بر ارزش افزوده (٪)"
+                               WrapperClass="" ShowWords="false"
+                               Hint="صفر یعنی بدون مالیات؛ مبلغش در جمع نهایی اضافه می‌شود" />
+            </div>
         </div>
 
         <AppTextArea @bind-Value="model.Notes" Label="توضیحات (اختیاری)" Rows="3"
@@ -136,9 +141,16 @@
                         <span class="text-danger">−@CurrencyFormatter.ToToman(model.DiscountAmount)</span>
                     </div>
                 }
+                @if (model.TaxPercent > 0)
+                {
+                    <div class="d-flex justify-content-between small mt-1">
+                        <span class="text-body-secondary">مالیات بر ارزش افزوده (@(model.TaxPercent.ToString("0.##"))٪):</span>
+                        <span>@CurrencyFormatter.ToToman(TaxAmount)</span>
+                    </div>
+                }
                 <div class="d-flex justify-content-between fw-bold mt-2">
                     <span>مبلغ نهایی:</span>
-                    <span>@CurrencyFormatter.ToToman(NetTotal)</span>
+                    <span>@CurrencyFormatter.ToToman(NetTotal + TaxAmount)</span>
                 </div>
             </div>
         }
@@ -183,6 +195,9 @@
 
     private decimal ItemsTotal => model.Items.Sum(i => i.Quantity * i.UnitPrice);
     private decimal NetTotal => ItemsTotal - model.DiscountAmount;
+    // همان فرمول سرویس: مبنای مالیات = اقلام − تخفیف + حمل‌ونقل
+    private decimal TaxAmount => Dashboard.Application.Helpers.VatCalculator.Calculate(
+        NetTotal + model.ShippingAmount, model.TaxPercent);
 
     protected override async Task OnInitializedAsync()
     {

@@ -124,6 +124,13 @@ else
                         <span>@CurrencyFormatter.ToToman(invoice.ShippingAmount)</span>
                     </div>
                 }
+                @if (invoice.TaxAmount > 0)
+                {
+                    <div class="d-flex justify-content-between bg-body-tertiary rounded px-3 py-2 mt-2">
+                        <span class="text-body-secondary">مالیات بر ارزش افزوده (@(invoice.TaxPercent.ToString("0.##"))٪):</span>
+                        <span>@CurrencyFormatter.ToToman(invoice.TaxAmount)</span>
+                    </div>
+                }
                 <div class="d-flex justify-content-between fw-bold fs-5 mt-2">
                     <span>مبلغ نهایی:</span>
                     <span>@CurrencyFormatter.ToToman(invoice.TotalAmount)</span>

@@ -126,10 +126,17 @@ else
                         <span class="text-body-secondary">هزینه‌ی ارسال (@ShippingText(SelectedMethod))</span>
                         <span>@(ShippingCost == 0 ? "رایگان" : CurrencyFormatter.ToToman(ShippingCost))</span>
                     </div>
+                    @if (TaxAmount > 0)
+                    {
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span class="text-body-secondary">مالیات بر ارزش افزوده (@(OrderService.GetVatRate().ToString("0.##"))٪)</span>
+                            <span>@CurrencyFormatter.ToToman(TaxAmount)</span>
+                        </div>
+                    }
                     <hr class="my-2" />
                     <div class="d-flex justify-content-between">
                         <strong>قابل پرداخت</strong>
-                        <strong class="fs-5" style="color: var(--brand-primary);">@CurrencyFormatter.ToToman(cart.FinalAmount + ShippingCost)</strong>
+                        <strong class="fs-5" style="color: var(--brand-primary);">@CurrencyFormatter.ToToman(cart.FinalAmount + ShippingCost + TaxAmount)</strong>
                     </div>
 
                     <button type="submit" class="btn btn-primary w-100 mt-3">
@@ -150,6 +157,10 @@ else
     private string? ReceiverPhone;
 
     private decimal ShippingCost => OrderService.GetShippingCost(SelectedMethod);
+
+    // همان فرمول PlaceOrder: مبنای مالیات = کالا − تخفیف + ارسال
+    private decimal TaxAmount => Dashboard.Application.Helpers.VatCalculator.Calculate(
+        (cart?.FinalAmount ?? 0m) + ShippingCost, OrderService.GetVatRate());
 
     private static string ShippingText(ShippingMethod m) => m switch
     {

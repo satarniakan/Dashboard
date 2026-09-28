@@ -73,9 +73,19 @@ public class AccountTransferTests
         var toCode = await context.FinancialAccounts
             .Where(a => a.Id == bankAccountId).Select(a => a.AccountId).SingleAsync();
 
-        // مبدأ بدهکار، مقصد بستانکار
-        Assert.Equal(500_000m, lines.Single(l => l.AccountId == fromCode).DebitAmount);
-        Assert.Equal(500_000m, lines.Single(l => l.AccountId == toCode).CreditAmount);
+        // واریز به مقصد = بدهکار (افزایش دارایی)، برداشت از مبدأ = بستانکار (کاهش دارایی)
+        Assert.Equal(500_000m, lines.Single(l => l.AccountId == toCode).DebitAmount);
+        Assert.Equal(500_000m, lines.Single(l => l.AccountId == fromCode).CreditAmount);
+
+        // مانده‌ی GL (بدهکار − بستانکار) باید واقعاً جابجا شده باشد:
+        // مبدأ ۵۰۰ هزار کم شده و مقصد ۵۰۰ هزار زیاد — ترازِ سند به‌تنهایی جهتِ غلط را نمی‌گیرد
+        var movements = await context.JournalEntryLines
+            .Where(l => l.AccountId == fromCode || l.AccountId == toCode)
+            .GroupBy(l => l.AccountId)
+            .Select(g => new { AccountId = g.Key, Net = g.Sum(x => x.DebitAmount) - g.Sum(x => x.CreditAmount) })
+            .ToDictionaryAsync(x => x.AccountId, x => x.Net);
+        Assert.Equal(-500_000m, movements[fromCode]);
+        Assert.Equal(500_000m, movements[toCode]);
     }
 
     [SkippableFact]

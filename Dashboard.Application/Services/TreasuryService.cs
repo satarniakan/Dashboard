@@ -24,6 +24,14 @@ public interface ITreasuryService
 
     /// <summary>انتقال وجه بین دو صندوق/بانک (مثلاً تسویهٔ پولِ درگاه به حساب بانک)</summary>
     Task PostAccountTransferAsync(TransferBetweenAccountsDto dto, string? userId);
+
+    // --- چرخهٔ چک: وصول و برگشت اوراق ---
+
+    Task<IEnumerable<PendingChequeDto>> GetPendingChequesAsync();
+    Task SettleCustomerChequeAsync(int receiptId, SettleChequeDto dto, string? userId);
+    Task BounceCustomerChequeAsync(int receiptId, BounceChequeDto dto, string? userId);
+    Task SettleSupplierChequeAsync(int paymentId, SettleChequeDto dto, string? userId);
+    Task BounceSupplierChequeAsync(int paymentId, BounceChequeDto dto, string? userId);
 }
 
 public class TreasuryService : ITreasuryService
@@ -110,6 +118,8 @@ public class TreasuryService : ITreasuryService
                 ReceiptDate = dto.ReceiptDate,
                 ChequeNumber = dto.ChequeNumber,
                 ChequeDueDate = dto.ChequeDueDate,
+                ChequeStatus = Enum.Parse<PaymentMethod>(dto.Method) == PaymentMethod.Cheque
+                    ? ChequeStatus.Pending : null,
                 Notes = dto.Notes,
                 InstallmentId = dto.InstallmentId,
                 CreatedByUserId = userId
@@ -204,6 +214,8 @@ public class TreasuryService : ITreasuryService
                 PaymentDate = dto.PaymentDate,
                 ChequeNumber = dto.ChequeNumber,
                 ChequeDueDate = dto.ChequeDueDate,
+                ChequeStatus = Enum.Parse<PaymentMethod>(dto.Method) == PaymentMethod.Cheque
+                    ? ChequeStatus.Pending : null,
                 Notes = dto.Notes,
                 CreatedByUserId = userId
             };
@@ -257,7 +269,9 @@ public class TreasuryService : ITreasuryService
     // ---------------- انتقال بین صندوق/بانک ----------------
 
     /// <summary>
-    /// انتقال وجه بین دو صندوق/بانک — فقط یک سند دوطرفه (بدهکار مبدأ، بستانکار مقصد).
+    /// انتقال وجه بین دو صندوق/بانک — فقط یک سند دوطرفه (بدهکار مقصد، بستانکار مبدأ):
+    /// واریز به حساب دارایی = بدهکار، برداشت از آن = بستانکار؛ برعکسش یعنی در دفتر،
+    /// پول به مبدأ اضافه و از مقصد کم شده است.
     /// برای تسویهٔ پولِ پرداخت آنلاین لازم است: رسید خودکار، صندوق درگاه را بدهکار می‌کند و
     /// این سند، همان پول را به حساب بانکی منتقله می‌کند (وگرنه سود ناخالص از تراز می‌افتد).
     /// </summary>
@@ -290,8 +304,8 @@ public class TreasuryService : ITreasuryService
                 description: description,
                 lines: new List<JournalLineInput>
                 {
-                    new(from.Account.Code, dto.Amount, 0, $"برداشت از {from.Name}"),
-                    new(to.Account.Code, 0, dto.Amount, $"واریز به {to.Name}")
+                    new(to.Account.Code, dto.Amount, 0, $"واریز به {to.Name}"),
+                    new(from.Account.Code, 0, dto.Amount, $"برداشت از {from.Name}")
                 },
                 referenceType: "AccountTransfer",
                 referenceId: null,
@@ -300,6 +314,170 @@ public class TreasuryService : ITreasuryService
             await _unitOfWork.AuditLogs.AddAsync(new AuditLog("AccountTransfer", userId,
                 $"انتقال {dto.Amount:0} از «{from.Name}» به «{to.Name}» ثبت شد."));
             await _unitOfWork.CompleteAsync();
+        });
+    }
+
+    // ---------------- چرخهٔ چک: وصول و برگشت اوراق ----------------
+
+    public async Task<IEnumerable<PendingChequeDto>> GetPendingChequesAsync()
+    {
+        var receivedCheques = (await _unitOfWork.CustomerReceipts.GetPendingChequesAsync())
+            .Select(r => new PendingChequeDto(
+                r.Id, "receipt", r.ReceiptNumber, r.Customer?.Name,
+                r.ChequeNumber, r.ChequeDueDate, r.Amount));
+
+        var issuedCheques = (await _unitOfWork.SupplierPayments.GetPendingChequesAsync())
+            .Select(p => new PendingChequeDto(
+                p.Id, "payment", p.PaymentNumber, p.Supplier?.Name,
+                p.ChequeNumber, p.ChequeDueDate, p.Amount));
+
+        return receivedCheques.Concat(issuedCheques)
+            .OrderBy(c => c.ChequeDueDate ?? DateTime.MaxValue);
+    }
+
+    /// <summary>
+    /// وصول چکِ دریافتی: پول واقعاً نقد شده — بدهکار صندوق/بانکِ انتخابی، بستانکار اوراق دریافتنی.
+    /// وضعیت با UPDATE شرطی claim می‌شود تا وصول دوباره (دوبار سند) غیرممکن باشد.
+    /// </summary>
+    public async Task SettleCustomerChequeAsync(int receiptId, SettleChequeDto dto, string? userId)
+    {
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
+        {
+            var receipt = await _unitOfWork.CustomerReceipts.GetByIdAsync(receiptId)
+                ?? throw new NotFoundException("رسید", receiptId);
+            if (receipt.Method != PaymentMethod.Cheque)
+                throw new BusinessRuleException("این رسید چکی نیست.");
+
+            var target = await _unitOfWork.FinancialAccounts.GetByIdAsync(dto.FinancialAccountId)
+                ?? throw new NotFoundException("صندوق/بانک", dto.FinancialAccountId);
+            if (!target.IsActive)
+                throw new BusinessRuleException("صندوق/بانک مقصد غیرفعال است.");
+            if (target.Account is null)
+                throw new BusinessRuleException("سرفصل حسابِ صندوق/بانک مقصد پیدا نشد.");
+
+            if (!await _unitOfWork.CustomerReceipts.TryClaimChequeStatusAsync(receiptId, ChequeStatus.Settled))
+                throw new BusinessRuleException("این چک قبلاً وصول یا برگشت خورده است.");
+
+            await _journalService.PostEntryAsync(
+                description: $"وصول چک رسید {receipt.ReceiptNumber}" + (dto.Notes is { Length: > 0 } ? $" — {dto.Notes}" : string.Empty),
+                lines: new List<JournalLineInput>
+                {
+                    new(target.Account.Code, receipt.Amount, 0, "نقد شدن اوراق دریافتنی"),
+                    new(SystemAccountCodes.NotesReceivable, 0, receipt.Amount, "خروج چک از اوراق دریافتنی")
+                },
+                referenceType: "ChequeSettlement",
+                referenceId: receipt.Id,
+                userId: userId);
+
+            await _unitOfWork.AuditLogs.AddAsync(new AuditLog("CustomerChequeSettled", userId,
+                $"چک رسید {receipt.ReceiptNumber} به مبلغ {receipt.Amount:0} وصول شد."));
+        });
+    }
+
+    /// <summary>
+    /// برگشت‌خوردن چکِ دریافتی: چک پاس نشد — طلب از مشتری برمی‌گردد
+    /// (بدهکار حساب‌های دریافتنی با معین مشتری، بستانکار اوراق دریافتنی).
+    /// </summary>
+    public async Task BounceCustomerChequeAsync(int receiptId, BounceChequeDto dto, string? userId)
+    {
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
+        {
+            var receipt = await _unitOfWork.CustomerReceipts.GetByIdAsync(receiptId)
+                ?? throw new NotFoundException("رسید", receiptId);
+            if (receipt.Method != PaymentMethod.Cheque)
+                throw new BusinessRuleException("این رسید چکی نیست.");
+            if (receipt.CustomerId is null)
+                throw new BusinessRuleException("این رسید بدون مشتری ثبت شده و برگشت چک آن قابل ثبت نیست.");
+
+            if (!await _unitOfWork.CustomerReceipts.TryClaimChequeStatusAsync(receiptId, ChequeStatus.Bounced))
+                throw new BusinessRuleException("این چک قبلاً وصول یا برگشت خورده است.");
+
+            await _journalService.PostEntryAsync(
+                description: $"برگشت چک رسید {receipt.ReceiptNumber}" + (dto.Notes is { Length: > 0 } ? $" — {dto.Notes}" : string.Empty),
+                lines: new List<JournalLineInput>
+                {
+                    new(SystemAccountCodes.AccountsReceivable, receipt.Amount, 0,
+                        "بازگشت طلب بابت چک برگشتی", "Customer", receipt.CustomerId),
+                    new(SystemAccountCodes.NotesReceivable, 0, receipt.Amount, "خروج چک برگشتی از اوراق دریافتنی")
+                },
+                referenceType: "ChequeBounce",
+                referenceId: receipt.Id,
+                userId: userId);
+
+            await _unitOfWork.AuditLogs.AddAsync(new AuditLog("CustomerChequeBounced", userId,
+                $"چک رسید {receipt.ReceiptNumber} به مبلغ {receipt.Amount:0} برگشت خورد."));
+        });
+    }
+
+    /// <summary>
+    /// وصول چکِ صادره به تأمین‌کننده: بانک پول را پرداخت کرده — بدهکار اوراق پرداختنی،
+    /// بستانکار صندوق/بانک (اینجاست که موجودی بانک واقعاً کم می‌شود).
+    /// </summary>
+    public async Task SettleSupplierChequeAsync(int paymentId, SettleChequeDto dto, string? userId)
+    {
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
+        {
+            var payment = await _unitOfWork.SupplierPayments.GetByIdAsync(paymentId)
+                ?? throw new NotFoundException("سند پرداخت", paymentId);
+            if (payment.Method != PaymentMethod.Cheque)
+                throw new BusinessRuleException("این سند چکی نیست.");
+
+            var source = await _unitOfWork.FinancialAccounts.GetByIdAsync(dto.FinancialAccountId)
+                ?? throw new NotFoundException("صندوق/بانک", dto.FinancialAccountId);
+            if (!source.IsActive)
+                throw new BusinessRuleException("صندوق/بانک مبدأ غیرفعال است.");
+            if (source.Account is null)
+                throw new BusinessRuleException("سرفصل حسابِ صندوق/بانک مبدأ پیدا نشد.");
+
+            if (!await _unitOfWork.SupplierPayments.TryClaimChequeStatusAsync(paymentId, ChequeStatus.Settled))
+                throw new BusinessRuleException("این چک قبلاً وصول یا برگشت خورده است.");
+
+            await _journalService.PostEntryAsync(
+                description: $"وصول چک سند {payment.PaymentNumber}" + (dto.Notes is { Length: > 0 } ? $" — {dto.Notes}" : string.Empty),
+                lines: new List<JournalLineInput>
+                {
+                    new(SystemAccountCodes.NotesPayable, payment.Amount, 0, "تسویه اوراق پرداختنی"),
+                    new(source.Account.Code, 0, payment.Amount, $"کاهش موجودی {source.Name} بابت وصول چک")
+                },
+                referenceType: "ChequeSettlement",
+                referenceId: payment.Id,
+                userId: userId);
+
+            await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SupplierChequeSettled", userId,
+                $"چک سند {payment.PaymentNumber} به مبلغ {payment.Amount:0} وصول شد."));
+        });
+    }
+
+    /// <summary>
+    /// برگشت‌خوردن چکِ صادره: بانک پاس نکرد — بدهی به تأمین‌کننده برمی‌گردد
+    /// (بدهکار اوراق پرداختنی، بستانکار حساب‌های پرداختنی با معین تأمین‌کننده).
+    /// </summary>
+    public async Task BounceSupplierChequeAsync(int paymentId, BounceChequeDto dto, string? userId)
+    {
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
+        {
+            var payment = await _unitOfWork.SupplierPayments.GetByIdAsync(paymentId)
+                ?? throw new NotFoundException("سند پرداخت", paymentId);
+            if (payment.Method != PaymentMethod.Cheque)
+                throw new BusinessRuleException("این سند چکی نیست.");
+
+            if (!await _unitOfWork.SupplierPayments.TryClaimChequeStatusAsync(paymentId, ChequeStatus.Bounced))
+                throw new BusinessRuleException("این چک قبلاً وصول یا برگشت خورده است.");
+
+            await _journalService.PostEntryAsync(
+                description: $"برگشت چک سند {payment.PaymentNumber}" + (dto.Notes is { Length: > 0 } ? $" — {dto.Notes}" : string.Empty),
+                lines: new List<JournalLineInput>
+                {
+                    new(SystemAccountCodes.NotesPayable, payment.Amount, 0, "خروج چک برگشتی از اوراق پرداختنی"),
+                    new(SystemAccountCodes.AccountsPayable, 0, payment.Amount,
+                        "بازگشت بدهی بابت چک برگشتی", "Supplier", payment.SupplierId)
+                },
+                referenceType: "ChequeBounce",
+                referenceId: payment.Id,
+                userId: userId);
+
+            await _unitOfWork.AuditLogs.AddAsync(new AuditLog("SupplierChequeBounced", userId,
+                $"چک سند {payment.PaymentNumber} به مبلغ {payment.Amount:0} برگشت خورد."));
         });
     }
 }

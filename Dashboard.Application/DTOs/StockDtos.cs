@@ -99,6 +99,10 @@ public class CreatePurchaseReceiptDto : IValidatableObject
 
     public DateTime ReceiptDate { get; set; } = DateTime.UtcNow;
 
+    /// <summary>مالیات بر ارزش افزودهٔ خرید (اعتبار مالیاتی ۱۳۵۰) — بهای سطرها خالص است؛ صفر یعنی بدون مالیات</summary>
+    [Range(0, double.MaxValue, ErrorMessage = "مالیات خرید نمی‌تواند منفی باشد.")]
+    public decimal TaxAmount { get; set; }
+
     [StringLength(500, ErrorMessage = "توضیحات نمی‌تواند بیشتر از ۵۰۰ کاراکتر باشد.")]
     public string? Notes { get; set; }
 
@@ -143,6 +147,29 @@ public class CreateSalesReturnDto : IValidatableObject
     public string? Notes { get; set; }
 
     public int? SalesInvoiceId { get; set; }
+
+    [MinLength(1, ErrorMessage = "حداقل یک قلم کالا لازم است.")]
+    public List<StockItemInput> Items { get; set; } = new();
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        => StockItemValidation.Validate(Items?.Select(i => (i.ProductId, i.Quantity)));
+}
+
+public class CreatePurchaseReturnDto : IValidatableObject
+{
+    [Range(1, int.MaxValue, ErrorMessage = "انبار رسید تعیین نشده است؛ ابتدا رسید خرید را جستجو کنید.")]
+    public int WarehouseId { get; set; }
+
+    public DateTime ReturnDate { get; set; } = DateTime.UtcNow;
+
+    [StringLength(100, ErrorMessage = "مرجع تأمین‌کننده نمی‌تواند بیشتر از ۱۰۰ کاراکتر باشد.")]
+    public string? SupplierReference { get; set; }
+
+    [StringLength(500, ErrorMessage = "توضیحات نمی‌تواند بیشتر از ۵۰۰ کاراکتر باشد.")]
+    public string? Notes { get; set; }
+
+    [Range(1, int.MaxValue, ErrorMessage = "انتخاب رسید خرید مرجع الزامی است.")]
+    public int PurchaseReceiptId { get; set; }
 
     [MinLength(1, ErrorMessage = "حداقل یک قلم کالا لازم است.")]
     public List<StockItemInput> Items { get; set; } = new();
@@ -202,6 +229,16 @@ public record PurchaseReceiptSummaryDto(int Id, string ReceiptNumber, DateTime R
 public record InternalIssueSummaryDto(int Id, string IssueNumber, DateTime IssueDate, string WarehouseName, string? Purpose, int ItemCount);
 
 public record SalesReturnSummaryDto(int Id, string ReturnNumber, DateTime ReturnDate, string WarehouseName, string? CustomerReference, int ItemCount);
+
+public record PurchaseReturnSummaryDto(int Id, string ReturnNumber, DateTime ReturnDate, string WarehouseName, string? SupplierReference, int ItemCount);
+
+/// <summary>یک قلم از رسید خرید، از نگاه صفحهٔ برگشت خرید: ماندهٔ قابل‌برگشت هم کنار آن است.</summary>
+public record PurchaseReceiptReturnItemDto(int ProductId, string ProductName, decimal Quantity, decimal UnitCost, decimal AlreadyReturned);
+
+/// <summary>رسید خرید به‌عنوان مرجع برگشت — نتیجهٔ جستجوی شمارهٔ رسید در صفحهٔ ثبت برگشت خرید.</summary>
+public record PurchaseReceiptForReturnDto(
+    int Id, string ReceiptNumber, string SupplierName, int WarehouseId, string WarehouseName,
+    List<PurchaseReceiptReturnItemDto> Items);
 
 public record ScrapRecordSummaryDto(int Id, string RecordNumber, DateTime RecordDate, string WarehouseName, string? Reason, int ItemCount);
 

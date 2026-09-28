@@ -50,6 +50,7 @@ public record OrderDto(
     decimal Subtotal,
     decimal DiscountAmount,
     string? DiscountCodeText,
+    decimal TaxAmount,
     decimal ShippingCost,
     decimal Total,
     string? TrackingCode,

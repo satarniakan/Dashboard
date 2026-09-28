@@ -88,6 +88,35 @@ public class CreateSupplierPaymentDto
 
 public record SupplierPaymentDto(int Id, string PaymentNumber, DateTime PaymentDate, string SupplierName, string FinancialAccountName, decimal Amount, string Method);
 
+/// <summary>چکِ در جریان (Pending) برای صفحهٔ «تسویه اوراق».</summary>
+public record PendingChequeDto(
+    int Id,                 // Id رسید دریافت یا سند پرداخت، بسته به Kind
+    string Kind,            // "receipt" (چک دریافتی) یا "payment" (چک پرداختی)
+    string DocumentNumber,  // شماره رسید / سند پرداخت
+    string? Counterparty,   // نام مشتری / تأمین‌کننده
+    string? ChequeNumber,
+    DateTime? ChequeDueDate,
+    decimal Amount);
+
+/// <summary>وصول چک: پول به این صندوق/بانک می‌رود.</summary>
+public class SettleChequeDto
+{
+    [Range(1, int.MaxValue, ErrorMessage = "انتخاب صندوق/بانک مقصد الزامی است.")]
+    public int FinancialAccountId { get; set; }
+
+    public DateTime? SettledAt { get; set; }
+
+    [StringLength(500, ErrorMessage = "توضیحات نمی‌تواند بیشتر از ۵۰۰ کاراکتر باشد.")]
+    public string? Notes { get; set; }
+}
+
+/// <summary>برگشت‌خوردن چک: بدهی/طلب به حالت قبل برمی‌گردد.</summary>
+public class BounceChequeDto
+{
+    [StringLength(500, ErrorMessage = "توضیحات نمی‌تواند بیشتر از ۵۰۰ کاراکتر باشد.")]
+    public string? Notes { get; set; }
+}
+
 public class TransferBetweenAccountsDto
 {
     [Range(1, int.MaxValue, ErrorMessage = "انتخاب صندوق/بانک مبدأ الزامی است.")]

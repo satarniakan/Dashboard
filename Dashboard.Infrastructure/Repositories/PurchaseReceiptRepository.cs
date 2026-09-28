@@ -17,6 +17,13 @@ public class PurchaseReceiptRepository : IPurchaseReceiptRepository
             .Include(r => r.Warehouse)
             .FirstOrDefaultAsync(r => r.Id == id);
 
+    public async Task<PurchaseReceipt?> GetByReceiptNumberAsync(string receiptNumber) =>
+        await _context.PurchaseReceipts
+            .Include(r => r.Items).ThenInclude(i => i.Product)
+            .Include(r => r.Supplier)
+            .Include(r => r.Warehouse)
+            .FirstOrDefaultAsync(r => r.ReceiptNumber == receiptNumber);
+
     public async Task<IEnumerable<PurchaseReceipt>> GetAllAsync() =>
         await _context.PurchaseReceipts
             .Include(r => r.Items)

@@ -156,6 +156,27 @@ public class Product
                 2, MidpointRounding.AwayFromZero);
     }
 
+    /// <summary>
+    /// اصلاح بهای میانگین پس از برگشت خرید به تأمین‌کننده: کالا با «بهای اصلیِ رسید» خارج
+    /// می‌شود (نه میانگین فعلی)، پس ارزشِ باقیمانده = (موجودی قبلی × میانگین قبلی) −
+    /// (مقدار برگشتی × بهای اصلی) و میانگین جدید = این ارزش تقسیم بر مقدار باقیمانده.
+    /// اگر قیمت‌ها نوسان کرده و ارزشِ خارج‌شده از ارزشِ دفتری بیشتر شود، میانگین منفی
+    /// بی‌معناست — صفر می‌شود (واگرایی جزئی GL با خرید بعدی جبران می‌شود).
+    /// </summary>
+    public void ApplyPurchaseReturnToAverageCost(decimal previousQuantity, decimal returnQuantity, decimal originalUnitCost)
+    {
+        if (returnQuantity < 0) throw new ArgumentOutOfRangeException(nameof(returnQuantity));
+        if (originalUnitCost < 0) throw new ArgumentOutOfRangeException(nameof(originalUnitCost));
+        if (previousQuantity < 0) throw new ArgumentOutOfRangeException(nameof(previousQuantity));
+        if (returnQuantity > previousQuantity) throw new ArgumentOutOfRangeException(nameof(returnQuantity));
+
+        var remainingQuantity = previousQuantity - returnQuantity;
+        if (remainingQuantity <= 0) return; // موجودی تمام شده؛ میانگینِ بعدی از خرید بعدی ساخته می‌شود
+
+        var remainingValue = (previousQuantity * CostPrice) - (returnQuantity * originalUnitCost);
+        CostPrice = Math.Round(Math.Max(remainingValue, 0m) / remainingQuantity, 2, MidpointRounding.AwayFromZero);
+    }
+
     public void Deactivate() => IsActive = false;
     public void Activate() => IsActive = true;
 

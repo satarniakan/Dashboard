@@ -23,6 +23,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<PurchaseReceipt> PurchaseReceipts => Set<PurchaseReceipt>();
     public DbSet<PurchaseReceiptItem> PurchaseReceiptItems => Set<PurchaseReceiptItem>();
 
+    public DbSet<PurchaseReturn> PurchaseReturns => Set<PurchaseReturn>();
+    public DbSet<PurchaseReturnItem> PurchaseReturnItems => Set<PurchaseReturnItem>();
+
     public DbSet<InternalIssue> InternalIssues => Set<InternalIssue>();
     public DbSet<InternalIssueItem> InternalIssueItems => Set<InternalIssueItem>();
 
@@ -244,6 +247,20 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             e.HasMany(p => p.Items).WithOne(i => i.InternalIssue!).HasForeignKey(i => i.InternalIssueId).OnDelete(DeleteBehavior.Cascade);
         });
         builder.Entity<InternalIssueItem>(e =>
+        {
+            e.Property(i => i.Quantity).HasColumnType("decimal(18,3)");
+            e.HasOne(i => i.Product).WithMany().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ---------- PurchaseReturn ----------
+        builder.Entity<PurchaseReturn>(e =>
+        {
+            e.HasIndex(p => p.ReturnNumber).IsUnique();
+            e.HasOne(p => p.Warehouse).WithMany().HasForeignKey(p => p.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(p => p.PurchaseReceipt).WithMany().HasForeignKey(p => p.PurchaseReceiptId).OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(p => p.Items).WithOne(i => i.PurchaseReturn!).HasForeignKey(i => i.PurchaseReturnId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<PurchaseReturnItem>(e =>
         {
             e.Property(i => i.Quantity).HasColumnType("decimal(18,3)");
             e.HasOne(i => i.Product).WithMany().HasForeignKey(i => i.ProductId).OnDelete(DeleteBehavior.Restrict);

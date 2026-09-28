@@ -126,9 +126,15 @@ public class SalesService : ISalesService
             throw new BusinessRuleException($"تخفیف ({dto.DiscountAmount:0.##}) نمی‌تواند از جمع اقلام فاکتور ({total:0.##}) بیشتر باشد.");
 
         // مبلغ فاکتور باید دقیقاً برابر مبلغ پرداختی مشتری باشد:
-        // جمع اقلام − تخفیف + حمل‌ونقل (حمل‌ونقل در سند فروش جداگانه شناسایی می‌شود)
+        // جمع اقلام − تخفیف + حمل‌ونقل + مالیات بر ارزش افزوده
+        // (مالیات جزء طلب از مشتری است اما درآمد نیست — در سند فروش به ۲۳۰۰ بستانکار می‌شود)
+        var taxAmount = Helpers.VatCalculator.Calculate(
+            total - dto.DiscountAmount + dto.ShippingAmount, dto.TaxPercent);
+
         invoice.ShippingAmount = dto.ShippingAmount;
-        invoice.TotalAmount = Math.Round(total - dto.DiscountAmount + dto.ShippingAmount, 2, MidpointRounding.AwayFromZero);
+        invoice.TaxPercent = dto.TaxPercent;
+        invoice.TaxAmount = taxAmount;
+        invoice.TotalAmount = Math.Round(total - dto.DiscountAmount + dto.ShippingAmount + taxAmount, 2, MidpointRounding.AwayFromZero);
 
         await _unitOfWork.SalesInvoices.AddAsync(invoice);
         await _unitOfWork.CompleteAsync(); // اینجا Id واقعی ساخته می‌شود
@@ -203,12 +209,12 @@ public class SalesService : ISalesService
                     // به یک روش هزینه‌یابی واقعی (FIFO/میانگین موزون) ارتقا داد.
                     var totalCost = invoice.Items.Sum(i => i.Quantity * (i.CostPrice ?? i.Product?.CostPrice ?? 0));
 
-                    // درآمد کالا = مبلغ فاکتور منهای حمل‌ونقل؛ حمل‌ونقل سرفصل جدا دارد
-                    var goodsRevenue = invoice.TotalAmount - invoice.ShippingAmount;
+                    // درآمد کالا = مبلغ فاکتور منهای حمل‌ونقل و مالیات؛ این دو سرفصل جدا دارند
+                    var goodsRevenue = invoice.TotalAmount - invoice.ShippingAmount - invoice.TaxAmount;
 
                     var salesLines = new List<JournalLineInput>
                     {
-                        // بدهکار حساب مشتری = مبلغ واقعی دریافت‌شده (کالا + حمل‌ونقل)
+                        // بدهکار حساب مشتری = مبلغ واقعی دریافت‌شده (کالا + حمل‌ونقل + مالیات)
                         new(SystemAccountCodes.AccountsReceivable, invoice.TotalAmount, 0, "بدهکار شدن حساب مشتری", "Customer", invoice.CustomerId),
                         new(SystemAccountCodes.SalesRevenue, 0, goodsRevenue, "شناسایی درآمد فروش"),
                         new(SystemAccountCodes.CostOfGoodsSold, totalCost, 0, "بهای تمام‌شده کالای فروش‌رفته"),
@@ -216,6 +222,8 @@ public class SalesService : ISalesService
                     };
                     if (invoice.ShippingAmount > 0)
                         salesLines.Add(new JournalLineInput(SystemAccountCodes.ShippingRevenue, 0, invoice.ShippingAmount, "شناسایی درآمد حمل‌ونقل"));
+                    if (invoice.TaxAmount > 0)
+                        salesLines.Add(new JournalLineInput(SystemAccountCodes.VatPayable, 0, invoice.TaxAmount, "مالیات و عوارض بر ارزش افزوده فروش"));
 
                     // سند فروش: بدهکار مشتری (طلب) و بدهکار COGS، بستانکار درآمد فروش/حمل‌ونقل و بستانکار موجودی کالا
                     await _journalService.PostEntryAsync(
@@ -336,13 +344,16 @@ public class SalesService : ISalesService
                             grossForRemaining += remaining * unitPrice;
                         }
 
-                        // سهمِ تخفیفِ متناسب با باقیمانده. اگر همهٔ فاکتور باقی مانده باشد،
-                        // این مقدار دقیقاً برابر DiscountAmount فاکتور می‌شود.
-                        var totalGross = invoice.TotalAmount - invoice.ShippingAmount + invoice.DiscountAmount;
+                        // سهمِ تخفیف و مالیاتِ متناسب با باقیمانده. اگر همهٔ فاکتور باقی مانده باشد،
+                        // این مقادیر دقیقاً برابر DiscountAmount/TaxAmount فاکتور می‌شوند.
+                        var totalGross = invoice.TotalAmount - invoice.ShippingAmount + invoice.DiscountAmount - invoice.TaxAmount;
                         var discountReversal = totalGross > 0
                             ? invoice.DiscountAmount * (grossForRemaining / totalGross)
                             : 0m;
-                        if (totalSold <= 0) discountReversal = 0;
+                        var taxReversal = totalGross > 0
+                            ? invoice.TaxAmount * (grossForRemaining / totalGross)
+                            : 0m;
+                        if (totalSold <= 0) { discountReversal = 0; taxReversal = 0; }
 
                         if (goodsRevenue > 0 || totalCost > 0)
                         {
@@ -354,8 +365,8 @@ public class SalesService : ISalesService
                             // فاکتور قبلاً برگشته، فقط سهم همان بخش از تخفیف برگردد.
                             var netRevenue = Math.Max(grossForRemaining - discountReversal, 0m);
 
-                            // AR فقط به اندازهٔ باقیماندهٔ فاکتور (کالا + حمل) بستانکار می‌شود
-                            var receivableReversal = netRevenue + invoice.ShippingAmount;
+                            // AR فقط به اندازهٔ باقیماندهٔ فاکتور (کالای خالص + حمل + مالیات) بستانکار می‌شود
+                            var receivableReversal = netRevenue + invoice.ShippingAmount + taxReversal;
 
                             var reversalLines = new List<JournalLineInput>
                             {
@@ -366,6 +377,8 @@ public class SalesService : ISalesService
                             };
                             if (invoice.ShippingAmount > 0)
                                 reversalLines.Add(new JournalLineInput(SystemAccountCodes.ShippingRevenue, invoice.ShippingAmount, 0, "برگشت درآمد حمل‌ونقل"));
+                            if (taxReversal > 0)
+                                reversalLines.Add(new JournalLineInput(SystemAccountCodes.VatPayable, taxReversal, 0, "برگشت مالیات بر ارزش افزوده فروش"));
 
                             // سند برگشت، دقیقاً معکوسِ باقیماندهٔ سند فروش اصلی است
                             await _journalService.PostEntryAsync(
@@ -402,7 +415,7 @@ public class SalesService : ISalesService
         return new SalesInvoiceDto(
             invoice.Id, invoice.InvoiceNumber, invoice.InvoiceDate,
             invoice.Customer?.Name, invoice.Warehouse?.Name ?? "-", invoice.WarehouseId,invoice.CustomerId, invoice.Status.ToString(),
-            invoice.DiscountAmount, invoice.ShippingAmount, invoice.TotalAmount, invoice.Notes,
+            invoice.DiscountAmount, invoice.ShippingAmount, invoice.TaxPercent, invoice.TaxAmount, invoice.TotalAmount, invoice.Notes,
             invoice.Items.Select(i => new SalesInvoiceItemDto(
                 i.ProductId, i.Product?.Name ?? "-", i.Quantity, i.UnitPrice, i.LineTotal)).ToList());
     }
@@ -443,6 +456,8 @@ public class SalesService : ISalesService
             invoice.Status.ToString(),
             invoice.DiscountAmount,
             invoice.ShippingAmount,
+            invoice.TaxPercent,
+            invoice.TaxAmount,
             invoice.TotalAmount,
             invoice.Notes,
             invoice.Items.Select(i => new SalesInvoiceItemDto(

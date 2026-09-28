@@ -30,6 +30,10 @@ public class CreateSalesInvoiceDto : IValidatableObject
     [Range(0, double.MaxValue, ErrorMessage = "هزینهٔ حمل‌ونقل نمی‌تواند منفی باشد.")]
     public decimal ShippingAmount { get; set; }
 
+    /// <summary>درصد مالیات بر ارزش افزوده — صفر یعنی بدون مالیات (پیش‌فرض)</summary>
+    [Range(0, 100, ErrorMessage = "درصد مالیات باید بین ۰ تا ۱۰۰ باشد.")]
+    public decimal TaxPercent { get; set; }
+
     [StringLength(500, ErrorMessage = "توضیحات نمی‌تواند بیشتر از ۵۰۰ کاراکتر باشد.")]
     public string? Notes { get; set; }
 
@@ -55,6 +59,8 @@ public record SalesInvoiceDto(
     string Status,
     decimal DiscountAmount,
     decimal ShippingAmount,
+    decimal TaxPercent,
+    decimal TaxAmount,
     decimal TotalAmount,
     string? Notes,
     List<SalesInvoiceItemDto> Items);

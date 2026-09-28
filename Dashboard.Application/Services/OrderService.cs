@@ -14,6 +14,9 @@ public interface IOrderService
     /// <summary>هزینه‌ی هر روش ارسال (تومان) از تنظیمات فروشگاه — برای نمایش در صفحه‌ی تسویه</summary>
     decimal GetShippingCost(ShippingMethod method);
 
+    /// <summary>نرخ مالیات بر ارزش افزودهٔ فعلی فروشگاه (٪) — برای نمایش در صفحه‌ی تسویه</summary>
+    decimal GetVatRate();
+
     /// <summary>ثبت سفارش از روی سبد؛ خروجی سفارش PendingPayment است و باید به درگاه پرداخت رفت</summary>
     Task<(OrderDto Order, string? Error)> PlaceOrderAsync(string userId, string cookieId, CheckoutDto dto);
 
@@ -79,6 +82,9 @@ public class OrderService : IOrderService
 
     /// <summary>هزینه‌ی هر روش ارسال از تنظیمات فروشگاه</summary>
     public decimal GetShippingCost(ShippingMethod method) => _store.GetShippingCost(method);
+
+    /// <summary>نرخ مالیات فعلی فروشگاه (٪) — برای نمایش در صفحات چک‌اوت/سبد</summary>
+    public decimal GetVatRate() => _store.VatRate;
 
     public async Task<(OrderDto Order, string? Error)> PlaceOrderAsync(string userId, string cookieId, CheckoutDto dto)
     {
@@ -200,6 +206,12 @@ public class OrderService : IOrderService
 
         var shippingCost = GetShippingCost(dto.ShippingMethod);
 
+        // مالیات بر ارزش افزوده: مبنای «جمع اقلام − تخفیف + ارسال» با نرخِ تنظیمات فروشگاه؛
+        // نرخ روی سفارش عکس‌برداری می‌شود و در فاکتور ساخته‌شده از همین سفارش هم همین
+        // VatCalculator با همین مبنا صدا زده می‌شود تا مبلغ درگاه و فاکتور تک‌ریال فرق نکند
+        var taxAmount = Helpers.VatCalculator.Calculate(
+            subtotal - discountAmount + shippingCost, _store.VatRate);
+
         var order = new Order
         {
             OrderNumber = GenerateOrderNumber(),
@@ -215,6 +227,8 @@ public class OrderService : IOrderService
             Subtotal = subtotal,
             DiscountAmount = discountAmount,
             DiscountCodeText = discountCodeText,
+            TaxAmount = taxAmount,
+            TaxPercent = _store.VatRate,
             Status = OrderStatus.PendingPayment,
         };
 
@@ -529,8 +543,10 @@ public class OrderService : IOrderService
             CustomerId = customerId,
             WarehouseId = _store.WarehouseId,
             DiscountAmount = order.DiscountAmount,
-            // حمل‌ونقل باید در فاکتور هم باشد تا TotalAmount دقیقاً برابر مبلغ پرداختی مشتری (Order.Total) شود
+            // حمل‌ونقل و مالیات باید در فاکتور هم باشند تا TotalAmount دقیقاً برابر
+            // مبلغ پرداختی مشتری (Order.Total) شود — نرخِ هم‌زمانِ ثبت سفارش، نه نرخِ امروز
             ShippingAmount = order.ShippingCost,
+            TaxPercent = order.TaxPercent,
             Notes = $"سفارش آنلاین {order.OrderNumber}" + (refId is null ? "" : $" — شماره پیگیری: {refId}") + noteSuffix,
             Items = order.Items.Select(i => new SalesInvoiceItemInput
             {
@@ -696,7 +712,7 @@ public class OrderService : IOrderService
         o.Id, o.OrderNumber, o.Status, StatusText(o.Status),
         o.CustomerName, o.CustomerPhone, o.Province, o.City, o.AddressLine, o.PostalCode,
         ShippingText(o.ShippingMethod),
-        o.Subtotal, o.DiscountAmount, o.DiscountCodeText, o.ShippingCost, o.Total,
+        o.Subtotal, o.DiscountAmount, o.DiscountCodeText, o.TaxAmount, o.ShippingCost, o.Total,
         o.TrackingCode, o.AdminNote, o.CreatedAt, o.SalesInvoiceId,
         o.Items.Select(i => new OrderItemDto(i.ProductId, i.ProductName, i.UnitPrice, i.Quantity, i.LineTotal, i.Product?.ImageUrl)).ToList());
 }

@@ -22,6 +22,12 @@ public class SalesInvoice
     /// <summary>هزینهٔ حمل‌ونقل — از سفارش فروشگاه می‌آید تا مبلغ فاکتور دقیقاً برابر مبلغ پرداختی مشتری باشد</summary>
     public decimal ShippingAmount { get; set; }
 
+    /// <summary>درصد مالیات بر ارزش افزوده در لحظهٔ صدور — عکس فوری؛ صفر یعنی بدون مالیات</summary>
+    public decimal TaxPercent { get; set; }
+
+    /// <summary>مبلغ مالیات بر ارزش افزوده — جزء TotalAmount است اما درآمد نیست؛ در ۲۳۰۰ بستانکار می‌شود</summary>
+    public decimal TaxAmount { get; set; }
+
     public decimal TotalAmount { get; set; }
 
     public string? Notes { get; set; }

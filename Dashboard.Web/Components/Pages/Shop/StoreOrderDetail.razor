@@ -97,6 +97,12 @@ else
                 <div class="d-flex justify-content-between small mb-1">
                     <span class="text-body-secondary">ارسال (@order.ShippingMethodText)</span><span>@(order.ShippingCost == 0 ? "رایگان" : CurrencyFormatter.ToToman(order.ShippingCost))</span>
                 </div>
+                @if (order.TaxAmount > 0)
+                {
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span class="text-body-secondary">مالیات بر ارزش افزوده</span><span>@CurrencyFormatter.ToToman(order.TaxAmount)</span>
+                    </div>
+                }
                 <hr class="my-2" />
                 <div class="d-flex justify-content-between">
                     <strong>مبلغ کل</strong><strong class="fs-5" style="color: var(--brand-primary);">@CurrencyFormatter.ToToman(order.Total)</strong>

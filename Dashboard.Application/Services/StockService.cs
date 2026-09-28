@@ -25,6 +25,8 @@ public interface IStockService
 
     // رویدادهای انبار (۲-۳ در سند: رسید خرید / حواله مصرف / برگشت از فروش / ضایعات)
     Task<int> RegisterPurchaseReceiptAsync(CreatePurchaseReceiptDto dto, string? userId);
+    Task<int> RegisterPurchaseReturnAsync(CreatePurchaseReturnDto dto, string? userId);
+    Task<PurchaseReceiptForReturnDto?> GetPurchaseReceiptForReturnAsync(string receiptNumber);
     Task<int> RegisterInternalIssueAsync(CreateInternalIssueDto dto, string? userId);
     Task<int> RegisterSalesReturnAsync(CreateSalesReturnDto dto, string? userId);
     Task<int> RegisterScrapAsync(CreateScrapRecordDto dto, string? userId);
@@ -32,6 +34,7 @@ public interface IStockService
     Task<IEnumerable<PurchaseReceiptSummaryDto>> GetPurchaseReceiptsAsync();
     Task<IEnumerable<InternalIssueSummaryDto>> GetInternalIssuesAsync();
     Task<IEnumerable<SalesReturnSummaryDto>> GetSalesReturnsAsync();
+    Task<IEnumerable<PurchaseReturnSummaryDto>> GetPurchaseReturnsAsync();
     Task<IEnumerable<ScrapRecordSummaryDto>> GetScrapRecordsAsync();
 
     // انتقال بین انبار (۲-۲)
@@ -195,6 +198,7 @@ public class StockService : IStockService
                 WarehouseId = dto.WarehouseId,
                 ReceiptNumber = $"TEMP-{Guid.NewGuid():N}",
                 ReceiptDate = dto.ReceiptDate,
+                TaxAmount = dto.TaxAmount,
                 Notes = dto.Notes,
                 CreatedByUserId = userId
             };
@@ -279,15 +283,25 @@ public class StockService : IStockService
 
             var totalAmount = receipt.Items.Sum(i => i.Quantity * i.UnitCost);
 
-            if (totalAmount > 0)
+            if (totalAmount + receipt.TaxAmount > 0)
             {
+                var purchaseLines = new List<JournalLineInput>();
+                if (totalAmount > 0)
+                    purchaseLines.Add(new JournalLineInput(
+                        SystemAccountCodes.Inventory, totalAmount, 0, "افزایش موجودی کالا"));
+                if (receipt.TaxAmount > 0)
+                    purchaseLines.Add(new JournalLineInput(
+                        SystemAccountCodes.VatReceivable, receipt.TaxAmount, 0,
+                        "اعتبار مالیاتی ارزش افزوده خرید"));
+                purchaseLines.Add(new JournalLineInput(
+                    SystemAccountCodes.AccountsPayable, 0, totalAmount + receipt.TaxAmount,
+                    "بدهی به تأمین‌کننده", "Supplier", dto.SupplierId));
+
+                // خرید: بدهکار موجودی (خالص) و اعتبار مالیاتی، بستانکار پرداختنی (ناخالص) —
+                // مالیات به بهای تمام‌شده راه پیدا نمی‌کند؛ اعتبارش با مالیات فروش تهاتر می‌شود
                 await _journalService.PostEntryAsync(
                     description: $"خرید طبق رسید {receipt.ReceiptNumber}",
-                    lines: new List<JournalLineInput>
-                    {
-                        new("1300", totalAmount, 0, "افزایش موجودی کالا"),
-                        new("2100", 0, totalAmount, "بدهی به تأمین‌کننده", "Supplier", dto.SupplierId)
-                    },
+                    lines: purchaseLines,
                     referenceType: nameof(PurchaseReceipt),
                     referenceId: receipt.Id,
                     userId: userId);
@@ -555,11 +569,14 @@ public class StockService : IStockService
 
                 // ⚠️ تخفیفِ فاکتور مرجع هم باید کسر شود، وگرنه برگشتِ جزئی از فاکتورِ تخفیف‌دار
                 // بیش از مبلغ واقعیِ پرداخت‌شده طلب مشتری را کم می‌کرد (و درآمد جعلی می‌ساخت).
-                // سهم تخفیف به نسبتِ ارزشِ خامِ برگشتی به کل ارزشِ خامِ فاکتور محاسبه می‌شود.
+                // سهم تخفیف و مالیات به نسبتِ ارزشِ خامِ برگشتی به کل ارزشِ خامِ فاکتور محاسبه می‌شود.
                 var invoiceGross = sourceInvoice.TotalAmount - sourceInvoice.ShippingAmount
-                                   + sourceInvoice.DiscountAmount;
+                                   + sourceInvoice.DiscountAmount - sourceInvoice.TaxAmount;
                 var discountShare = invoiceGross > 0
                     ? sourceInvoice.DiscountAmount * (grossReturned / invoiceGross)
+                    : 0m;
+                var taxShare = invoiceGross > 0
+                    ? sourceInvoice.TaxAmount * (grossReturned / invoiceGross)
                     : 0m;
                 var netRevenueTotal = Math.Max(revenueTotal - discountShare, 0m);
 
@@ -582,9 +599,13 @@ public class StockService : IStockService
                         SystemAccountCodes.CostOfGoodsSold, 0, lineCost, "برگشت بهای تمام‌شده"));
                 }
 
-                // طلب مشتری به اندازهٔ مبلغ فروشِ برگشتی (بعد از تخفیف) کم می‌شود
+                if (taxShare > 0)
+                    returnLines.Add(new DTOs.JournalLineInput(
+                        SystemAccountCodes.VatPayable, taxShare, 0, "برگشت مالیات بر ارزش افزوده فروش"));
+
+                // طلب مشتری به اندازهٔ مبلغ فروشِ برگشتی (بعد از تخفیف) + سهم مالیات کم می‌شود
                 returnLines.Add(new DTOs.JournalLineInput(
-                    SystemAccountCodes.AccountsReceivable, 0, netRevenueTotal,
+                    SystemAccountCodes.AccountsReceivable, 0, netRevenueTotal + taxShare,
                     "کاهش طلب مشتری بابت برگشت از فروش", "Customer", sourceInvoice.CustomerId));
 
                 await _journalService.PostEntryAsync(
@@ -601,6 +622,195 @@ public class StockService : IStockService
         });
 
         return salesReturnId;
+    }
+
+    /// <summary>
+    /// ثبت برگشت خرید به تأمین‌کننده. همیشه به یک رسید خرید مرجع گره می‌خورد:
+    /// سهم پرداختنی (AP) با «بهای اصلیِ رسید» بدهکار می‌شود تا با اعتبارنامهٔ تأمین‌کننده
+    /// بخواند، و میانگین موزون کالا برای ارزشِ خارج‌شده اصلاح می‌شود.
+    /// </summary>
+    public async Task<int> RegisterPurchaseReturnAsync(CreatePurchaseReturnDto dto, string? userId)
+    {
+        CommonValidations.ValidateItemsNotEmpty(dto.Items);
+
+        foreach (var item in dto.Items)
+        {
+            if (item.Quantity <= 0)
+                throw new BusinessRuleException("مقدار برگشتی باید بزرگ‌تر از صفر باشد.");
+        }
+
+        var purchaseReturnId = 0;
+        await RunInTransactionAsync(async () =>
+        {
+            var sourceReceipt = await _unitOfWork.PurchaseReceipts.GetByIdAsync(dto.PurchaseReceiptId)
+                ?? throw new NotFoundException("رسید خرید", dto.PurchaseReceiptId);
+
+            if (sourceReceipt.WarehouseId != dto.WarehouseId)
+                throw new BusinessRuleException("انبار رسید مرجع با انبار برگشتی یکسان نیست.");
+
+            // سقف مجاز = «دریافتی از رسید منهای برگشت‌های قبلی» — وگرنه یک رسید ۱۰تایی
+            // می‌شد ۱۰ بار، هر بار یک عدد، برگردانده شود و موجودی/پرداختنی چندبار کم شود
+            var receivedByProduct = sourceReceipt.Items
+                .GroupBy(i => i.ProductId)
+                .ToDictionary(g => g.Key, g => (Quantity: g.Sum(x => x.Quantity), UnitCost: g.Sum(x => x.Quantity * x.UnitCost) / g.Sum(x => x.Quantity)));
+
+            var alreadyReturnedByProduct = (await _unitOfWork.PurchaseReturns.GetByPurchaseReceiptIdAsync(sourceReceipt.Id))
+                .SelectMany(r => r.Items)
+                .GroupBy(i => i.ProductId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+
+            foreach (var group in dto.Items.GroupBy(i => i.ProductId))
+            {
+                var requested = group.Sum(x => x.Quantity);
+
+                if (!receivedByProduct.TryGetValue(group.Key, out var received))
+                    throw new BusinessRuleException(
+                        $"کالای شماره {group.Key} در رسید مرجع نبوده است.");
+
+                var alreadyReturned = alreadyReturnedByProduct.GetValueOrDefault(group.Key);
+                var remaining = received.Quantity - alreadyReturned;
+
+                if (requested > remaining)
+                    throw new BusinessRuleException(
+                        $"مقدار برگشتی ({requested:0.##}) بیشتر از مقدار قابل‌برگشت ({remaining:0.##}) است. " +
+                        $"در رسید {received.Quantity:0.##} دریافت و {alreadyReturned:0.##} قبلاً برگشت خورده است.");
+            }
+
+            var purchaseReturn = new PurchaseReturn
+            {
+                WarehouseId = dto.WarehouseId,
+                ReturnNumber = $"TEMP-{Guid.NewGuid():N}", // شماره موقت، فقط برای عبور از محدودیت Unique
+                ReturnDate = dto.ReturnDate,
+                SupplierReference = dto.SupplierReference,
+                Notes = dto.Notes,
+                PurchaseReceiptId = sourceReceipt.Id,
+                CreatedByUserId = userId
+            };
+
+            foreach (var item in dto.Items)
+                purchaseReturn.Items.Add(new PurchaseReturnItem { ProductId = item.ProductId, Quantity = item.Quantity });
+
+            // ابتدا سند ثبت و Id واقعی ساخته می‌شود تا تراکنش‌های موجودی بتوانند ReferenceId داشته باشند
+            await _unitOfWork.PurchaseReturns.AddAsync(purchaseReturn);
+            await _unitOfWork.CompleteAsync();
+            purchaseReturnId = purchaseReturn.Id;
+
+            // موجودی قبل از کسر — مبنای اصلاح میانگین موزون (یک‌بار برای هر کالا)
+            var previousQuantities = new Dictionary<int, decimal>();
+            foreach (var group in dto.Items.GroupBy(i => i.ProductId))
+            {
+                var levelBefore = await _unitOfWork.StockLevels.GetAsync(group.Key, dto.WarehouseId);
+                previousQuantities[group.Key] = levelBefore?.QuantityOnHand ?? 0m;
+            }
+
+            foreach (var item in dto.Items)
+            {
+                await _unitOfWork.StockTransactions.AddAsync(new StockTransaction
+                {
+                    ProductId = item.ProductId,
+                    WarehouseId = dto.WarehouseId,
+                    Type = StockTransactionType.PurchaseReturn,
+                    QuantityChange = -item.Quantity,
+                    ReferenceType = nameof(PurchaseReturn),
+                    ReferenceId = purchaseReturn.Id,
+                    CreatedByUserId = userId
+                });
+
+                // کسر اتمیک با بررسی کفایت + RowVersion — برگشت خرید نباید موجودی را زیر صفر ببرد
+                await _unitOfWork.StockLevels.DecreaseWithCheckAsync(item.ProductId, dto.WarehouseId, item.Quantity);
+            }
+
+            purchaseReturn.ReturnNumber = DocumentNumberGenerator.Generate(purchaseReturn.ReturnDate, sourceReceipt.SupplierId, purchaseReturn.Id);
+            await _unitOfWork.PurchaseReturns.UpdateAsync(purchaseReturn);
+            await _unitOfWork.AuditLogs.AddAsync(new AuditLog("PurchaseReturnRegistered", userId, $"برگشت خرید {purchaseReturn.ReturnNumber} ثبت شد."));
+
+            // اصلاح میانگین موزون: کالای برگشتی با بهای اصلیِ رسید خارج می‌شود، پس ارزشِ
+            // دفتریِ باقیمانده و میانگینِ آن به‌روز می‌شود تا COGS فروش‌های بعدی غلط نشود
+            var productIds = dto.Items.Select(i => i.ProductId).Distinct().ToList();
+            var products = (await _unitOfWork.Products.GetByIdsAsync(productIds))
+                .ToDictionary(p => p.Id);
+            var returnedByProduct = dto.Items.GroupBy(i => i.ProductId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+
+            foreach (var productId in productIds)
+            {
+                if (!products.TryGetValue(productId, out var product))
+                    throw new NotFoundException("کالا", productId);
+
+                product.ApplyPurchaseReturnToAverageCost(
+                    previousQuantities[productId],
+                    returnedByProduct[productId],
+                    receivedByProduct[productId].UnitCost);
+                await _unitOfWork.Products.UpdateAsync(product);
+            }
+
+            // سند حسابداری برگشت خرید: بدهکار پرداختنی (کاهش بدهی به تأمین‌کننده، با معین)
+            // و بستانکار موجودی کالا — هر دو با «بهای اصلیِ رسید» تا با اعتبارنامه بخواند.
+            // رسیدِ با جمع صفر (هدیه/نمونه) ارزشِ دفتریِ قابل‌برگشت ندارد؛ GL ارزش را دنبال
+            // می‌کند نه تعداد را، پس بدون سند هم واگرایی رخ نمی‌دهد.
+            var returnedValue = returnedByProduct.Sum(kv =>
+                kv.Value * receivedByProduct[kv.Key].UnitCost);
+
+            if (returnedValue > 0)
+            {
+                await _journalService.PostEntryAsync(
+                    description: $"برگشت به تأمین‌کننده طبق سند {purchaseReturn.ReturnNumber}",
+                    lines: new List<DTOs.JournalLineInput>
+                    {
+                        new(SystemAccountCodes.AccountsPayable, returnedValue, 0,
+                            "کاهش بدهی به تأمین‌کننده بابت برگشت خرید", "Supplier", sourceReceipt.SupplierId),
+                        new(SystemAccountCodes.Inventory, 0, returnedValue, "خروج کالا از انبار بابت برگشت خرید")
+                    },
+                    referenceType: nameof(PurchaseReturn),
+                    referenceId: purchaseReturn.Id,
+                    userId: userId);
+            }
+
+            await _notifications.NotifyRoleAsync(Dashboard.Domain.Identity.Roles.WarehouseUser,
+                "برگشت خرید ثبت شد", $"برگشت {purchaseReturn.ReturnNumber} با {dto.Items.Count} قلم کالا",
+                NotificationType.System, "/warehouse/purchase-returns");
+            await _unitOfWork.CompleteAsync();
+        });
+
+        return purchaseReturnId;
+    }
+
+    /// <summary>
+    /// جستجوی رسید خرید با شماره برای صفحهٔ برگشت خرید — همراه با ماندهٔ قابل‌برگشت هر قلم
+    /// (دریافتی منفی برگشت‌های قبلی) تا کاربر بیش از سهم برگشت نزند.
+    /// </summary>
+    public async Task<PurchaseReceiptForReturnDto?> GetPurchaseReceiptForReturnAsync(string receiptNumber)
+    {
+        var receipt = await _unitOfWork.PurchaseReceipts.GetByReceiptNumberAsync(receiptNumber.Trim());
+        if (receipt is null) return null;
+
+        var previousReturns = (await _unitOfWork.PurchaseReturns.GetByPurchaseReceiptIdAsync(receipt.Id))
+            .SelectMany(r => r.Items)
+            .GroupBy(i => i.ProductId)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+
+        return new PurchaseReceiptForReturnDto(
+            receipt.Id,
+            receipt.ReceiptNumber,
+            receipt.Supplier?.Name ?? "-",
+            receipt.WarehouseId,
+            receipt.Warehouse?.Name ?? "-",
+            receipt.Items.Select(i => new PurchaseReceiptReturnItemDto(
+                i.ProductId,
+                i.Product?.Name ?? $"کالای {i.ProductId}",
+                i.Quantity,
+                i.UnitCost,
+                previousReturns.GetValueOrDefault(i.ProductId))).ToList());
+    }
+
+    /// <summary>
+    /// دریافت لیست خلاصه برگشت‌های به تأمین‌کننده
+    /// </summary>
+    public async Task<IEnumerable<PurchaseReturnSummaryDto>> GetPurchaseReturnsAsync()
+    {
+        var returns = await _unitOfWork.PurchaseReturns.GetAllAsync();
+        return returns.Select(r => new PurchaseReturnSummaryDto(
+            r.Id, r.ReturnNumber, r.ReturnDate, r.Warehouse?.Name ?? "-", r.SupplierReference, r.Items.Count));
     }
 
     /// <summary>

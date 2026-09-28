@@ -59,6 +59,7 @@
                                 </AuthorizeView>
                                 <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.PurchaseReceiptsManage" Context="c4">
                                     <Authorized><div class="nav-item px-3"><NavLink class="nav-link" href="warehouse/purchase-receipts"><i class="bi bi-box-arrow-in-down"></i>رسیدهای خرید</NavLink></div></Authorized>
+                                    <Authorized><div class="nav-item px-3"><NavLink class="nav-link" href="warehouse/purchase-returns"><i class="bi bi-box-arrow-up-right"></i>برگشت خرید</NavLink></div></Authorized>
                                 </AuthorizeView>
                                 <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.InternalIssuesManage" Context="c5">
                                     <Authorized><div class="nav-item px-3"><NavLink class="nav-link" href="warehouse/internal-issues"><i class="bi bi-box-arrow-up"></i>حواله مصرف داخلی</NavLink></div></Authorized>
@@ -101,6 +102,7 @@
                                         <div class="nav-item px-3"><NavLink class="nav-link" href="accounting/supplier-payments"><i class="bi bi-cash-stack"></i>پرداخت به تأمین‌کننده</NavLink></div>
                                         <div class="nav-item px-3"><NavLink class="nav-link" href="accounting/overdue-installments"><i class="bi bi-calendar-x"></i>اقساط معوق</NavLink></div>
                                         <div class="nav-item px-3"><NavLink class="nav-link" href="accounting/financial-accounts"><i class="bi bi-bank"></i>صندوق و بانک</NavLink></div>
+                                        <div class="nav-item px-3"><NavLink class="nav-link" href="accounting/cheques"><i class="bi bi-check2-square"></i>تسویه اوراق</NavLink></div>
                                     </Authorized>
                                 </AuthorizeView>
                                 <AuthorizeView Policy="@Dashboard.Domain.Identity.Permissions.AccountingView" Context="c12">
@@ -213,7 +215,7 @@
     private static readonly string[] SalesRoutes = { "warehouse/sales", "warehouse/customers" };
     private static readonly string[] WarehouseRoutes =
     {
-        "warehouse/stock", "warehouse/purchase-receipts", "warehouse/internal-issues",
+        "warehouse/stock", "warehouse/purchase-receipts", "warehouse/purchase-returns", "warehouse/internal-issues",
         "warehouse/sales-returns", "warehouse/transfers", "warehouse/scrap",
         "warehouse/stock-counts", "warehouse/warehouses", "warehouse/suppliers"
     };

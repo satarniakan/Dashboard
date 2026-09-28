@@ -22,6 +22,7 @@ public class UnitOfWork : IUnitOfWork
     public IStockLevelRepository StockLevels { get; private set; }
     public IStockTransactionRepository StockTransactions { get; private set; }
     public IPurchaseReceiptRepository PurchaseReceipts { get; private set; }
+    public IPurchaseReturnRepository PurchaseReturns { get; private set; }
     public IInternalIssueRepository InternalIssues { get; private set; }
     public ISalesReturnRepository SalesReturns { get; private set; }
     public IScrapRecordRepository ScrapRecords { get; private set; }
@@ -58,6 +59,7 @@ public class UnitOfWork : IUnitOfWork
         IStockLevelRepository stockLevels,
         IStockTransactionRepository stockTransactions,
         IPurchaseReceiptRepository purchaseReceipts,
+        IPurchaseReturnRepository purchaseReturns,
         IInternalIssueRepository internalIssues,
         ISalesReturnRepository salesReturns,
         IScrapRecordRepository scrapRecords,
@@ -91,6 +93,7 @@ public class UnitOfWork : IUnitOfWork
         StockLevels = stockLevels;
         StockTransactions = stockTransactions;
         PurchaseReceipts = purchaseReceipts;
+        PurchaseReturns = purchaseReturns;
         InternalIssues = internalIssues;
         SalesReturns = salesReturns;
         ScrapRecords = scrapRecords;

@@ -1,0 +1,239 @@
+@page "/warehouse/purchase-returns/add"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.PurchaseReceiptsManage)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Helpers
+@using Dashboard.Application.Services
+@using System.Security.Claims
+@inject IStockService StockService
+@inject IProductService ProductService
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ILogger<Dashboard.Web.Components.Pages.Warehouse.AddPurchaseReturn> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
+<PageTitle>ثبت برگشت خرید</PageTitle>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">ثبت برگشت خرید</h3>
+        <div class="text-body-secondary small">برای برگشت کالا به تأمین‌کننده، ابتدا رسید خرید را با شماره‌ی آن جستجو کنید.</div>
+    </div>
+    <a href="/warehouse/purchase-returns" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-right me-1"></i>بازگشت به فهرست
+    </a>
+</div>
+
+<EditForm Model="@model" OnValidSubmit="HandleValidSubmit" FormName="AddPurchaseReturnForm">
+    <DataAnnotationsValidator />
+
+    @* ===== جستجوی رسید مرجع ===== *@
+    <div class="card-panel mb-3">
+        <h6 class="form-section-title"><i class="bi bi-search"></i>جستجوی رسید خرید</h6>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">انبار</label>
+                <input class="form-control"
+                       value="@(selectedReceipt?.WarehouseName ?? "")"
+                       disabled="@(selectedReceipt is not null)" />
+                <div class="form-text">پس از جستجوی رسید، انبار به‌صورت خودکار تعیین می‌شود.</div>
+                <ValidationMessage For="() => model.WarehouseId" class="text-danger small mt-1 d-block" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">تأمین‌کننده</label>
+                <input class="form-control"
+                       value="@(selectedReceipt?.SupplierName ?? "")"
+                       disabled="@(selectedReceipt is not null)" />
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">شماره رسید خرید</label>
+            <div class="input-group">
+                <input class="form-control"
+                       @bind="receiptNumber"
+                       placeholder="شماره رسید را وارد کنید" />
+                <button type="button"
+                        class="btn btn-primary"
+                        @onclick="SearchReceipt"
+                        disabled="@searchingReceipt">
+                    @if (searchingReceipt)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-search me-1"></i>
+                    }
+                    جستجو
+                </button>
+            </div>
+        </div>
+
+        @if (selectedReceipt is not null)
+        {
+            <div class="alert alert-info mb-0">
+                <strong>رسید:</strong> @selectedReceipt.ReceiptNumber
+                <br />
+                <strong>تأمین‌کننده:</strong> @selectedReceipt.SupplierName
+                <br />
+                <strong>ماندهٔ قابل‌برگشت اقلام:</strong>
+                <ul class="mb-0 mt-1">
+                    @foreach (var item in selectedReceipt.Items)
+                    {
+                        var remaining = item.Quantity - item.AlreadyReturned;
+                        <li>
+                            @item.ProductName — دریافت @QuantityFormatter.Format(item.Quantity)
+                            @if (item.AlreadyReturned > 0)
+                            {
+                                <span class="text-body-secondary">(برگشت‌خورده: @QuantityFormatter.Format(item.AlreadyReturned) — باقیمانده: @QuantityFormatter.Format(remaining))</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+
+    @* ===== اطلاعات سند ===== *@
+    <div class="card-panel mb-3">
+        <h6 class="form-section-title"><i class="bi bi-arrow-90deg-left"></i>اطلاعات سند</h6>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">تاریخ برگشت</label>
+                <PersianDateTimePicker TValue="DateTime" @bind-Value="model.ReturnDate" ShowTime="true" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <AppTextField TValue="string" @bind-Value="model.SupplierReference" Label="مرجع تأمین‌کننده (اختیاری)" />
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">توضیحات (اختیاری)</label>
+            <AppTextArea @bind-Value="model.Notes" Label="توضیحات (اختیاری)" Rows="3"
+                         ShowCount="true" />
+        </div>
+    </div>
+
+    @* ===== اقلام برگشتی ===== *@
+    <div class="card-panel mb-3">
+        <h6 class="form-section-title"><i class="bi bi-box-seam"></i>اقلام برگشتی</h6>
+        <div class="form-text mb-3">مقدار برگشتی هر کالا را وارد کنید؛ کالاها از اقلام رسید انتخاب می‌شوند.</div>
+
+        <StockItemRowsEditor Items="model.Items"
+                             Products="@(products ?? Enumerable.Empty<ProductDto>())"
+                             ReadOnlyProducts="@(selectedReceipt is not null)" />
+        <ValidationMessage For="() => model.Items" class="text-danger small mt-1 d-block" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3 mb-0">
+            <i class="bi bi-exclamation-octagon me-1"></i>@errorMessage
+        </div>
+    }
+
+    @* ===== نوار عملیات ===== *@
+    <div class="card-panel form-actions mt-3 d-flex align-items-center gap-2">
+        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+            @if (isSaving)
+            {
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            }
+            else
+            {
+                <i class="bi bi-check-lg me-1"></i>
+            }
+            ثبت برگشت خرید
+        </button>
+        <a href="/warehouse/purchase-returns" class="btn btn-outline-secondary">انصراف</a>
+    </div>
+</EditForm>
+
+@code {
+    [SupplyParameterFromForm]
+    private CreatePurchaseReturnDto? _model { get; set; }
+
+    private CreatePurchaseReturnDto model => _model ??= new();
+
+    private IEnumerable<ProductDto>? products;
+
+    private bool isSaving;
+    private string? errorMessage;
+    private string receiptNumber = string.Empty;
+    private PurchaseReceiptForReturnDto? selectedReceipt;
+    private bool searchingReceipt;
+
+    protected override async Task OnInitializedAsync()
+    {
+        model.Items.Add(new StockItemInput());
+        products = await ProductService.GetAllProductsAsync();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+        string? userId = null;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+
+            await StockService.RegisterPurchaseReturnAsync(model, userId);
+            ToastService.ShowSuccess("برگشت خرید ثبت شد.");
+            NavigationManager.NavigateTo("/warehouse/purchase-returns");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در ثبت برگشت خرید توسط {UserId}", userId);
+            errorMessage = Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex);
+            ToastService.ShowError(errorMessage);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task SearchReceipt()
+    {
+        if (string.IsNullOrWhiteSpace(receiptNumber))
+        {
+            ToastService.ShowError("شماره رسید را وارد کنید.");
+            return;
+        }
+
+        searchingReceipt = true;
+
+        try
+        {
+            selectedReceipt = await StockService
+                .GetPurchaseReceiptForReturnAsync(receiptNumber.Trim());
+
+            if (selectedReceipt is null)
+            {
+                ToastService.ShowError("رسید خریدی با این شماره پیدا نشد.");
+                return;
+            }
+
+            model.PurchaseReceiptId = selectedReceipt.Id;
+            model.WarehouseId = selectedReceipt.WarehouseId;
+
+            // اقلام رسید (با ماندهٔ قابل‌برگشت) به اقلام برگشت منتقل می‌شود
+            model.Items = selectedReceipt.Items
+                .Select(x => new StockItemInput
+                {
+                    ProductId = x.ProductId,
+                    Quantity = 0
+                })
+                .ToList();
+        }
+        finally
+        {
+            searchingReceipt = false;
+        }
+    }
+}

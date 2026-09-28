@@ -1,0 +1,228 @@
+@page "/accounting/cheques"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = Dashboard.Domain.Identity.Permissions.AccountingView)]
+@using Microsoft.AspNetCore.Authorization
+@using Dashboard.Application.DTOs
+@using Dashboard.Application.Services
+@using Dashboard.Application.Helpers
+@using System.Security.Claims
+@inject ITreasuryService TreasuryService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ILogger<Dashboard.Web.Components.Pages.Accounting.Cheques> Logger
+@inject Dashboard.Web.Services.ToastService ToastService
+
+<PageTitle>تسویه اوراق</PageTitle>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h3 class="mb-1">تسویه اوراق (چک‌ها)</h3>
+        <div class="text-body-secondary small">
+            چک‌های در جریان — وصول یعنی پول واقعاً نقد شده؛ برگشتی یعنی پاس نشد و طلب/بدهی به حالت قبل برمی‌گردد.
+        </div>
+    </div>
+</div>
+
+@if (cheques is null)
+{
+    <LoadingSkeleton />
+}
+else
+{
+    var received = cheques.Where(c => c.Kind == "receipt").ToList();
+    var issued = cheques.Where(c => c.Kind == "payment").ToList();
+
+    @* ===== چک‌های دریافتی از مشتریان ===== *@
+    <div class="card-panel mb-3">
+        <h6 class="form-section-title"><i class="bi bi-wallet2"></i>چک‌های دریافتی (@received.Count)</h6>
+        @if (received.Count == 0)
+        {
+            <div class="text-center text-body-secondary py-4">
+                <i class="bi bi-check2-circle d-block fs-1 mb-2"></i>
+                چک دریافتیِ در جریانی وجود ندارد.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th>شماره سند</th>
+                            <th>مشتری</th>
+                            <th>شماره چک</th>
+                            <th>سررسید</th>
+                            <th>مبلغ</th>
+                            <th>حساب وصول</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in received)
+                        {
+                            <tr class="@(IsOverdue(c) ? "table-danger" : "")">
+                                <td class="fw-medium">@c.DocumentNumber</td>
+                                <td>@(c.Counterparty ?? "-")</td>
+                                <td class="text-muted">@(c.ChequeNumber ?? "-")</td>
+                                <td class="text-muted">@(c.ChequeDueDate?.ToPersianDate() ?? "-")</td>
+                                <td>@CurrencyFormatter.ToToman(c.Amount)</td>
+                                <td>
+                                    <select class="form-select form-select-sm" style="min-width: 10rem;"
+                                            @bind="settleTargetAccount[c.Id]">
+                                        <option value="0">— انتخاب کنید —</option>
+                                        @foreach (var fa in financialAccounts ?? Enumerable.Empty<FinancialAccountDto>())
+                                        {
+                                            <option value="@fa.Id">@fa.Name</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td class="text-nowrap">
+                                    <button class="btn btn-sm btn-success" disabled="@isSaving"
+                                            @onclick="() => SettleCustomerCheque(c)">
+                                        <i class="bi bi-cash-coin me-1"></i>وصول
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" disabled="@isSaving"
+                                            @onclick="() => BounceCustomerCheque(c)">
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i>برگشتی
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    @* ===== چک‌های صادره به تأمین‌کنندگان ===== *@
+    <div class="card-panel mb-3">
+        <h6 class="form-section-title"><i class="bi bi-bank2"></i>چک‌های صادره (@issued.Count)</h6>
+        @if (issued.Count == 0)
+        {
+            <div class="text-center text-body-secondary py-4">
+                <i class="bi bi-check2-circle d-block fs-1 mb-2"></i>
+                چک صادره‌ی در جریانی وجود ندارد.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th>شماره سند</th>
+                            <th>تأمین‌کننده</th>
+                            <th>شماره چک</th>
+                            <th>سررسید</th>
+                            <th>مبلغ</th>
+                            <th>حساب پرداخت</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in issued)
+                        {
+                            <tr class="@(IsOverdue(c) ? "table-danger" : "")">
+                                <td class="fw-medium">@c.DocumentNumber</td>
+                                <td>@(c.Counterparty ?? "-")</td>
+                                <td class="text-muted">@(c.ChequeNumber ?? "-")</td>
+                                <td class="text-muted">@(c.ChequeDueDate?.ToPersianDate() ?? "-")</td>
+                                <td>@CurrencyFormatter.ToToman(c.Amount)</td>
+                                <td>
+                                    <select class="form-select form-select-sm" style="min-width: 10rem;"
+                                            @bind="settleTargetAccount[c.Id]">
+                                        <option value="0">— انتخاب کنید —</option>
+                                        @foreach (var fa in financialAccounts ?? Enumerable.Empty<FinancialAccountDto>())
+                                        {
+                                            <option value="@fa.Id">@fa.Name</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td class="text-nowrap">
+                                    <button class="btn btn-sm btn-success" disabled="@isSaving"
+                                            @onclick="() => SettleSupplierCheque(c)">
+                                        <i class="bi bi-cash-coin me-1"></i>وصول
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" disabled="@isSaving"
+                                            @onclick="() => BounceSupplierCheque(c)">
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i>برگشتی
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private IEnumerable<PendingChequeDto>? cheques;
+    private IEnumerable<FinancialAccountDto>? financialAccounts;
+    private Dictionary<int, int> settleTargetAccount = new();
+    private bool isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        financialAccounts = await TreasuryService.GetFinancialAccountsAsync();
+        await LoadChequesAsync();
+    }
+
+    private async Task LoadChequesAsync()
+    {
+        cheques = await TreasuryService.GetPendingChequesAsync();
+    }
+
+    private static bool IsOverdue(PendingChequeDto c) =>
+        c.ChequeDueDate.HasValue && c.ChequeDueDate.Value < DateTime.UtcNow;
+
+    private async Task RunAsync(Func<Task> action, string successMessage)
+    {
+        isSaving = true;
+        string? userId = null;
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? authState.User.Identity?.Name;
+
+            await action();
+            ToastService.ShowSuccess(successMessage);
+            await LoadChequesAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "خطا در تسویهٔ اوراق توسط {UserId}", userId);
+            ToastService.ShowError(Dashboard.Web.Components.Shared.ErrorMessageHelper.ToUserMessage(ex));
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private Task SettleCustomerCheque(PendingChequeDto c) => RunAsync(async () =>
+    {
+        if (!settleTargetAccount.TryGetValue(c.Id, out var accountId) || accountId <= 0)
+            throw new Dashboard.Domain.Exceptions.BusinessRuleException("حساب بانکی وصول را انتخاب کنید.");
+        await TreasuryService.SettleCustomerChequeAsync(c.Id,
+            new SettleChequeDto { FinancialAccountId = accountId }, null);
+    }, "چک وصول شد و به صندوق/بانک منتقل شد.");
+
+    private Task BounceCustomerCheque(PendingChequeDto c) => RunAsync(async () =>
+    {
+        await TreasuryService.BounceCustomerChequeAsync(c.Id, new BounceChequeDto(), null);
+    }, "چک برگشتی ثبت شد و طلب از مشتری برقرار شد.");
+
+    private Task SettleSupplierCheque(PendingChequeDto c) => RunAsync(async () =>
+    {
+        if (!settleTargetAccount.TryGetValue(c.Id, out var accountId) || accountId <= 0)
+            throw new Dashboard.Domain.Exceptions.BusinessRuleException("حساب بانکی پرداخت را انتخاب کنید.");
+        await TreasuryService.SettleSupplierChequeAsync(c.Id,
+            new SettleChequeDto { FinancialAccountId = accountId }, null);
+    }, "وصول چک ثبت شد و موجودی بانک کم شد.");
+
+    private Task BounceSupplierCheque(PendingChequeDto c) => RunAsync(async () =>
+    {
+        await TreasuryService.BounceSupplierChequeAsync(c.Id, new BounceChequeDto(), null);
+    }, "برگشت چک ثبت شد و بدهی به تأمین‌کننده برقرار شد.");
+}

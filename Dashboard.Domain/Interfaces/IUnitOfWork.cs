@@ -13,6 +13,7 @@ public interface IUnitOfWork
     IStockLevelRepository StockLevels { get; }
     IStockTransactionRepository StockTransactions { get; }
     IPurchaseReceiptRepository PurchaseReceipts { get; }
+    IPurchaseReturnRepository PurchaseReturns { get; }
     IInternalIssueRepository InternalIssues { get; }
     ISalesReturnRepository SalesReturns { get; }
     IScrapRecordRepository ScrapRecords { get; }

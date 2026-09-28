@@ -10,6 +10,13 @@ public class PurchaseReceipt
     public Warehouse? Warehouse { get; set; }
     public string ReceiptNumber { get; set; } = string.Empty;
     public DateTime ReceiptDate { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// مبلغ مالیات بر ارزش افزودهٔ خرید (اعتبار مالیاتی) — به ۱۳۵۰ بدهکار می‌شود و
+    /// بهای تمام‌شدهٔ کالا را تغییر نمی‌دهد؛ UnitCost سطرها «خالص» در نظر گرفته می‌شود.
+    /// </summary>
+    public decimal TaxAmount { get; set; }
+
     public string? Notes { get; set; }
     public string? CreatedByUserId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

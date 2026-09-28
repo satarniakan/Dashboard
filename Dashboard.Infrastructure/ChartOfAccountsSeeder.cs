@@ -27,6 +27,8 @@ public static class ChartOfAccountsSeeder
             (SystemAccountCodes.AccountsPayable, "حساب‌های پرداختنی (تأمین‌کنندگان)", AccountType.Liability),
             (SystemAccountCodes.NotesReceivable, "اوراق دریافتنی (چک و سفته)", AccountType.Asset),
             (SystemAccountCodes.NotesPayable, "اوراق پرداختنی (چک و سفته)", AccountType.Liability),
+            (SystemAccountCodes.VatReceivable, "مالیات و عوارض ارزش افزوده خرید", AccountType.Asset),
+            (SystemAccountCodes.VatPayable, "مالیات و عوارض بر ارزش افزوده فروش", AccountType.Liability),
             (SystemAccountCodes.SalesRevenue, "فروش کالا", AccountType.Revenue),
             (SystemAccountCodes.ShippingRevenue, "درآمد حمل‌ونقل", AccountType.Revenue),
             (SystemAccountCodes.CostOfGoodsSold, "بهای تمام‌شده کالای فروش‌رفته", AccountType.Expense),

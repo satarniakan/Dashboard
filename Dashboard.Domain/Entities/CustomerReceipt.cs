@@ -20,6 +20,7 @@ public class CustomerReceipt
 
     public string? ChequeNumber { get; set; }
     public DateTime? ChequeDueDate { get; set; }
+    public ChequeStatus? ChequeStatus { get; set; }
 
     public string? Notes { get; set; }
     public string? CreatedByUserId { get; set; }
